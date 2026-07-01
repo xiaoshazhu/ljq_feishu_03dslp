@@ -6,7 +6,7 @@ const LOG_DIR = path.join(__dirname, 'data');
 const LOG_FILE = path.join(LOG_DIR, 'errors.json');
 
 /**
- * 功能描述：静默归档同步异常数据，写入本地 errors.json 与 SQLite 数据库中。
+ * 功能描述：静默归档同步异常数据，写入本地 errors.json 与 MySQL 数据库中。
  * @param {string} taskId - 异常任务 ID
  * @param {string} platform - 异常关联的第三方平台名称
  * @param {string} shopName - 报错的账号或店铺名称
@@ -32,8 +32,8 @@ function logSyncError(taskId, platform, shopName, errorType, errorMessage) {
 
   console.error(`[🚨 异常告警写入特定监控多维表格]`, errorRecord);
 
-  // 1. 写入 SQLite
-  saveError(errorRecord).catch(e => console.error("SQLite 写入错误异常:", e));
+  // 1. 写入 MySQL
+  saveError(errorRecord).catch(e => console.error("MySQL 写入错误异常:", e));
 
   // 2. 写入 JSON (保留作为本地明文日志)
   let existing = [];

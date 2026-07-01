@@ -14,7 +14,7 @@ data-sync-be-demo/data/connector.db
 .local/
 .replit
 replit.nix
-
+抖店/
 
 # Build outputs & caches
 dist/

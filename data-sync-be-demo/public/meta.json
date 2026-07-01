@@ -6,7 +6,7 @@
     "disabledPeriodicSync": false,
     "dataSourceConfigUiUri": "https://ext.baseopendev.com/ext/data-sync-fe-demo/c70fa2864a002386423f26411f21a3c674bc2f9c/index.html",
     "initHeight": 700,
-    "initWidth": 950
+    "initWidth": 840
   },
   "protocol": {
     "type": "http",

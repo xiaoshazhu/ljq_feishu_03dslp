@@ -1,5 +1,335 @@
 [
   {
+    "id": "ERR_1782891130993",
+    "taskId": "TASK_17828911",
+    "timestamp": "2026/7/1 15:32:10",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=, snippet=",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782890750681",
+    "taskId": "TASK_17828907",
+    "timestamp": "2026/7/1 15:25:50",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=, snippet=",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782890583864",
+    "taskId": "TASK_17828905",
+    "timestamp": "2026/7/1 15:23:03",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=, snippet=",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782890360578",
+    "taskId": "TASK_17828903",
+    "timestamp": "2026/7/1 15:19:20",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=, snippet=",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782873133603",
+    "taskId": "TASK_17828731",
+    "timestamp": "2026/7/1 10:32:13",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=text/plain, snippet=404 page not found",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782872930222",
+    "taskId": "TASK_17828729",
+    "timestamp": "2026/7/1 10:28:50",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=text/plain, snippet=404 page not found",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782872848916",
+    "taskId": "TASK_17828728",
+    "timestamp": "2026/7/1 10:27:28",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=text/plain, snippet=404 page not found",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782800055751",
+    "taskId": "TASK_17828000",
+    "timestamp": "2026/6/30 14:14:15",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782798057651",
+    "taskId": "TASK_17827980",
+    "timestamp": "2026/6/30 13:40:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782794918257",
+    "taskId": "TEST_1782794915507",
+    "timestamp": "2026/6/30 12:48:38",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=text/plain, snippet=404 page not found",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782794456473",
+    "taskId": "TASK_17827944",
+    "timestamp": "2026/6/30 12:40:56",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=7010] 抱歉，您无权限访问该页面，请联系主账号申请开通或刷新页面重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782794379899",
+    "taskId": "TASK_17827943",
+    "timestamp": "2026/6/30 12:39:39",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782792997608",
+    "taskId": "TEST_1782792995115",
+    "timestamp": "2026/6/30 12:16:37",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=text/plain, snippet=404 page not found",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782792824615",
+    "taskId": "TASK_17827928",
+    "timestamp": "2026/6/30 12:13:44",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791916312",
+    "taskId": "TEST_1782791913502",
+    "timestamp": "2026/6/30 11:58:36",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=1000004] 参数解析错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791908538",
+    "taskId": "TEST_1782791905524",
+    "timestamp": "2026/6/30 11:58:28",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=1000004] 参数解析错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791894002",
+    "taskId": "TEST_1782791891467",
+    "timestamp": "2026/6/30 11:58:14",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=-10001] 您无操作权限，请联系主账号管理员开设权限",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791884648",
+    "taskId": "TEST_1782791882552",
+    "timestamp": "2026/6/30 11:58:04",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=7010] 抱歉，您无权限访问该页面，请联系主账号申请开通或刷新页面重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791835461",
+    "taskId": "TEST_1782791833554",
+    "timestamp": "2026/6/30 11:57:15",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=text/plain, snippet=404 page not found",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791828045",
+    "taskId": "TEST_1782791824774",
+    "timestamp": "2026/6/30 11:57:08",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=text/plain, snippet=404 page not found",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791806698",
+    "taskId": "TEST_1782791804336",
+    "timestamp": "2026/6/30 11:56:46",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=1000004] 参数解析错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791766237",
+    "taskId": "TEST_1782791763118",
+    "timestamp": "2026/6/30 11:56:06",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=-10001] 您无操作权限，请联系主账号管理员开设权限",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791706616",
+    "taskId": "TEST_1782791703414",
+    "timestamp": "2026/6/30 11:55:06",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=7010] 抱歉，您无权限访问该页面，请联系主账号申请开通或刷新页面重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791694992",
+    "taskId": "TEST_1782791692157",
+    "timestamp": "2026/6/30 11:54:54",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=7010] 抱歉，您无权限访问该页面，请联系主账号申请开通或刷新页面重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791635564",
+    "taskId": "TEST_1782791633225",
+    "timestamp": "2026/6/30 11:53:55",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=7010] 抱歉，您无权限访问该页面，请联系主账号申请开通或刷新页面重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782791605953",
+    "taskId": "TEST_1782791602508",
+    "timestamp": "2026/6/30 11:53:25",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=7010] 抱歉，您无权限访问该页面，请联系主账号申请开通或刷新页面重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782790862515",
+    "taskId": "TASK_17827908",
+    "timestamp": "2026/6/30 11:41:02",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=7010] 抱歉，您无权限访问该页面，请联系主账号申请开通或刷新页面重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782790787458",
+    "taskId": "TASK_17827907",
+    "timestamp": "2026/6/30 11:39:47",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782790408708",
+    "taskId": "TASK_17827904",
+    "timestamp": "2026/6/30 11:33:28",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=7010] 抱歉，您无权限访问该页面，请联系主账号申请开通或刷新页面重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782734585410",
+    "taskId": "TASK_17827345",
+    "timestamp": "2026/6/29 20:03:05",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782727357625",
+    "taskId": "TASK_17827273",
+    "timestamp": "2026/6/29 18:02:37",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782723635380",
+    "taskId": "TASK_17827236",
+    "timestamp": "2026/6/29 17:00:35",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "Unexpected non-whitespace character after JSON at position 4 (line 1 column 5)",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782723519479",
+    "taskId": "TASK_17827235",
+    "timestamp": "2026/6/29 16:58:39",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "Unexpected non-whitespace character after JSON at position 4 (line 1 column 5)",
+    "status": "待处理"
+  },
+  {
     "id": "ERR_1781679828264",
     "taskId": "TASK_17816798",
     "timestamp": "2026/6/17 15:03:48",

@@ -1,489 +1,500 @@
 const { fetchRealDoudianData } = require('./dy_helper.js');
+const {
+  getDoudianInterfaceByKey
+} = require('./database.js');
+const {
+  isDoudianInterfaceModule,
+  getInterfaceKeyFromModule
+} = require('./doudian_interface_utils.js');
 
 /**
- * 功能描述：在飞书多维表格引擎发起数据同步任务时，解析任务配置并拉取/组装抖音对应的模块数据。
- * @param {object} reqBody - 飞书同步服务发来的 POST 请求体，包含配置 JSON
+ * 功能描述：在飞书多维表格引擎发起数据同步任务时，按 doudian_interfaces 注册表拉取并组装抖店数据。
+ * @param {object} reqBody 飞书同步服务发来的 POST 请求体，包含配置 JSON
  * @return {Promise<object>} 返回符合飞书 Bitable 连接协议规范的分页记录数据结构
  */
 const getTableRecords = async (reqBody) => {
-  let config = {};
-  let pageToken = "";
-  if (reqBody && reqBody.params) {
-    try {
-      const paramsObj = JSON.parse(reqBody.params);
-      if (paramsObj.datasourceConfig) {
-        const datasourceConfigObj = JSON.parse(paramsObj.datasourceConfig);
-        if (datasourceConfigObj.value) {
-          config = JSON.parse(datasourceConfigObj.value);
-        }
-      }
-      if (paramsObj.pageToken) {
-        pageToken = paramsObj.pageToken;
-      }
-    } catch (e) {
-      console.error("解析配置 params 失败", e);
-    }
-  } else if (reqBody && reqBody.config && reqBody.config.value) {
-    try {
-      config = JSON.parse(reqBody.config.value);
-    } catch (e) {
-      console.error("解析配置 config 失败", e);
-    }
+  const requestContext = parseRecordsRequest(reqBody);
+  const config = requestContext.config;
+  const pageToken = requestContext.pageToken;
+  const maxPageSize = requestContext.maxPageSize;
+
+  const syncModule = config.syncModule || '';
+  if (!isDoudianInterfaceModule(syncModule)) {
+    throw new Error(`DoudianInterfaceRequired: 当前连接器只支持 doudian_interfaces 注册表接口，请重新选择抖店接口 (${syncModule || 'empty'})`);
   }
 
-  if (!pageToken && reqBody.pageToken) {
-    pageToken = reqBody.pageToken;
+  const interfaceKey = getInterfaceKeyFromModule(syncModule);
+  const interfaceMeta = await getDoudianInterfaceByKey(interfaceKey);
+  if (!interfaceMeta) {
+    throw new Error(`DoudianInterfaceNotFound: 当前接口未接入或不存在 (${interfaceKey})`);
   }
-  
-  const shopId = config.shopIdParam || "982734";
-  const syncModule = config.syncModule || "order_report";
-  const dateRangeDays = Number(config.dateRange || "30");
-  const cookie = config.accountInfo?.cookie || "";
+
+  const shopId = config.shopIdParam || config.accountInfo?.shopId || '';
+  const cookie = config.accountInfo?.cookie || '';
   const mappings = config.fieldMappings || {};
-  const taskId = reqBody.taskId || `TASK_${Date.now().toString().substring(0, 8)}`;
+  const selectedFieldKeys = normalizeSelectedFieldKeys(config.selectedFieldKeys);
+  const taskId = reqBody?.taskId || reqBody?.task_id || `TASK_${Date.now().toString().substring(0, 8)}`;
+  const pageNum = parsePageNumFromToken(pageToken, 1);
+  const fetchConfig = {
+    ...config,
+    maxPageSize,
+    aggregatePageToken: pageToken
+  };
 
-  // 判断是否为真实连接请求
-  const isRealConnection = cookie && !cookie.startsWith('mock_');
+  const rawList = cookie && !cookie.startsWith('mock_')
+    ? await fetchRealDoudianData(cookie, shopId, syncModule, fetchConfig, null, taskId, pageNum)
+    : buildMockDoudianInterfaceList(interfaceMeta);
 
-  if (isRealConnection) {
-    console.log(`[Mode B] 检测到真实 Cookie，进入真实连接拉取流程... 模块: ${syncModule}`);
-    
-    let pageNum = 1;
-    if (pageToken && pageToken.startsWith("page_")) {
-      pageNum = parseInt(pageToken.split("_")[1], 10) || 1;
-    }
-    
-    // 真实连接分支：直接发起请求，且不捕获/不降级，出错时让异常直接抛出
-    const rawList = await fetchRealDoudianData(cookie, shopId, syncModule, config, null, taskId, pageNum);
-    
-    // 转换真实数据列表为飞书 records 格式
-    const realRecords = rawList.map((item, index) => {
-      let primaryId = '';
-      const dataObj = {};
+  const fieldsSchema = Array.isArray(rawList.interfaceMeta?.fieldsSchema)
+    ? rawList.interfaceMeta.fieldsSchema
+    : interfaceMeta.fieldsSchema || [];
+  const records = rawList.map((item, index) => buildDoudianRecord({
+    item,
+    index,
+    pageNum,
+    fieldsSchema,
+    interfaceMeta,
+    mappings,
+    selectedFieldKeys
+  }));
 
-      if (syncModule === 'account_center' || syncModule === 'deposit_account' || syncModule === 'doudian_goods_payment' || syncModule === 'bill_management' || syncModule === 'commission_refund' || syncModule === 'invoice_management' || syncModule === 'historical_report') {
-        // 余额明细流水 (账户中心及资金模块 fallback)
-        const flowId = item.order_no || item.flow_id || item.check_flow_no || item.id || `FLOW_${index}`;
-        primaryId = flowId;
+  const aggregateHasMore = typeof rawList.hasMore === 'boolean' ? rawList.hasMore : rawList.has_more;
+  const aggregateNextPageToken = rawList.nextPageToken || rawList.next_page_token || '';
+  const pageSize = Number(rawList.pageSize || maxPageSize || rawList.length || 1000);
+  const loadedBefore = parseLoadedCountFromToken(pageToken);
+  const loadedCount = Number(rawList.loadedCount || rawList.loaded_count || (
+    loadedBefore === null
+      ? (pageNum - 1) * pageSize + rawList.length
+      : loadedBefore + rawList.length
+  ));
+  const totalCount = Number(rawList.total || loadedCount || rawList.length || 0);
+  const hasMore = typeof aggregateHasMore === 'boolean'
+    ? aggregateHasMore
+    : rawList.length > 0 && loadedCount < totalCount;
+  const nextPageToken = typeof aggregateHasMore === 'boolean'
+    ? (hasMore ? aggregateNextPageToken : '')
+    : (hasMore ? `page_${pageNum + 1}_${loadedCount}` : '');
 
-        const timeVal = item.trade_time || item.check_time || item.flow_time || item.create_time || new Date().toISOString();
-        let timestamp = Date.now();
-        if (typeof timeVal === 'number') {
-          timestamp = timeVal;
-        } else {
-          const parsedTime = Date.parse(String(timeVal).replace(/-/g, '/'));
-          if (!isNaN(parsedTime)) timestamp = parsedTime;
-        }
-
-        const orderId = item.shop_order_no || item.order_id || item.order_no || item.trade_no || "";
-        const subOrderId = item.trade_no || item.sub_order_id || item.sub_order_no || "";
-        const bizScene = item.trans_scene || item.biz_scene || item.flow_type_name || item.biz_type_name || "在线订单交易收入";
-        
-        // 真实抖音接口返回的金额单位为分，需要转换为元
-        const tradeAmount = Number(item.change_amount !== undefined ? (Number(item.change_amount) / 100) : (item.trade_amount || item.amount || 0));
-        const currentBalance = Number(item.balance !== undefined ? (Number(item.balance) / 100) : (item.current_balance || 0));
-        const frozenAmount = Number(item.freeze_balance !== undefined ? (Number(item.freeze_balance) / 100) : (item.frozen_amount || item.frozen_balance || 0));
-        
-        const remark = item.trans_desc || item.remark || item.biz_remark || "";
-
-        dataObj[mappings.flow_id || 'col_flow_id'] = flowId;
-        dataObj[mappings.order_id || 'col_order_id'] = orderId;
-        dataObj[mappings.sub_order_id || 'col_sub_order_id'] = subOrderId;
-        dataObj[mappings.check_time || 'col_check_time_v3'] = timestamp;
-        dataObj[mappings.biz_scene || 'col_biz_scene'] = bizScene;
-        dataObj[mappings.trade_amount || 'col_trade_amount'] = tradeAmount;
-        dataObj[mappings.current_balance || 'col_current_balance'] = currentBalance;
-        dataObj[mappings.frozen_amount || 'col_frozen_amount'] = frozenAmount;
-        dataObj[mappings.remark || 'col_remark'] = remark;
-
-      } else if (syncModule === 'dy_balance') {
-        // 资金对账
-        const dateVal = item.date || item.date_str || new Date().toISOString().split('T')[0];
-        let timestamp = Date.now();
-        const parsedTime = Date.parse(dateVal.replace(/-/g, '/'));
-        if (!isNaN(parsedTime)) timestamp = parsedTime;
-
-        primaryId = item.id || `BAL_${dateVal}_${shopId}_${index}`;
-        dataObj[mappings.date || 'col_date'] = timestamp;
-        dataObj[mappings.balance || 'col_balance'] = Number(item.balance || item.available_balance || 0);
-        dataObj[mappings.pending || 'col_pending'] = Number(item.pending || item.pending_settle || 0);
-        dataObj[mappings.deposit || 'col_deposit'] = Number(item.deposit || item.deposit_balance || 20000.00);
-        dataObj[mappings.shop_name || 'col_shop_name'] = item.shop_name || config.accountInfo?.name || "抖音罗盘推广店铺";
-        dataObj[mappings.shop_id || 'col_shop_id'] = shopId;
-
-      } else if (syncModule === 'compass_trade') {
-        // 经营分析
-        const dateVal = item.date || item.stat_date || new Date().toISOString().split('T')[0];
-        let timestamp = Date.now();
-        const parsedTime = Date.parse(dateVal.replace(/-/g, '/'));
-        if (!isNaN(parsedTime)) timestamp = parsedTime;
-
-        primaryId = item.id || `TRD_${dateVal}_${shopId}_${index}`;
-        dataObj[mappings.date || 'col_date'] = timestamp;
-        dataObj[mappings.gmv || 'col_gmv'] = Number(item.gmv || item.pay_amount || 0);
-        dataObj[mappings.order_cnt || 'col_order_cnt'] = Number(item.order_cnt || item.pay_order_cnt || 0);
-        dataObj[mappings.refund_amt || 'col_refund_amt'] = Number(item.refund_amt || item.refund_amount || 0);
-        dataObj[mappings.shop_name || 'col_shop_name'] = item.shop_name || config.accountInfo?.name || "抖音罗盘推广店铺";
-        dataObj[mappings.shop_id || 'col_shop_id'] = shopId;
-
-      } else if (syncModule === 'compass_product') {
-        // 商品核心
-        const pId = item.product_id || item.productId || `PROD_${index}`;
-        primaryId = pId;
-        dataObj[mappings.product_id || 'col_product_id'] = pId;
-        dataObj[mappings.product_name || 'col_product_name'] = item.product_name || item.productName || `商品_${index}`;
-        dataObj[mappings.click_uv || 'col_click_uv'] = Number(item.click_uv || item.clickUv || 0);
-        dataObj[mappings.pay_buyer_cnt || 'col_pay_buyer_cnt'] = Number(item.pay_buyer_cnt || item.payBuyerCnt || 0);
-        dataObj[mappings.pay_rate || 'col_pay_rate'] = Number(item.pay_rate || item.payRate || 0);
-        dataObj[mappings.shop_name || 'col_shop_name'] = item.shop_name || config.accountInfo?.name || "抖音罗盘推广店铺";
-
-      } else {
-        // 默认订单管理等
-        const orderId = item.order_id || item.orderId || `ORDER_${index}`;
-        primaryId = orderId;
-
-        const timeVal = item.create_time || item.createTime || new Date().toISOString();
-        let timestamp = Date.now();
-        const parsedTime = Date.parse(timeVal.replace(/-/g, '/'));
-        if (!isNaN(parsedTime)) timestamp = parsedTime;
-
-        dataObj[mappings.order_id || 'col_order_id'] = orderId;
-        dataObj[mappings.pay_amount || 'col_pay_amount'] = Number(item.pay_amount || item.payAmount || 0);
-        dataObj[mappings.create_time || 'col_create_time_v2'] = timestamp;
-        dataObj[mappings.order_status || 'col_order_status'] = item.order_status || item.orderStatus || "已完成";
-        dataObj[mappings.shop_name || 'col_shop_name'] = item.shop_name || config.accountInfo?.name || "抖音潮流前线旗舰店";
-        dataObj[mappings.shop_id || 'col_shop_id'] = item.shop_id || shopId;
-      }
-
-      return {
-        primaryId: primaryId,
-        data: dataObj
-      };
-    });
-
-    const totalCount = rawList.total || rawList.length;
-    const pageSize = 500;
-    const hasMore = rawList.length > 0 && ((pageNum - 1) * pageSize + rawList.length < totalCount);
-    const nextPageToken = hasMore ? `page_${pageNum + 1}` : "";
-
-    console.log(`[Mode B] 真实数据拉取分页计算: 页码 ${pageNum}, 本次拉取 ${rawList.length} 条, 总数 ${totalCount}, 是否还有下一页: ${hasMore}`);
-
-    return {
-      nextPageToken: nextPageToken,
-      hasMore: hasMore,
-      records: realRecords
-    };
-  }
-
-  // ------------------------------------------------------------
-  // Mock 开发调试分支：若 Cookie 为空或为 mock_，则走原有 Mock 模拟逻辑
-  // ------------------------------------------------------------
-  console.log(`[Mode B] 检测到 Mock 凭据，进入 Mock 数据生成与翻页流程... 模块: ${syncModule}`);
-  let list = [];
-  
-  // 1. 对于各模块，如果配置为 Mock 凭据，生成高仿真的 Mock 数据
-  if (syncModule === 'account_center' || syncModule === 'deposit_account' || syncModule === 'doudian_goods_payment' || syncModule === 'bill_management' || syncModule === 'commission_refund' || syncModule === 'invoice_management' || syncModule === 'historical_report') {
-    // 资金模块 Mock 降级生成
-    const channelName = config.payChannel === 'wechat' ? '微信支付' : config.payChannel === 'douyin' ? '抖音支付' : '聚合支付';
-    const merchantUidVal = config.merchantUid || '7291551609760710657';
-
-    // 1. 确定生成流水的起止时间
-    let startTimeMs = Date.now() - 30 * 24 * 3600000;
-    let endTimeMs = Date.now();
-    if (config.timeType === 'custom' && config.customStartDate && config.customEndDate) {
-      const parsedStart = Date.parse(config.customStartDate.replace(/-/g, '/') + ' 00:00:00');
-      const parsedEnd = Date.parse(config.customEndDate.replace(/-/g, '/') + ' 23:59:59');
-      if (!isNaN(parsedStart) && !isNaN(parsedEnd)) {
-        startTimeMs = parsedStart;
-        endTimeMs = parsedEnd;
-      }
-    } else {
-      const days = parseInt(config.dateRange || '30', 10) || 30;
-      startTimeMs = Date.now() - days * 24 * 3600000;
-    }
-
-    // 2. 模拟生成流水明细
-    let currentBalance = 50000.00;
-    const mockCount = 15;
-    const interval = (endTimeMs - startTimeMs) / (mockCount + 1);
-
-    const bizTypes = [
-      { name: "在线订单交易收入", amtRange: [100, 1500], isAdd: true },
-      { name: "售后退款支出", amtRange: [50, 500], isAdd: false },
-      { name: "保证金增补充值", amtRange: [1000, 2000], isAdd: true },
-      { name: "店铺技术服务费扣减", amtRange: [5, 60], isAdd: false },
-      { name: "平台营销推广消耗扣款", amtRange: [100, 800], isAdd: false }
-    ];
-
-    for (let i = 0; i < mockCount; i++) {
-      const flowTime = startTimeMs + i * interval + Math.random() * (interval * 0.5);
-      const biz = bizTypes[i % bizTypes.length];
-      const amount = Number((Math.random() * (biz.amtRange[1] - biz.amtRange[0]) + biz.amtRange[0]).toFixed(2));
-      
-      if (biz.isAdd) {
-        currentBalance += amount;
-      } else {
-        currentBalance -= amount;
-      }
-
-      const flowId = `FLOW_MOCK_` + String(flowTime).substring(5, 13) + String(i).padStart(3, '0');
-      const orderId = biz.name.includes("订单") || biz.name.includes("售后") ? `1728394857683` + String(i).padStart(6, '0') : "";
-      const subOrderId = orderId ? `${orderId}-01` : "";
-      const frozenVal = Number((Math.random() * 4000 + 1000).toFixed(2));
-      const remarkText = biz.name + "成功 - 通道: " + channelName;
-
-      list.push({
-        primaryId: flowId,
-        data: {
-          [mappings.flow_id || 'col_flow_id']: flowId,
-          [mappings.order_id || 'col_order_id']: orderId,
-          [mappings.sub_order_id || 'col_sub_order_id']: subOrderId,
-          [mappings.check_time || 'col_check_time_v3']: Math.floor(flowTime),
-          [mappings.biz_scene || 'col_biz_scene']: biz.name,
-          [mappings.trade_amount || 'col_trade_amount']: biz.isAdd ? amount : -amount,
-          [mappings.current_balance || 'col_current_balance']: Number(currentBalance.toFixed(2)),
-          [mappings.frozen_amount || 'col_frozen_amount']: frozenVal,
-          [mappings.remark || 'col_remark']: remarkText
-        }
-      });
-    }
-
-    // 时间降序
-    list.sort((a, b) => b.data[mappings.check_time || 'col_check_time_v3'] - a.data[mappings.check_time || 'col_check_time_v3']);
-
-    return {
-      nextPageToken: "",
-      hasMore: false,
-      records: list
-    };
-  } else if (syncModule === 'dy_balance') {
-    // 资金对账 — 抖店余额与待结算资金
-    for (let i = 0; i < Math.min(dateRangeDays, 10); i++) {
-      const dateStr = new Date(Date.now() - i * 24 * 3600000).toISOString().split('T')[0];
-      const timestamp = Date.parse(dateStr.replace(/-/g, '/'));
-      list.push({
-        primaryId: `BAL_${dateStr}_${shopId}`,
-        data: {
-          [mappings.date || 'col_date']: timestamp,
-          [mappings.balance || 'col_balance']: Number((Math.random() * 50000 + 10000).toFixed(2)),
-          [mappings.pending || 'col_pending']: Number((Math.random() * 20000 + 5000).toFixed(2)),
-          [mappings.deposit || 'col_deposit']: 20000.00,
-          [mappings.shop_name || 'col_shop_name']: config.accountInfo?.name || "抖音罗盘推广店铺",
-          [mappings.shop_id || 'col_shop_id']: shopId
-        }
-      });
-    }
-  } else if (syncModule === 'compass_trade') {
-    // 经营分析 — 成交概览与载体构成 (模式 B)
-    for (let i = 0; i < Math.min(dateRangeDays, 10); i++) {
-      const dateStr = new Date(Date.now() - i * 24 * 3600000).toISOString().split('T')[0];
-      const timestamp = Date.parse(dateStr.replace(/-/g, '/'));
-      const gmv = Number((Math.random() * 80000 + 20000).toFixed(2));
-      list.push({
-        primaryId: `TRD_${dateStr}_${shopId}`,
-        data: {
-          [mappings.date || 'col_date']: timestamp,
-          [mappings.gmv || 'col_gmv']: gmv,
-          [mappings.order_cnt || 'col_order_cnt']: Math.floor(Math.random() * 800 + 200),
-          [mappings.refund_amt || 'col_refund_amt']: Number((gmv * 0.12).toFixed(2)),
-          [mappings.shop_name || 'col_shop_name']: config.accountInfo?.name || "抖音罗盘推广店铺",
-          [mappings.shop_id || 'col_shop_id']: shopId
-        }
-      });
-    }
-  } else if (syncModule === 'compass_product') {
-    // 商品核心 — 商品核心明细 (模式 B)
-    const productNames = [
-      "夏季冰丝超透气修身短袖T恤", 
-      "高弹力速干透气运动五分裤", 
-      "复古原宿风宽松印花纯棉卫衣", 
-      "男女通用轻量防风防水冲锋衣", 
-      "法式法兰绒拼色直筒老爹裤"
-    ];
-    for (let i = 0; i < productNames.length; i++) {
-      const pId = `3920192837192${i}`;
-      const clickUv = Math.floor(Math.random() * 5000 + 1000);
-      const buyerCnt = Math.floor(clickUv * (Math.random() * 0.05 + 0.02));
-      list.push({
-        primaryId: pId,
-        data: {
-          [mappings.product_id || 'col_product_id']: pId,
-          [mappings.product_name || 'col_product_name']: productNames[i],
-          [mappings.click_uv || 'col_click_uv']: clickUv,
-          [mappings.pay_buyer_cnt || 'col_pay_buyer_cnt']: buyerCnt,
-          [mappings.pay_rate || 'col_pay_rate']: Number((buyerCnt / clickUv).toFixed(4)),
-          [mappings.shop_name || 'col_shop_name']: config.accountInfo?.name || "抖音罗盘推广店铺"
-        }
-      });
-    }
-  } else if (syncModule === 'qianchuan_material') {
-    // 素材分析 — 巨量千川素材数据报表
-    const materialNames = [
-      "短视频带货混剪高光剪辑版A.mp4", 
-      "夏季服饰防晒衣卖点展示混剪.mp4", 
-      "工厂流水线直击源头正品背书.mp4", 
-      "达人上身穿搭真实体验Vlog.mp4"
-    ];
-    for (let i = 0; i < materialNames.length; i++) {
-      const mId = `MAT_82938192${i}`;
-      const cost = Number((Math.random() * 30000 + 5000).toFixed(2));
-      list.push({
-        primaryId: mId,
-        data: {
-          [mappings.material_id || 'col_material_id']: mId,
-          [mappings.material_name || 'col_material_name']: materialNames[i],
-          [mappings.show_cnt || 'col_show_cnt']: Math.floor(cost * (Math.random() * 50 + 80)),
-          [mappings.cost || 'col_cost']: cost,
-          [mappings.ctr || 'col_ctr']: Number((Math.random() * 0.06 + 0.015).toFixed(4)),
-          [mappings.product_name || 'col_product_name']: `推广爆款宝贝_${i}`
-        }
-      });
-    }
-  } else if (syncModule === 'qianchuan_all') {
-    // 投放明细 — 巨量千川全域推广明细
-    for (let i = 0; i < 5; i++) {
-      const planId = `PLAN_99182738192${i}`;
-      const cost = Number((Math.random() * 50000 + 10000).toFixed(2));
-      const payOrders = Math.floor(cost * (Math.random() * 0.01 + 0.005));
-      list.push({
-        primaryId: planId,
-        data: {
-          [mappings.plan_id || 'col_plan_id']: planId,
-          [mappings.plan_name || 'col_plan_name']: `巨量千川全域计划_智能优化_${i}号`,
-          [mappings.show_uv || 'col_show_uv']: Math.floor(cost * 90),
-          [mappings.cost || 'col_cost']: cost,
-          [mappings.roi || 'col_roi']: Number((Math.random() * 3.5 + 1.2).toFixed(2)),
-          [mappings.pay_order_cnt || 'col_pay_order_cnt']: payOrders
-        }
-      });
-    }
-  } else if (syncModule === 'qianchuan_product') {
-    // 单品投放 — 巨量千川单品推广报表
-    const productNames = [
-      "2026新款真丝连衣裙", 
-      "爆款防水防污运动小白鞋", 
-      "复古文艺帆布单肩托特包"
-    ];
-    for (let i = 0; i < productNames.length; i++) {
-      const pId = `PROD_千川_${i}`;
-      const cost = Number((Math.random() * 40000 + 10000).toFixed(2));
-      const click = Math.floor(cost * 1.5);
-      list.push({
-        primaryId: pId,
-        data: {
-          [mappings.product_id || 'col_product_id']: pId,
-          [mappings.product_name || 'col_product_name']: productNames[i],
-          [mappings.stat_cost || 'col_stat_cost']: cost,
-          [mappings.roi || 'col_roi']: Number((Math.random() * 4.0 + 1.5).toFixed(2)),
-          [mappings.click_cnt || 'col_click_cnt']: click,
-          [mappings.pay_cnt || 'col_pay_cnt']: Math.floor(click * (Math.random() * 0.04 + 0.01))
-        }
-      });
-    }
-  } else {
-    // 默认情况：订单发货 -> 订单管理 — 订单流水数据抓取
-    let rawOrders = [];
-    const cookie = config.accountInfo?.cookie || "";
-    
-    try {
-      const taskId = reqBody.taskId || `TASK_${Date.now().toString().substring(0, 8)}`;
-      // 真实调用抖音抓取逻辑 (如果存在凭证且不是mock)
-      if (cookie && !cookie.startsWith('mock_')) {
-        rawOrders = await fetchDoudianOrders(cookie, shopId, config.dateRange || "30", null, taskId);
-      }
-    } catch (e) {
-      console.warn(`[Sync Exception] 模式 B 凭证捕获同步异常，启动 Mock 数据降级保护: ${e.message}`);
-    }
-
-    // 分页模拟逻辑：若无真实数据，提供精准的 16549 条数据测试翻页
-    if (rawOrders.length === 0) {
-      const totalCount = 16549; // 用户期望的测试总量，可能有浮动
-      const pageSize = 1000;
-      
-      // 解析 pageToken
-      let pageNum = 0;
-      if (pageToken && pageToken.startsWith("page_")) {
-        pageNum = parseInt(pageToken.split("_")[1], 10) || 0;
-      }
-      
-      const startIdx = pageNum * pageSize;
-      const endIdx = Math.min(startIdx + pageSize, totalCount);
-      
-      for (let i = startIdx; i < endIdx; i++) {
-        const orderId = `1728394857683` + String(i).padStart(6, '0');
-        const timeOffset = Math.random() * dateRangeDays * 24 * 3600000;
-        const createTime = new Date(Date.now() - timeOffset).toISOString().replace('T', ' ').substring(0, 19);
-        const statuses = ["已完成", "待发货", "退款中", "已发货", "待支付"];
-        
-        rawOrders.push({
-          order_id: orderId,
-          pay_amount: Number((Math.random() * 300 + 20).toFixed(2)),
-          create_time: createTime,
-          order_status: statuses[i % statuses.length],
-          shop_name: config.accountInfo?.name || "抖音潮流前线旗舰店",
-          shop_id: shopId
-        });
-      }
-
-      list = rawOrders.map((order) => {
-        let timestamp = Date.now();
-        if (order.create_time) {
-          const parsedTime = Date.parse(order.create_time.replace(/-/g, '/'));
-          if (!isNaN(parsedTime)) {
-            timestamp = parsedTime;
-          }
-        }
-        return {
-          primaryId: order.order_id,
-          data: {
-            [mappings.order_id || 'col_order_id']: order.order_id,
-            [mappings.pay_amount || 'col_pay_amount']: Number(order.pay_amount || 0),
-            [mappings.create_time || 'col_create_time_v2']: timestamp,
-            [mappings.order_status || 'col_order_status']: order.order_status,
-            [mappings.shop_name || 'col_shop_name']: order.shop_name,
-            [mappings.shop_id || 'col_shop_id']: order.shop_id
-          }
-        };
-      });
-
-      const hasMore = endIdx < totalCount;
-      const nextPageToken = hasMore ? `page_${pageNum + 1}` : "";
-
-      return {
-        nextPageToken: nextPageToken,
-        hasMore: hasMore,
-        records: list
-      };
-    } else {
-      // 存在真实抓取数据时的转换
-      list = rawOrders.map((order) => {
-        let timestamp = Date.now();
-        if (order.create_time) {
-          const parsedTime = Date.parse(order.create_time.replace(/-/g, '/'));
-          if (!isNaN(parsedTime)) {
-            timestamp = parsedTime;
-          }
-        }
-        return {
-          primaryId: order.order_id,
-          data: {
-            [mappings.order_id || 'col_order_id']: order.order_id,
-            [mappings.pay_amount || 'col_pay_amount']: Number(order.pay_amount || 0),
-            [mappings.create_time || 'col_create_time_v2']: timestamp,
-            [mappings.order_status || 'col_order_status']: order.order_status,
-            [mappings.shop_name || 'col_shop_name']: order.shop_name,
-            [mappings.shop_id || 'col_shop_id']: order.shop_id
-          }
-        };
-      });
-    }
-  }
+  console.log(`[Doudian Records] 接口 ${interfaceMeta.interfaceKey}, 页码 ${pageNum}, 本页 ${rawList.length}, 已加载 ${loadedCount}/${totalCount}, hasMore=${hasMore}`);
 
   return {
-    nextPageToken: "",
-    hasMore: false,
-    records: list
+    nextPageToken,
+    next_page_token: nextPageToken,
+    hasMore,
+    has_more: hasMore,
+    records
   };
 };
+
+/**
+ * 功能描述：把一条抖店接口原始记录转换为飞书 records 协议数据。
+ * @param {object} options 转换上下文
+ * @return {object} 返回飞书 record
+ */
+function buildDoudianRecord({ item, index, pageNum, fieldsSchema, interfaceMeta, mappings, selectedFieldKeys }) {
+  const primaryField = fieldsSchema.find((field) => field.isPrimary) || fieldsSchema[0];
+  const recordId = primaryField
+    ? getValueByPath(item, primaryField.sourcePath || primaryField.key)
+    : pickFirstValue(item, ['id', 'ID', 'record_id', 'recordId', 'user_id', 'userId', 'order_id', 'orderId']);
+  let primaryId = String(recordId || '').substring(0, 100);
+  if (!primaryId || primaryId === 'undefined') {
+    primaryId = `DOUDIAN_${pageNum}_${index}`;
+  }
+
+  const data = {};
+  fieldsSchema.forEach((field) => {
+    const fieldId = resolveMappedFieldId(mappings, selectedFieldKeys, field.key, field.defaultField);
+    if (!fieldId) return;
+    const rawValue = getDoudianInterfaceFieldValue(item, field, interfaceMeta);
+    data[fieldId] = normalizeDoudianFieldValue(rawValue, field);
+  });
+
+  return {
+    primaryID: primaryId,
+    primaryId,
+    data
+  };
+}
+
+/**
+ * 功能描述：为没有真实 Cookie 的调试场景生成与接口字段 schema 一致的轻量 Mock 列表。
+ * @param {object} interfaceMeta 接口元信息
+ * @return {Array} 返回模拟接口列表
+ */
+function buildMockDoudianInterfaceList(interfaceMeta) {
+  const fieldsSchema = Array.isArray(interfaceMeta?.fieldsSchema) ? interfaceMeta.fieldsSchema : [];
+  const list = Array.from({ length: 5 }).map((_, index) => {
+    const recordId = `DOUDIAN_MOCK_${String(index + 1).padStart(3, '0')}`;
+    const now = Date.now() - index * 3600000;
+    const item = {};
+    fieldsSchema.forEach((field) => {
+      if (field.key === 'raw_json') return;
+      item[field.sourcePath || field.key] = buildMockDoudianFieldValue(field, index, now, recordId);
+    });
+    return item;
+  });
+  list.total = list.length;
+  list.pageSize = list.length;
+  list.interfaceMeta = interfaceMeta;
+  return list;
+}
+
+/**
+ * 功能描述：兼容飞书同步引擎不同版本的分页字段命名，解析配置、分页 token 与单页上限。
+ * @param {object} reqBody 飞书同步服务发来的请求体
+ * @return {object} 返回解析后的同步配置与分页上下文
+ */
+function parseRecordsRequest(reqBody = {}) {
+  const paramsObj = parseMaybeJsonObject(reqBody.params, {});
+  const datasourceConfigObj = parseMaybeJsonObject(
+    firstNonEmpty(paramsObj.datasourceConfig, reqBody.datasourceConfig, reqBody.config),
+    {}
+  );
+
+  let config = {};
+  const rawConfigValue = firstNonEmpty(datasourceConfigObj.value, reqBody.config?.value);
+  if (rawConfigValue !== undefined) {
+    config = parseMaybeJsonObject(rawConfigValue, {});
+  }
+
+  const pageToken = String(firstNonEmpty(
+    paramsObj.pageToken,
+    paramsObj.page_token,
+    paramsObj.nextPageToken,
+    paramsObj.next_page_token,
+    paramsObj.pagination?.pageToken,
+    paramsObj.pagination?.page_token,
+    reqBody.pageToken,
+    reqBody.page_token,
+    reqBody.nextPageToken,
+    reqBody.next_page_token,
+    reqBody.pagination?.pageToken,
+    reqBody.pagination?.page_token,
+    ''
+  ));
+
+  const maxPageSize = Number(firstNonEmpty(
+    paramsObj.maxPageSize,
+    paramsObj.max_page_size,
+    paramsObj.pageSize,
+    paramsObj.page_size,
+    reqBody.maxPageSize,
+    reqBody.max_page_size,
+    reqBody.pageSize,
+    reqBody.page_size,
+    1000
+  )) || 1000;
+
+  return { config, pageToken, maxPageSize };
+}
+
+/**
+ * 功能描述：安全解析可能是 JSON 字符串的对象字段。
+ * @param {unknown} value 原始值
+ * @param {object} fallback 解析失败时返回值
+ * @return {object} 返回对象
+ */
+function parseMaybeJsonObject(value, fallback) {
+  if (!value) return fallback;
+  if (typeof value === 'object') return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+/**
+ * 功能描述：返回第一个非空值，保留 0 和 false 这类有效值。
+ * @param {...unknown} values 候选值
+ * @return {unknown} 返回命中的值
+ */
+function firstNonEmpty(...values) {
+  return values.find((value) => value !== undefined && value !== null && value !== '');
+}
+
+/**
+ * 功能描述：将飞书分页 token 解析为内部页码，兼容 page_2、2 与数字 2。
+ * @param {string|number} pageToken 分页 token
+ * @param {number} defaultPage 默认页码
+ * @return {number} 返回内部页码
+ */
+function parsePageNumFromToken(pageToken, defaultPage) {
+  if (pageToken === undefined || pageToken === null || pageToken === '') return defaultPage;
+  const token = String(pageToken);
+  if (token.startsWith('page_')) {
+    return parseInt(token.split('_')[1], 10) || defaultPage;
+  }
+  const numericToken = Number(token);
+  return Number.isFinite(numericToken) ? numericToken : defaultPage;
+}
+
+/**
+ * 功能描述：从分页 token 中解析此前已经成功返回给飞书的累计条数。
+ * @param {string|number} pageToken 分页 token，格式如 page_3_20
+ * @return {number|null} 返回累计条数，旧格式 token 返回 null
+ */
+function parseLoadedCountFromToken(pageToken) {
+  if (pageToken === undefined || pageToken === null || pageToken === '') return null;
+  const parts = String(pageToken).split('_');
+  if (parts.length < 3 || parts[0] !== 'page') return null;
+  const loadedCount = Number(parts[2]);
+  return Number.isFinite(loadedCount) && loadedCount >= 0 ? loadedCount : null;
+}
+
+/**
+ * 功能描述：从对象中按候选字段名读取第一个非空值，用于适配抖店各私有接口未统一的主键字段。
+ * @param {object} source 源记录对象
+ * @param {Array<string>} keys 候选字段名数组
+ * @return {unknown} 返回第一个非空字段值
+ */
+function pickFirstValue(source, keys) {
+  if (!source || typeof source !== 'object') return undefined;
+  for (const key of keys) {
+    const value = source[key];
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return undefined;
+}
+
+/**
+ * 功能描述：解析前端显式选择的字段 key 集合。
+ * @param {unknown} selectedFieldKeys 前端 selectedFieldKeys
+ * @return {Set<string>|null} 返回字段 key 集合，没有显式配置时返回 null
+ */
+function normalizeSelectedFieldKeys(selectedFieldKeys) {
+  if (!Array.isArray(selectedFieldKeys)) return null;
+  return new Set(selectedFieldKeys.map((key) => String(key)));
+}
+
+/**
+ * 功能描述：按用户字段选择解析实际写入的飞书字段 ID。
+ * @param {object} mappings 字段映射配置
+ * @param {Set<string>|null} selectedFieldKeys 显式选择字段集合
+ * @param {string} sourceKey 源字段 key
+ * @param {string} defaultField 默认字段 ID
+ * @return {string} 返回目标字段 ID，空字符串表示跳过该字段
+ */
+function resolveMappedFieldId(mappings, selectedFieldKeys, sourceKey, defaultField) {
+  const safeMappings = mappings && typeof mappings === 'object' ? mappings : {};
+  if (selectedFieldKeys && !selectedFieldKeys.has(sourceKey)) return '';
+
+  if (Object.prototype.hasOwnProperty.call(safeMappings, sourceKey)) {
+    const mappedFieldId = safeMappings[sourceKey];
+    if (typeof mappedFieldId === 'string' && mappedFieldId.trim()) {
+      return mappedFieldId.trim();
+    }
+    return selectedFieldKeys ? (defaultField || sourceKey) : '';
+  }
+
+  if (selectedFieldKeys) return defaultField || sourceKey;
+  if (Object.keys(safeMappings).length > 0) return '';
+  return defaultField || sourceKey;
+}
+
+/**
+ * 功能描述：将私有接口返回的秒、毫秒或日期字符串转换为飞书 DateTime 所需毫秒时间戳。
+ * @param {unknown} value 接口中的时间字段
+ * @return {number|string} 返回毫秒时间戳，无法解析时返回空字符串
+ */
+function parseOptionalTimestamp(value) {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value === 'number') {
+    return value < 10000000000 ? value * 1000 : value;
+  }
+  const numericValue = Number(value);
+  if (!Number.isNaN(numericValue) && numericValue > 0) {
+    return numericValue < 10000000000 ? numericValue * 1000 : numericValue;
+  }
+  const rawText = String(value).trim();
+  const parsedIsoTime = Date.parse(rawText);
+  if (!Number.isNaN(parsedIsoTime)) return parsedIsoTime;
+
+  const parsedLocalTime = Date.parse(rawText.replace(/-/g, '/'));
+  return Number.isNaN(parsedLocalTime) ? '' : parsedLocalTime;
+}
+
+/**
+ * 功能描述：按字段类型清洗抖店接口值，保证返回值符合飞书表记录接口字段类型要求。
+ * @param {unknown} value 原始接口字段值
+ * @param {object} field 字段配置
+ * @return {unknown} 返回清洗后的字段值
+ */
+function normalizeDoudianFieldValue(value, field) {
+  if (value === undefined || value === null) return '';
+  const mappedValue = mapDoudianFieldValue(value, field);
+  if (mappedValue !== undefined) return mappedValue;
+  if (field.type === 'Number' || field.fieldType === 2) {
+    const numericValue = Number(value);
+    return Number.isNaN(numericValue) ? 0 : numericValue;
+  }
+  if (field.type === 'DateTime' || field.fieldType === 5) {
+    return parseOptionalTimestamp(value);
+  }
+  if (field.fieldType === 10 || isLinkLikeFieldType(field.type)) {
+    return normalizeLinkFieldValue(value, field);
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+/**
+ * 功能描述：将图片、视频或普通 URL 字段统一转成飞书超链接字段值。
+ * @param {unknown} value 原始 URL 或对象
+ * @param {object} field 字段配置
+ * @return {object|string} 返回飞书超链接对象，无法解析 URL 时返回空字符串
+ */
+function normalizeLinkFieldValue(value, field = {}) {
+  const url = extractUrlValue(value);
+  if (!url) return '';
+  return {
+    name: buildLinkDisplayName(value, field, url),
+    url
+  };
+}
+
+/**
+ * 功能描述：从字符串或常见对象结构中提取 URL。
+ * @param {unknown} value 原始值
+ * @return {string} 返回 URL
+ */
+function extractUrlValue(value) {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value === 'string') return value.trim();
+  if (typeof value !== 'object') return String(value).trim();
+  return String(
+    value.url ||
+    value.uri ||
+    value.src ||
+    value.href ||
+    value.video_url ||
+    value.videoUrl ||
+    value.img_url ||
+    value.image_url ||
+    value.imageUrl ||
+    ''
+  ).trim();
+}
+
+/**
+ * 功能描述：生成超链接展示名。
+ * @param {unknown} value 原始值
+ * @param {object} field 字段配置
+ * @param {string} url URL
+ * @return {string} 返回展示名
+ */
+function buildLinkDisplayName(value, field = {}, url = '') {
+  if (value && typeof value === 'object') {
+    const objectName = value.name || value.title || value.file_name || value.fileName;
+    if (objectName) return String(objectName).substring(0, 100);
+  }
+  if (field.linkName) return String(field.linkName).substring(0, 100);
+  if (field.type === 'ImageUrl') return '查看图片';
+  if (field.type === 'VideoUrl') return '查看视频';
+  return String(field.fieldName || field.label || field.key || url).substring(0, 100);
+}
+
+/**
+ * 功能描述：判断字段类型是否按超链接返回。
+ * @param {string} type 字段类型
+ * @return {boolean} 返回是否为链接类字段
+ */
+function isLinkLikeFieldType(type) {
+  return ['Url', 'URL', 'Link', 'Hyperlink', 'ImageUrl', 'VideoUrl'].includes(String(type || ''));
+}
+
+/**
+ * 功能描述：按字段配置中的枚举字典把接口原始值转换为可读文本。
+ * @param {unknown} value 原始接口字段值
+ * @param {object} field 字段配置
+ * @return {string|undefined} 命中字典时返回文本，未配置或未命中时返回 undefined
+ */
+function mapDoudianFieldValue(value, field) {
+  const valueMap = normalizeEnumValueMap(field.valueMap || field.enumMap || field.dict);
+  if (!valueMap) return undefined;
+
+  const rawKey = String(value);
+  if (Object.prototype.hasOwnProperty.call(valueMap, rawKey)) {
+    return String(valueMap[rawKey]);
+  }
+
+  const fallback = field.enumFallback || field.valueMapFallback;
+  if (fallback === 'empty') return '';
+  if (fallback === 'raw') return String(value);
+  return String(value);
+}
+
+/**
+ * 功能描述：兼容对象和数组形式的枚举字典，统一转为 key -> label 映射。
+ * @param {unknown} valueMap 原始枚举配置
+ * @return {object|undefined} 返回标准枚举映射
+ */
+function normalizeEnumValueMap(valueMap) {
+  if (!valueMap || typeof valueMap !== 'object') return undefined;
+  if (!Array.isArray(valueMap)) return valueMap;
+
+  const normalized = {};
+  valueMap.forEach((item) => {
+    if (!item || typeof item !== 'object') return;
+    const key = firstNonEmpty(item.value, item.key, item.code, item.id, item.status);
+    const label = firstNonEmpty(item.label, item.text, item.name, item.title, item.desc, item.description);
+    if (key !== undefined && label !== undefined) {
+      normalized[String(key)] = String(label);
+    }
+  });
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+/**
+ * 功能描述：读取抖店接口字段值，并补齐连接器自身的来源元信息字段。
+ * @param {object} item 第三方接口返回的单条记录
+ * @param {object} field 字段配置
+ * @param {object} interfaceMeta 接口目录元信息
+ * @return {unknown} 返回字段值
+ */
+function getDoudianInterfaceFieldValue(item, field, interfaceMeta) {
+  if (field.key === 'source_module') return interfaceMeta.moduleGroup || '';
+  if (field.key === 'source_list') return interfaceMeta.interfaceName || '';
+  if (field.key === 'source_api') return interfaceMeta.apiPath || '';
+  if (field.key === 'raw_json' || field.sourcePath === '') return item;
+  return getValueByPath(item, field.sourcePath || field.key);
+}
+
+/**
+ * 功能描述：按点分路径读取对象值，用于把接口字段配置映射为飞书记录数据。
+ * @param {object} source 源对象
+ * @param {string} path 点分路径
+ * @return {unknown} 返回路径命中的值
+ */
+function getValueByPath(source, path) {
+  if (!source || !path) return undefined;
+  return String(path).split('.').reduce((current, key) => {
+    if (current === undefined || current === null) return undefined;
+    return current[key];
+  }, source);
+}
+
+/**
+ * 功能描述：为数据库接口字段生成 Mock 值，保证开发调试时字段映射与真实接口字段保持一致。
+ * @param {object} field 字段配置
+ * @param {number} index 记录序号
+ * @param {number} now 当前模拟时间戳
+ * @param {string} recordId 模拟记录 ID
+ * @return {unknown} 返回符合字段类型的 Mock 值
+ */
+function buildMockDoudianFieldValue(field, index, now, recordId) {
+  if (field.isPrimary) return recordId;
+  if (field.type === 'DateTime' || field.fieldType === 5) return now;
+  if (field.type === 'Number' || field.fieldType === 2) return index + 1;
+  if (field.fieldType === 10 || isLinkLikeFieldType(field.type)) {
+    return `https://example.com/doudian/${encodeURIComponent(field.key || 'file')}/${index + 1}`;
+  }
+  const fieldName = field.fieldName || field.key;
+  return `${fieldName}_${index + 1}`;
+}
 
 module.exports = { getTableRecords };

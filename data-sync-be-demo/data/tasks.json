@@ -1,29 +1,43 @@
 {
   "platform": "douyin",
-  "syncModule": "account_center",
+  "syncModule": "doudian_shop__api_content_ai_video_get_shop_aivideo_list_cb932aff",
+  "doudianInterfaceKey": "api_content_ai_video_get_shop_aivideo_list_cb932aff",
+  "doudianInterface": {
+    "interfaceKey": "api_content_ai_video_get_shop_aivideo_list_cb932aff",
+    "moduleGroup": "流量运营/AI智能成片",
+    "interfaceName": "AI智能成片-AI视频-成片作品列表",
+    "apiHost": "https://fxg.jinritemai.com",
+    "apiPath": "/api/content/ai/video/get_shop_aivideo_list",
+    "sourceApiHost": "https://fxg.jinritemai.com",
+    "sourceApiPath": "/api/content/ai/video/get_shop_aivideo_list",
+    "localAggregatePath": "",
+    "useLocalAggregate": false
+  },
+  "doudianExtraQuery": {},
   "shopIdParam": "130480051",
   "dateRange": "30",
   "fieldMappings": {
-    "flow_id": "col_flow_id",
-    "order_id": "col_order_id",
-    "sub_order_id": "col_sub_order_id",
-    "check_time": "col_check_time_v3",
-    "biz_scene": "col_biz_scene",
-    "trade_amount": "col_trade_amount",
-    "current_balance": "col_current_balance",
-    "frozen_amount": "col_frozen_amount",
-    "remark": "col_remark"
+    "batchCreateTime": "col_name",
+    "img": "col_img",
+    "playUrl": "col_playUrl"
   },
+  "selectedFieldKeys": [
+    "batchCreateTime",
+    "img",
+    "playUrl"
+  ],
   "refreshFrequency": "hour",
-  "merchantUid": "7291551609760710657",
-  "payChannel": "aggregate",
-  "timeType": "custom",
-  "customStartDate": "2026-05-17",
-  "customEndDate": "2026-06-17",
+  "merchantUid": "",
+  "payChannel": "",
+  "timeType": "",
+  "customStartDate": "",
+  "customEndDate": "",
+  "tenantKey": "1b0380fa57df975d",
+  "userId": "ou_2a3d34d6dbfdf937c7cc2a59812f3bbc",
   "accountInfo": {
     "mode": "模拟登录",
-    "name": "余额明细 (ID: 130480051)",
-    "cookie": "passport_csrf_token=f654e439b156444d48dadd097020403c; passport_csrf_token_default=f654e439b156444d48dadd097020403c; csrf_session_id=f475240a91c7c837f550197b63a13968; x-web-secsdk-uid=f02c011b-55f2-4041-890f-f74aa7def6bd; Hm_lvt_b6520b076191ab4b36812da4c90f7a5e=1781663444; HMACCOUNT=AF1442CB68028041; s_v_web_id=verify_mqhgewc4_zdjiZWMX_XyUk_4yuS_9po6_OMSDf3GnHf4v; zsgw_business_data=%7B%22uuid%22%3A%22459bee55-bff5-4bf2-a7c8-8817f7913faa%22%2C%22platform%22%3A%22pc%22%2C%22source%22%3A%22seo.fxg.jinritemai.com%22%7D; gfkadpd=4272,42210|4272,23756; COMPASS_LUOPAN_DT=session_7652187435031429439; BUYIN_SASID=SID2_7652185533221372212; PHPSESSID=79a7e2469074dfb0f6eb45ba88418a32; PHPSESSID_SS=79a7e2469074dfb0f6eb45ba88418a32; ecom_us_lt=00ef784f275a82b1fb38a03c5c15913a91a3177ba4bca910d9efa490240aab50; ecom_us_lt_ss=00ef784f275a82b1fb38a03c5c15913a91a3177ba4bca910d9efa490240aab50; ecom_gray_shop_id=130480051; source=PCPromotionActive_7649219382400876819; Hm_lpvt_b6520b076191ab4b36812da4c90f7a5e=1781678664",
+    "name": "cy002",
+    "cookie": "x-web-secsdk-uid=658c92e1-a98a-416d-95bf-50c13ca8ea35; Hm_lvt_b6520b076191ab4b36812da4c90f7a5e=1782704012; HMACCOUNT=C6F36931F5738D74; passport_csrf_token=2eab33a37a4c1c5fdef10f1fd8eab685; passport_csrf_token_default=2eab33a37a4c1c5fdef10f1fd8eab685; zsgw_business_data=%7B%22uuid%22%3A%2282b53f46-f42e-41d1-985e-9bcd7c1833a9%22%2C%22platform%22%3A%22pc%22%2C%22source%22%3A%22seo.fxg.jinritemai.com%22%7D; source=seo.fxg.jinritemai.com; gfkadpd=4272,23756; csrf_session_id=e8ead2466a8924735ba3ff505147f9f1; ecom_gray_shop_id=130480051; BUYIN_SASID=SID2_7656658858631266601; ffa_goods_ewid=c8c1370dea79f755baa2b97a533ade8d; ffa_goods_seraph_did=undefined; ttcid=33b69be63f254f99a6acc226a506fdcd19; s_v_web_id=verify_mr03hpqx_1272582c_d365_e841_8904_41ca7437b8c2; tt_scid=RTJsoyRNzkxdOHHbLWjtk3hdworCyuOOjFCkZl7iSiy83HM819Y-FdGdtNAhO87hf4c6; PHPSESSID=5b6152078248b3bc264921db86dfc91b; PHPSESSID_SS=5b6152078248b3bc264921db86dfc91b; ecom_us_lt=f7f6efbe96468ff7f2ad8f87eedff099d0468b2f8648317bfc58fa7775871a6f; ecom_us_lt_ss=f7f6efbe96468ff7f2ad8f87eedff099d0468b2f8648317bfc58fa7775871a6f; COMPASS_LUOPAN_DT=session_7657056365185548595; qianchuan_doushop_aavid=1780521440232458; Hm_lpvt_b6520b076191ab4b36812da4c90f7a5e=1782869948",
     "shopId": "130480051"
   }
 }

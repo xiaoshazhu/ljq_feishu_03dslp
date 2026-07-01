@@ -3,6 +3,13 @@ if (fetch && fetch.default) {
   fetch = fetch.default;
 }
 const { logSyncError } = require('./error_logger.js');
+const {
+  getDoudianInterfaceByKey
+} = require('./database.js');
+const {
+  isDoudianInterfaceModule,
+  getInterfaceKeyFromModule
+} = require('./doudian_interface_utils.js');
 
 /**
  * 功能描述：在模式 B 下，使用 Cookie 凭据优先拉取工作台菜单路由，然后发起真实的订单数据请求。包含频控控制和心跳保活。
@@ -14,7 +21,7 @@ const { logSyncError } = require('./error_logger.js');
  * @return {Promise<Array>} 返回解析并清洗后的抖店订单记录列表
  */
 /**
- * 功能描述：在模式 B 下，根据传入的模块类型与凭证，发起真实的抖店/罗盘接口网络请求
+ * 功能描述：根据 doudian_interfaces 注册表配置与 Cookie 凭据，发起真实抖店后台接口请求。
  * @param {string} cookie - 截获加密的抖音 Session Cookie
  * @param {string} shopId - 对接商户的店铺数字 ID
  * @param {string} syncModule - 同步目标模块标识
@@ -24,23 +31,16 @@ const { logSyncError } = require('./error_logger.js');
  * @return {Promise<Array>} 返回解析并清洗后的抖店/罗盘数据记录列表
  */
 async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRange, userAgent, taskId, pageNum = 1) {
-  // 多态参数解析，兼容 config 对象与 dateRange 字符串
-  let dateRange = '30';
-  let merchantUid = '7291551609760710657';
-  let payChannel = 'aggregate';
-  let timeType = 'relative';
-  let customStartDate = '';
-  let customEndDate = '';
+  let maxPageSize = 1000;
+  let doudianExtraQuery = {};
+  let doudianInterfaceOverride = null;
+  let aggregatePageToken = '';
 
   if (configOrDateRange && typeof configOrDateRange === 'object') {
-    dateRange = configOrDateRange.dateRange || '30';
-    merchantUid = configOrDateRange.merchantUid || '7291551609760710657';
-    payChannel = configOrDateRange.payChannel || 'aggregate';
-    timeType = configOrDateRange.timeType || 'relative';
-    customStartDate = configOrDateRange.customStartDate || '';
-    customEndDate = configOrDateRange.customEndDate || '';
-  } else if (typeof configOrDateRange === 'string') {
-    dateRange = configOrDateRange;
+    maxPageSize = Number(configOrDateRange.maxPageSize || 1000) || 1000;
+    doudianExtraQuery = configOrDateRange.doudianExtraQuery || {};
+    doudianInterfaceOverride = configOrDateRange.doudianInterface || null;
+    aggregatePageToken = configOrDateRange.aggregatePageToken || '';
   }
 
   const ua = userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -65,7 +65,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     const menuResp = await fetch(menuUrl, { headers: { ...headers, 'Referer': 'https://compass.jinritemai.com/' }, timeout: 6000 });
     const menuContentType = menuResp.headers.get('content-type') || '';
     if (menuResp.status === 200 && !menuContentType.includes('text/html')) {
-      const menuJson = await menuResp.json();
+      await menuResp.json();
       console.log(`[Mode B] 菜单路由树解析成功，动态数据节点路径正常`);
     } else {
       console.warn(`[Mode B] 菜单预检接口未返回有效 JSON (status: ${menuResp.status})，将跳过预检`);
@@ -74,82 +74,28 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     console.warn(`[Mode B] 菜单预检接口请求发生异常，已跳过预检: ${err.message}`);
   }
 
-  // 3. 计算日期时间
-  const dateRangeDays = parseInt(dateRange, 10) || 30;
-  const endDateStr = new Date().toISOString().split('T')[0];
-  const startDateStr = new Date(Date.now() - dateRangeDays * 24 * 3600000).toISOString().split('T')[0];
-
   let requestUrl = '';
   let requestMethod = 'GET';
   let requestBody = null;
+  let selectedInterfaceMeta = null;
 
-  // 根据不同的 syncModule 走对应的真实接口请求
-  if (syncModule === 'compass_trade') {
-    requestUrl = `https://compass.jinritemai.com/compass/api/v1/trade/overview?shop_id=${shopId}&start_date=${startDateStr}&end_date=${endDateStr}`;
-    headers['Referer'] = 'https://compass.jinritemai.com/';
-  } else if (syncModule === 'compass_product') {
-    requestUrl = `https://compass.jinritemai.com/compass/api/v1/product/detail?shop_id=${shopId}&start_date=${startDateStr}&end_date=${endDateStr}`;
-    headers['Referer'] = 'https://compass.jinritemai.com/';
-  } else if (syncModule === 'dy_balance') {
-    requestUrl = `https://fxg.jinritemai.com/ffa/g/finance/getShopAccountItem?shop_id=${shopId}&start_time=${startDateStr}&end_time=${endDateStr}`;
-    headers['Referer'] = 'https://fxg.jinritemai.com/';
-  } else if (syncModule === 'account_center') {
-    // 资金模块 — 账户中心 (queryAccountFlows 接口余额明细同步)
-    requestUrl = `https://fxg.jinritemai.com/settlement/account/queryAccountFlows?req_source=dou_dian_pc`;
-    headers['Referer'] = 'https://fxg.jinritemai.com/';
-    headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    headers['Origin'] = 'https://fxg.jinritemai.com';
-    requestMethod = 'POST';
-
-    // 确定支付通道对应的 uid_type & member_type
-    let uidType = 2404;
-    let memberType = 2;
-    if (payChannel === 'wechat') {
-      uidType = 2204;
-      memberType = 6;
-    } else if (payChannel === 'douyin') {
-      uidType = 2304;
-      memberType = 2;
-    }
-
-    // 确定时间戳
-    let startTimeMs = Date.now() - 30 * 24 * 3600000;
-    let endTimeMs = Date.now();
-    
-    if (timeType === 'custom' && customStartDate && customEndDate) {
-      const parsedStart = Date.parse(customStartDate.replace(/-/g, '/') + ' 00:00:00');
-      const parsedEnd = Date.parse(customEndDate.replace(/-/g, '/') + ' 23:59:59');
-      if (!isNaN(parsedStart) && !isNaN(parsedEnd)) {
-        startTimeMs = parsedStart;
-        endTimeMs = parsedEnd;
-      }
-    } else {
-      const days = parseInt(dateRange, 10) || 30;
-      startTimeMs = Date.parse(new Date(Date.now() - days * 24 * 3600000).toISOString().split('T')[0].replace(/-/g, '/') + ' 00:00:00');
-      endTimeMs = Date.parse(new Date().toISOString().split('T')[0].replace(/-/g, '/') + ' 23:59:59');
-    }
-
-    const formParams = new URLSearchParams();
-    formParams.append('uid_type', String(uidType));
-    formParams.append('member_type', String(memberType));
-    formParams.append('merchant_uid', String(merchantUid));
-    formParams.append('page', String(pageNum));
-    formParams.append('pageSize', '500');
-    formParams.append('start_time', String(startTimeMs));
-    formParams.append('end_time', String(endTimeMs));
-    requestBody = formParams.toString();
-  } else {
-    // 默认：订单发货 -> 订单管理 (order_report 等)
-    requestUrl = `https://fxg.jinritemai.com/ffa/g/order/searchList`;
-    headers['Referer'] = 'https://fxg.jinritemai.com/';
-    requestMethod = 'POST';
-    requestBody = JSON.stringify({
-      shop_id: parseInt(shopId, 10) || 0,
-      page: 0,
-      size: 50,
-      start_time: startDateStr + ' 00:00:00',
-      end_time: endDateStr + ' 23:59:59'
-    });
+  if (!isDoudianInterfaceModule(syncModule)) {
+    throw new Error(`DoudianInterfaceRequired: 当前连接器只支持 doudian_interfaces 注册表接口 (${syncModule || 'empty'})`);
+  }
+  selectedInterfaceMeta = await getDoudianInterfaceByKey(getInterfaceKeyFromModule(syncModule));
+  if (!selectedInterfaceMeta) {
+    throw new Error(`DoudianInterfaceNotFound: 当前接口未接入或不存在 (${syncModule})`);
+  }
+  selectedInterfaceMeta = applyDoudianInterfaceOverride(selectedInterfaceMeta, doudianInterfaceOverride);
+  const builtRequest = buildDoudianRegisteredRequest(selectedInterfaceMeta, shopId, pageNum, maxPageSize, doudianExtraQuery, aggregatePageToken, cookie, ua);
+  requestUrl = builtRequest.requestUrl;
+  requestMethod = builtRequest.requestMethod;
+  requestBody = builtRequest.requestBody;
+  headers['Referer'] = builtRequest.refererHost + '/';
+  headers['Origin'] = builtRequest.refererHost;
+  headers['Content-Type'] = builtRequest.contentType;
+  if (builtRequest.requestHeaders) {
+    Object.assign(headers, builtRequest.requestHeaders);
   }
 
   console.log(`[Mode B] 真实请求 URL: ${requestUrl}, Method: ${requestMethod}`);
@@ -171,16 +117,26 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
 
     const response = await fetch(requestUrl, fetchOptions);
     
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       throw new Error("CredentialsExpired: 凭证失效(Cookie过期)");
+    }
+    if (response.status === 403) {
+      throw new Error(`DoudianForbidden: 抖店接口拒绝访问，通常是缺少 _bid/verifyFp/fp/msToken/a_bogus 等 Query 风控参数，HTTP 403`);
     }
 
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('text/html')) {
-      throw new Error("CredentialsExpired: 凭证失效(Cookie过期)");
+      const htmlText = await response.text();
+      throw new Error(`DoudianHTMLResponse: 抖店接口返回 HTML 页面，不是 JSON。通常是请求参数或风控参数不完整，不一定是 Cookie 过期。HTTP ${response.status}, snippet=${htmlText.substring(0, 160)}`);
     }
 
-    const resJson = await response.json();
+    const responseText = await response.text();
+    let resJson;
+    try {
+      resJson = JSON.parse(responseText);
+    } catch (jsonError) {
+      throw new Error(`DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP ${response.status}, contentType=${contentType}, snippet=${responseText.substring(0, 160)}`);
+    }
     console.log(`[Doudian API Response] URL: ${requestUrl}, resJson:`, JSON.stringify(resJson));
     
     // 校验响应内容中的未登录或受限标记
@@ -197,7 +153,12 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
 
     // 抖音有些接口会在 data 下返回 list，或者直接在根节点，或者 data 本身直接就是数组
     let list = [];
-    if (Array.isArray(resJson.list)) {
+    if (selectedInterfaceMeta) {
+      list = extractListByPaths(resJson, selectedInterfaceMeta.requestConfig?.listPaths || []);
+      if (list.length === 0) {
+        list = extractFirstArray(resJson);
+      }
+    } else if (Array.isArray(resJson.list)) {
       list = resJson.list;
     } else if (resJson.data) {
       if (Array.isArray(resJson.data)) {
@@ -208,17 +169,36 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     }
     
     const resultList = Array.isArray(list) ? list : [];
-    const totalVal = resJson.total !== undefined ? resJson.total : (resJson.data && resJson.data.total !== undefined ? resJson.data.total : resultList.length);
+    const configuredTotal = selectedInterfaceMeta
+      ? getFirstValueByPaths(resJson, selectedInterfaceMeta.requestConfig?.totalPaths || [])
+      : undefined;
+    const totalVal = configuredTotal !== undefined ? configuredTotal : (resJson.total !== undefined ? resJson.total : (resJson.data && resJson.data.total !== undefined ? resJson.data.total : resultList.length));
     resultList.total = Number(totalVal || 0);
+    if (selectedInterfaceMeta) {
+      resultList.interfaceMeta = selectedInterfaceMeta;
+      resultList.pageSize = Math.min(Number(selectedInterfaceMeta.requestConfig?.pageSize || resultList.length || 50), Number(maxPageSize || 1000));
+      resultList.pageStart = Number(selectedInterfaceMeta.requestConfig?.pageStart ?? 0);
+      resultList.doudianPage = resultList.pageStart + Math.max(Number(pageNum || 1) - 1, 0);
+      if (selectedInterfaceMeta.useLocalAggregate) {
+        const aggregateData = resJson.data && typeof resJson.data === 'object' ? resJson.data : resJson;
+        resultList.hasMore = aggregateData.hasMore === true || aggregateData.has_more === true;
+        resultList.nextPageToken = aggregateData.nextPageToken || aggregateData.next_page_token || '';
+        resultList.loadedCount = Number(aggregateData.loadedCount || aggregateData.loaded_count || resultList.length || 0);
+        resultList.pageSize = Number(aggregateData.pageSize || aggregateData.page_size || resultList.pageSize || maxPageSize);
+        resultList.total = Number(aggregateData.total || resultList.total || resultList.loadedCount || 0);
+      }
+    }
 
     return resultList;
   } catch (err) {
     let errorType = '接口500报错';
     let msg = err.message;
 
-    if (msg.includes("CredentialsExpired") || msg.includes("Cookie") || msg.includes("401") || msg.includes("403")) {
+    if (msg.includes("CredentialsExpired") || msg.includes("401")) {
       errorType = '凭证失效(Cookie过期)';
       msg = '抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！';
+    } else if (msg.includes("DoudianForbidden") || msg.includes("DoudianHTMLResponse") || msg.includes("DoudianNonJsonResponse")) {
+      errorType = '抖店接口请求参数不完整';
     }
 
     // 静默写入本地错误库
@@ -230,16 +210,200 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
 }
 
 /**
- * 功能描述：在模式 B 下，使用 Cookie 凭据拉取订单（为了向后兼容）
- * @param {string} cookie - 截获加密的抖音 Session Cookie
- * @param {string} shopId - 对接商户的店铺数字 ID
- * @param {string} dateRange - 回溯天数
- * @param {string} userAgent - 浏览器指纹
- * @param {string} taskId - 任务 ID
- * @return {Promise<Array>} 返回抖店订单记录列表
+ * 功能描述：根据数据库接口目录配置构造抖店后台真实请求，统一补齐域名前缀、Cookie Header 与分页参数。
+ * @param {object} interfaceMeta 数据库中的接口目录配置
+ * @param {string} shopId 店铺 ID
+ * @param {number} pageNum 当前页码
+ * @return {object} 返回请求 URL、方法、正文与 Content-Type
  */
-async function fetchDoudianOrders(cookie, shopId, dateRange, userAgent, taskId) {
-  return fetchRealDoudianData(cookie, shopId, 'order_report', dateRange, userAgent, taskId);
+function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSize = 1000, runtimeExtraQuery = {}, aggregatePageToken = '', cookie = '', userAgent = '') {
+  const requestConfig = interfaceMeta.requestConfig || {};
+  const contentType = requestConfig.contentType || 'application/json;charset=UTF-8';
+  const requestMethod = requestConfig.method || 'POST';
+  const pageParam = requestConfig.pageParam || 'page';
+  const pageSizeParam = requestConfig.pageSizeParam || 'pageSize';
+  const pageStart = Number(requestConfig.pageStart ?? 0);
+  const pageSize = Math.min(Number(requestConfig.pageSize || 50), Number(maxPageSize || 1000));
+  const pageValue = pageStart + Math.max(Number(pageNum || 1) - 1, 0);
+  const apiHost = normalizeUrlPrefix(interfaceMeta.apiHost || 'https://fxg.jinritemai.com');
+
+  const baseParams = {
+    ...(requestConfig.extraQuery || {}),
+    ...(runtimeExtraQuery || {}),
+    [pageParam]: pageValue,
+    [pageSizeParam]: pageSize
+  };
+  if (requestConfig.includeShopId) {
+    baseParams.shop_id = shopId;
+    baseParams.shopId = shopId;
+  }
+
+  // 本地聚合接口分支：
+  // 前端在 saveConfigAndGoNext 时，如果 doudian_interfaces.local_aggregate_path 有值，
+  // 会把 config.doudianInterface.apiHost/apiPath 保存成本地聚合服务地址，并设置 useLocalAggregate=true。
+  // 飞书仍然只调用 /api/records；这里识别 useLocalAggregate 后，改为由后端内部 POST 到本地聚合接口。
+  // aggregatePageToken 就是飞书本次传进 /api/records 的 pageToken，用来让聚合接口继续上次的多来源游标。
+  if (interfaceMeta.useLocalAggregate) {
+    const requestUrlObj = new URL(interfaceMeta.apiPath, apiHost);
+    return {
+      requestUrl: requestUrlObj.toString(),
+      requestMethod: 'POST',
+      requestHeaders: {
+        Cookie: cookie,
+        'User-Agent': userAgent
+      },
+      requestBody: JSON.stringify({
+        interfaceKey: interfaceMeta.interfaceKey,
+        sourceApiHost: interfaceMeta.sourceApiHost || '',
+        sourceApiPath: interfaceMeta.sourceApiPath || '',
+        shopId,
+        page: pageValue,
+        pageSize,
+        pageParam,
+        pageSizeParam,
+        aggregatePageToken,
+        sources: requestConfig.localAggregateSources || requestConfig.aggregateSources || [],
+        params: {
+          ...baseParams,
+          ...(requestConfig.extraBody || {})
+        }
+      }),
+      contentType: 'application/json;charset=UTF-8',
+      refererHost: apiHost
+    };
+  }
+
+  // 普通抖店接口分支：
+  // local_aggregate_path 为空时，前端保存的 apiHost/apiPath 仍然是抖店原始接口地址；
+  // 这里直接按 doudian_interfaces.request_config 组装分页参数，请求真实抖店接口。
+  const requestUrlObj = new URL(interfaceMeta.apiPath, apiHost);
+
+  if (requestMethod.toUpperCase() === 'GET') {
+    Object.entries(baseParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        requestUrlObj.searchParams.set(key, String(value));
+      }
+    });
+    return {
+      requestUrl: requestUrlObj.toString(),
+      requestMethod: 'GET',
+      requestBody: null,
+      contentType,
+      refererHost: apiHost
+    };
+  }
+
+  const bodyParams = {
+    ...baseParams,
+    ...(requestConfig.extraBody || {})
+  };
+
+  return {
+    requestUrl: requestUrlObj.toString(),
+    requestMethod: requestMethod.toUpperCase(),
+    requestBody: contentType.includes('application/x-www-form-urlencoded')
+      ? new URLSearchParams(bodyParams).toString()
+      : JSON.stringify(bodyParams),
+    contentType,
+    refererHost: apiHost
+  };
+}
+
+/**
+ * 功能描述：将飞书保存的接口地址快照覆盖到数据库接口元信息上。
+ * @param {object} interfaceMeta 数据库接口元信息
+ * @param {object|null} override 前端保存的 doudianInterface 快照
+ * @return {object} 返回合并后的接口元信息
+ */
+function applyDoudianInterfaceOverride(interfaceMeta, override) {
+  if (!override || typeof override !== 'object') return interfaceMeta;
+  const apiHost = normalizeNullableText(override.apiHost);
+  const apiPath = normalizeNullableText(override.apiPath);
+  if (!apiHost && !apiPath) return interfaceMeta;
+  return {
+    ...interfaceMeta,
+    apiHost: apiHost || interfaceMeta.apiHost,
+    apiPath: apiPath || interfaceMeta.apiPath,
+    sourceApiHost: normalizeNullableText(override.sourceApiHost),
+    sourceApiPath: normalizeNullableText(override.sourceApiPath),
+    useLocalAggregate: override.useLocalAggregate === true
+  };
+}
+
+/**
+ * 功能描述：清理 URL 前缀尾部斜杠，便于 URL 构造。
+ * @param {string} value 原始 URL 前缀
+ * @return {string} 清理后的 URL 前缀
+ */
+function normalizeUrlPrefix(value) {
+  return String(value || '').replace(/\/$/, '');
+}
+
+/**
+ * 功能描述：统一清洗本地聚合接口路径，空字符串按不存在处理。
+ * @param {unknown} value 原始路径值
+ * @return {string} 有效路径或空字符串
+ */
+function normalizeNullableText(value) {
+  if (value === undefined || value === null) return '';
+  return String(value).trim();
+}
+
+/**
+ * 功能描述：按照配置路径从响应 JSON 中提取列表数组。
+ * @param {object} json 第三方接口响应 JSON
+ * @param {Array<string>} paths 候选数据路径数组
+ * @return {Array} 返回命中的列表数组，未命中时为空数组
+ */
+function extractListByPaths(json, paths) {
+  for (const path of paths || []) {
+    const value = getValueByPath(json, path);
+    if (Array.isArray(value)) return value;
+  }
+  return [];
+}
+
+/**
+ * 功能描述：从候选路径中读取第一个非空值。
+ * @param {object} json 第三方接口响应 JSON
+ * @param {Array<string>} paths 候选路径数组
+ * @return {unknown} 返回第一个命中的非空值
+ */
+function getFirstValueByPaths(json, paths) {
+  for (const path of paths || []) {
+    const value = getValueByPath(json, path);
+    if (value !== undefined && value !== null) return value;
+  }
+  return undefined;
+}
+
+/**
+ * 功能描述：按点分路径读取对象值，用于响应字段路径尚未完全确认时的可配置解析。
+ * @param {object} source 源对象
+ * @param {string} path 点分路径，例如 data.list
+ * @return {unknown} 返回路径命中的值
+ */
+function getValueByPath(source, path) {
+  if (!source || !path) return undefined;
+  return path.split('.').reduce((current, key) => {
+    if (current === undefined || current === null) return undefined;
+    return current[key];
+  }, source);
+}
+
+/**
+ * 功能描述：当接口响应路径未知时，递归查找响应中的第一个数组作为兜底同步明细。
+ * @param {unknown} value 响应 JSON 任意节点
+ * @return {Array} 返回第一个数组节点，未命中时为空数组
+ */
+function extractFirstArray(value) {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== 'object') return [];
+  for (const child of Object.values(value)) {
+    const found = extractFirstArray(child);
+    if (found.length > 0) return found;
+  }
+  return [];
 }
 
 /**
@@ -270,4 +434,4 @@ async function keepAliveSession(cookie, userAgent) {
   }
 }
 
-module.exports = { fetchDoudianOrders, fetchRealDoudianData, keepAliveSession };
+module.exports = { fetchRealDoudianData, keepAliveSession };

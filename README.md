@@ -75,6 +75,31 @@
 
 # 4. 项目开发更新日志 (Project Changelog)
 
+## [2026-06-29] 抖店店铺接口目录入库与可选同步入口
+*   **功能更新与架构调整**：
+    *   **新增抖店接口注册表**：后端 MySQL 初始化新增 `doudian_interfaces` 表，按《抖店 - 店铺接口说明总览》写入 14 个店铺后台接口，保留 `https://fxg.jinritemai.com` 域名前缀、接口路径、业务模块、接口名称、是否接入、请求配置与通用字段 Schema。
+    *   **只暴露已接入接口**：新增 `GET /api/v1/connector/doudian-interfaces`，前端只展示数据库中 `is_enabled = 1` 的接口，未接入的配置/统计类接口不会出现在用户同步选择列表。
+    *   **配置页支持接口目录选择**：Vue 配置台的“目标同步动作 / 模块”在原有订单、资金、千川模块基础上，追加数据库驱动的“店铺接口”分组，用户可以选择当前要同步的子账号、店铺保障、店铺管理、账号绑定、申诉或违规记录接口。
+    *   **真实同步接入 Cookie 请求链路**：当同步模块为店铺接口目录项时，后端通过 `https://fxg.jinritemai.com` + `api_path` 发起携带 Cookie 的真实请求，并按数据库请求配置处理分页、列表路径和总数路径。
+    *   **通用明细 Schema 兜底**：由于部分接口的分页参数和响应字段路径仍待抓包确认，当前先落为通用字段表（记录 ID、业务模块、接口名称、接口路径、状态摘要、创建/更新时间、原始 JSON），后续可逐个接口细化专用字段映射。
+    *   **商品资质接口真实字段接入**：根据抓包示例将 `/product_qual/list?page=0&size=100` 配置为 GET + Cookie 请求，响应列表路径为 `data.brand_qual_list`、总数字段为 `data.total`，字段区和飞书表结构接口返回真实字段：`qual_id`、`qual_name`、`qual_type`、`qual_type_name`、`qual_first_img`、`update_time`、`qual_source`。
+    *   **字段配置数据库化生效**：表结构接口 `/api/table_meta` 会按数据库接口目录的 `fields_schema` 动态返回字段；表记录接口 `/api/records` 会按字段配置的 `sourcePath` 从第三方响应中取值，保证“字段与同步配置”和真实同步数据一致。
+
+## [2026-06-29] Vue 开发热更新代理与后端 MySQL 存储迁移
+*   **功能更新与架构调整**：
+    *   **开发环境移除 dist 依赖**：后端不再默认托管 `data-sync-fe-vue-demo/dist`。现在 Express 会将未命中的前端页面、模块资源和 Vite HMR WebSocket 代理到 `FRONTEND_DEV_SERVER`，默认值为 `http://127.0.0.1:5173`，飞书/ngrok 仍访问后端统一域名即可获得 Vue 热更新。
+    *   **Vue 开发端口固定**：`data-sync-fe-vue-demo/vite.config.ts` 固定 `5173` 且启用 `strictPort`，保证后端代理目标稳定。
+    *   **后端数据库迁移至 MySQL**：移除 SQLite 运行依赖，`database.js` 改为 `mysql2/promise` 连接池实现，保留 `initDb`、`saveAccount`、`getAccounts`、`saveCapturedBuffer`、`saveTask` 等原导出函数，降低业务层改动面。
+    *   **后端环境配置**：新增 `data-sync-be-demo/.env` 存放本地 MySQL 连接参数与前端开发服务器地址。
+
+## [2026-06-29] 前端配置台 Vue3 + TypeScript 独立版本迁移
+*   **功能更新与架构调整**：
+    *   **保留原 React 前端目录**：原 `data-sync-fe-demo` 不删除、不改造为 Vue，继续作为历史 React 实现与回退参考。
+    *   **新增 Vue3 独立前端项目**：新增 `data-sync-fe-vue-demo`，使用 Vue3、TypeScript、Vite 与 Ant Design Vue 重写飞书连接器配置台，保留数据源选择、账号授权、参数设置、字段映射、网页登录 Cookie 捕获、书签助手和保存配置等核心链路。
+    *   **后端加载方式切换**：初始迁移时后端曾托管 `data-sync-fe-vue-demo/dist`；随后已调整为开发模式代理 Vite dev server，避免每次修改前端后重新打包。
+    *   **书签脚本地址自适应**：Vue 版本书签助手使用当前页面 `window.location.origin` 自动生成上报地址，减少 ngrok 域名变化时的手动维护成本。
+    *   **构建验证通过**：已执行 `npm run build`，Vue3 前端通过 `vue-tsc` 类型检查与 Vite 生产构建。
+
 ## [2026-06-17] 飞书多维表格连接器资金模块“账户中心”余额明细与传参同步开发
 *   **功能更新与修复**：
     *   **资金模块二级分类树重构**：在前端 `App.tsx` 中，将原先罗盘分类重构为“💰 资金板块”，并原汁原味注入 7 大核心二级模块：账户中心、保证金账户、抖店货款、帐单管理、返佣管理、发票管理、历史报表。实现了其他 6 个新模块平滑 fallback 复用账户中心字段的交互。
