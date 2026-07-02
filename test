@@ -3,31 +3,7 @@
     <div class="connector-container">
       <div class="page-shell">
         <div class="page-body">
-          <aside class="left-sidebar">
-            <div class="sidebar-header">
 
-              <div class="header-tabs">
-                <button type="button" class="header-tab active">配置信息</button>
-                <button type="button" class="header-tab">账号详情</button>
-              </div>
-            </div>
-
-            <nav class="sidebar-nav">
-              <div
-                v-for="item in navItems"
-                :key="item.key"
-                class="nav-item"
-                :class="{ active: activeMenu === item.key }"
-                @click="scrollToSection(item.key)"
-              >
-                <span class="nav-badge">{{ item.step }}</span>
-                <div class="nav-copy">
-                  <div class="nav-label">{{ item.label }}</div>
-                  <div class="nav-desc">{{ item.desc }}</div>
-                </div>
-              </div>
-            </nav>
-          </aside>
 
           <main
             ref="scrollContainerRef"
@@ -178,61 +154,36 @@
               </table>
             </section>
 
-
+            <section id="section-sync" class="form-section">
+              <div class="section-header">
+                <span class="section-step">5</span>
+                <span>同步设置</span>
+              </div>
+              <a-form layout="vertical" class="section-form">
+                <a-form-item label="自动同步频率" required>
+                  <a-select v-model:value="refreshFrequency" :options="refreshFrequencyOptions" />
+                </a-form-item>
+              </a-form>
+            </section>
 
             <section id="section-guide" class="form-section">
               <div class="section-header">
-                <span class="section-step">5</span>
+                <span class="section-step">6</span>
                 <span>使用说明</span>
               </div>
               <div class="guide-copy">
-                <p> 工作原理：</p>
-                <div class="cookie-box">
-<!--                <div class="cookie-card">-->
-<!--                  <div class="cookie-card-title">开始网页模拟登录 </div>-->
-<!--                  <div class="cookie-card-desc">在账号关联界面进行该操作。 </div>-->
-<!--                </div>-->
-<!--                  <RightOutlined />-->
-                  <div class="cookie-card">
-                    <div class="cookie-card-title">登录您的商家账号 </div>
-                    <div class="cookie-card-desc">在浏览器子窗口中登录您的商家账号。 </div>
-                  </div>
-                  <RightOutlined />
-                  <div class="cookie-card">
-                    <div class="cookie-card-title">运行 一键捕获书签 </div>
-                    <div class="cookie-card-desc">脚本会跨域安全上报当前 Session Cookie。 </div>
-                  </div>
-                  <RightOutlined />
-                  <div class="cookie-card">
-                    <div class="cookie-card-title">自动绑定并开始同步 </div>
-                    <div class="cookie-card-desc">系统会自动绑定Cookie 并复用凭证进行同步。 </div>
-                  </div>
-                </div>
+                <p>点击账号关联里的网页登录按钮，在官方登录页完成登录后运行书签助手脚本，系统会自动回传当前账号 Cookie。</p>
+                <p>请将下面按钮拖动到浏览器书签栏，或复制代码到登录后的网页控制台运行。</p>
               </div>
               <div class="guide-actions">
-                <a
-                    :href="bookmarkCode"
-                    class=" helper-bookmark"
-                    @click.prevent="showDragBookmarkTip"
-                >
-                  <img :src="buttonImg"  />
-                  <div  class="righ-helper-bookmark">
-                    拖拽此按钮至书签栏
-                    <text>(抖音凭证捕获助手)</text>
-                  </div>
-
+                <a :href="bookmarkCode" class="ant-btn ant-btn-primary bookmark-button" @click.prevent="showDragBookmarkTip">
+                  拖拽此按钮至书签栏 (抖音凭证捕获助手)
                 </a>
               </div>
-              <div class="helper-divider">
-                <span></span>
-                <em>或</em>
-                <span></span>
+              <div class="bookmark-code-container">
+                <a-button size="small" type="primary" class="copy-btn" @click="copyBookmarkCode">复制代码</a-button>
+                <code>{{ bookmarkCode }}</code>
               </div>
-                <div class="helper-console-row">
-                  <p> 或者<a-button size="small"  ghost type="primary" @click="copyBookmarkCode" style="margin: 0 8px">复制代码</a-button>并在登录后的网页控制台 (Console) 中贴入回车运行</p>
-                </div>
-<!--                <code>{{ bookmarkCode }}</code>-->
-
             </section>
           </main>
         </div>
@@ -246,8 +197,8 @@
       <a-modal
         v-model:open="isAccountModalOpen"
         :footer="null"
-        :width="660"
-        :style="{ top: '50px' }"
+        :width="500"
+        centered
         @cancel="closeAccountModal"
       >
         <template #title>
@@ -307,42 +258,34 @@
               </div>
             </div>
 
-            <div v-else class="bind-step2-wrap">
-              <div class="capture-panelleft">
-                <a-form layout="vertical" class="section-form">
-                  <a-form-item label="账号/店铺显示名" required>
-                    <a-input
-                        v-model:value="accountDisplayName"
-                        placeholder="请输入"
-                    />
-                  </a-form-item>
-                </a-form>
-                <div class="capture-panel">
+            <div v-else>
+              <a-form layout="vertical" class="section-form">
+                <a-form-item label="账号/店铺显示名" required>
+                  <a-input
+                    v-model:value="accountDisplayName"
+                    placeholder="请输入"
+                  />
+                </a-form-item>
+              </a-form>
 
-                  <div class="capture-panel-icon">
-                    <img :src="iconImg"  />
+              <div class="capture-panel">
+                <div class="capture-panel-icon">✚</div>
+                <div class="capture-panel-content">
+                  <div class="capture-panel-copy">
+                    点击后将跳转官方登录页，并在登录后运行书签脚本或控制台代码进行凭证回传。
                   </div>
-                  <div class="capture-panel-content">
-                    <div class="capture-panel-copy">
-                      点击后将跳转官方登录页，并在登录后运行书签脚本或控制台代码进行凭证回传。
+                  <a-button type="primary" :disabled="isPolling" @click="handleStartSimulatedLogin">
+                    点击开始网页模拟登录
+                  </a-button>
+                  <div class="capture-inline-status">
+                    <div v-if="isPolling" class="capture-status-badge badge-waiting">
+                      正在等待浏览器脚本回传 Cookie 凭据...
                     </div>
-                    <a-button type="primary" :disabled="isPolling" @click="handleStartSimulatedLogin">
-                      点击开始网页模拟登录
-                    </a-button>
-                    <div class="capture-inline-status">
-                      <div v-if="isPolling" class="capture-status-badge badge-waiting">
-                        正在等待浏览器脚本回传 Cookie 凭据...
-                      </div>
-                      <div v-else-if="capturedCookie" class="capture-status-badge badge-success">
-                        凭证自动拦截成功 (已获取)
-                      </div>
-                      <div v-else class="capture-idle-text">（未启动拦截）</div>
+                    <div v-else-if="capturedCookie" class="capture-status-badge badge-success">
+                      凭证自动拦截成功 (已获取)
                     </div>
+                    <div v-else class="capture-idle-text">（未启动拦截）</div>
                   </div>
-                </div>
-                <div class="modal-checkboxes" style="margin-top: 20px">
-                  <a-checkbox v-model:checked="allowShare">允许该账号在企业内共享复用</a-checkbox>
-                  <a-checkbox v-model:checked="isNewAccountActive">绑定后立即启用该账号作为同步账号</a-checkbox>
                 </div>
               </div>
 
@@ -350,16 +293,16 @@
                 <div class="helper-title">安装与使用书签助手：</div>
                 <div class="helper-card-row">
                   <div class="helper-card">
-                    <div class="helper-card-title">1</div>
-                    <div class="helper-card-desc">显示浏览器书签栏:快捷键：Ctrl/Cmd + Shift + B</div>
+                    <div class="helper-card-title">显示浏览器书签栏</div>
+                    <div class="helper-card-desc">快捷键：Ctrl/Cmd + Shift + B</div>
                   </div>
                   <div class="helper-card">
-                    <div class="helper-card-title">2</div>
-                    <div class="helper-card-desc">直接拖拽下方按钮:拖拽至您的浏览器书签栏。</div>
+                    <div class="helper-card-title">直接拖拽下方按钮</div>
+                    <div class="helper-card-desc">拖拽至您的浏览器书签栏。</div>
                   </div>
                   <div class="helper-card">
-                    <div class="helper-card-title">3</div>
-                    <div class="helper-card-desc">自动上报并绑定:登录抖店后台主页后，点击书签即可自动上报并绑定。</div>
+                    <div class="helper-card-title">自动上报并绑定</div>
+                    <div class="helper-card-desc">登录抖店后台主页后，点击书签即可自动上报并绑定。</div>
                   </div>
                 </div>
 
@@ -367,15 +310,10 @@
                 <div class="helper-button-row">
                   <a
                     :href="bookmarkCode"
-                    class="  helper-bookmark"
+                    class="ant-btn ant-btn-primary bookmark-button compact helper-bookmark"
                     @click.prevent="showDragBookmarkTip"
                   >
-                    <img :src="buttonImg"  />
-                    <div  class="righ-helper-bookmark">
-                      拖拽此按钮至书签栏
-                      <text>(抖音凭证捕获助手)</text>
-                    </div>
-
+                    拖拽此按钮至书签栏 (抖音凭证捕获助手)
                   </a>
                 </div>
 
@@ -386,16 +324,20 @@
                 </div>
 
                 <div class="helper-console-row">
-
-                  <p> 或者<a-button size="small"  ghost type="primary" @click="copyBookmarkCode" style="margin: 0 8px">复制代码</a-button>并在登录后的网页控制台 (Console) 中贴入回车运行</p>
+                  <span>或者</span>
+                  <a-button size="small" type="primary" @click="copyBookmarkCode">复制代码</a-button>
+                  <span>并在登录后的网页控制台 (Console) 中贴入回车运行</span>
                 </div>
 
-<!--                <div class="bookmark-code-container modal-code">-->
-<!--                  <code>{{ bookmarkCode }}</code>-->
-<!--                </div>-->
+                <div class="bookmark-code-container modal-code">
+                  <code>{{ bookmarkCode }}</code>
+                </div>
               </div>
 
-
+              <div class="modal-checkboxes">
+                <a-checkbox v-model:checked="allowShare">允许该账号在企业内共享复用</a-checkbox>
+                <a-checkbox v-model:checked="isNewAccountActive">绑定后立即启用该账号作为同步账号</a-checkbox>
+              </div>
             </div>
           </div>
         </div>
@@ -415,12 +357,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import { message, } from 'ant-design-vue';
+import { message } from 'ant-design-vue';
 import { bitable } from '@lark-base-open/connector-api';
 import { bridge } from '@lark-base-open/js-sdk';
-import buttonImg from '@/assets/button.png'
-import  iconImg from   '@/assets/icon.png'
-import { RightOutlined } from '@ant-design/icons-vue';
 
 // 数据源字段定义：用于渲染字段映射表，也会作为保存到飞书配置中的映射来源。
 interface ModuleField {
@@ -498,7 +437,8 @@ const navItems = [
   { key: 'datasource', step: '2', label: '数据源选择', desc: '选择数据源' },
   { key: 'params', step: '3', label: '参数设置', desc: '配置连接器参数' },
   { key: 'fields', step: '4', label: '字段设置', desc: '配置字段映射规则' },
-  { key: 'guide', step: '5', label: '使用说明', desc: '配置同步步骤' }
+  { key: 'sync', step: '5', label: '同步设置', desc: '配置同步频率' },
+  { key: 'guide', step: '6', label: '使用说明', desc: '配置同步步骤' }
 ];
 
 // 固定模块树配置：保留为空时，只展示后端动态返回的抖店接口目录。
@@ -535,7 +475,11 @@ const dateRangeOptions = [
   { value: '30', label: '回溯近 30 天数据（多页拉取）' }
 ];
 
-
+// 飞书同步刷新频率选项，会随配置保存给后端任务表。
+const refreshFrequencyOptions = [
+  { value: 'hour', label: '每小时自动静默同步（采用捕获凭证长效保活）' },
+  { value: 'none', label: '不自动刷新（仅限用户在表格内手动触发）' }
+];
 
 // 当前左侧导航高亮项。
 const activeMenu = ref('account');
@@ -599,9 +543,15 @@ const dateRange = ref('30');
 const bitableFields = ref<BitableOption[]>([]);
 // 源字段 key 到飞书目标列 fieldId 的映射关系。
 const fieldMappings = reactive<Record<string, string>>({
-
+  order_id: 'col_order_id',
+  create_time: 'col_create_time_v2',
+  pay_amount: 'col_pay_amount',
+  order_status: 'col_order_status',
+  shop_name: 'col_shop_name',
+  shop_id: 'col_shop_id'
 });
-
+// 自动刷新频率配置。
+const refreshFrequency = ref('hour');
 const merchantUid = ref('');
 const payChannel = ref('');
 const timeType = ref('');
@@ -613,9 +563,6 @@ const scrollContainerRef = ref<HTMLElement | null>(null);
 let pollingTimer: number | null = null;
 // 恢复飞书已保存配置时，避免模块 watcher 把字段选择重置成全选。
 let isRestoringSavedConfig = false;
-// 程序化滚动期间阻止 handleScroll 更新高亮，避免闪烁。
-let isScrollingByClick = false;
-let scrollClickTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * 功能描述：停止凭证捕获轮询并关闭顶部加载提示。
@@ -939,11 +886,6 @@ async function handleSaveAccountRelation(): Promise<void> {
       module: selected.module || syncModule.value
     };
   } else {
-    console.log(customDisplayName)
-    if(!customDisplayName){
-      message.error('请输入账号/店铺显示名称');
-      return;
-    }
     let finalCookie = capturedCookie.value || pastedCookie.value;
     let finalShopId = capturedShopId.value;
     let finalShopName = capturedShopName.value;
@@ -1221,7 +1163,7 @@ async function handleSaveAndGoNext(): Promise<void> {
     dateRange: dateRange.value,
     fieldMappings: { ...fieldMappings },
     selectedFieldKeys,
-
+    refreshFrequency: refreshFrequency.value,
     merchantUid: merchantUid.value,
     payChannel: payChannel.value,
     timeType: timeType.value,
@@ -1316,9 +1258,6 @@ function handleCancel(): void {
  */
 function scrollToSection(sectionId: string): void {
   activeMenu.value = sectionId;
-  isScrollingByClick = true;
-  if (scrollClickTimer) clearTimeout(scrollClickTimer);
-  scrollClickTimer = setTimeout(() => { isScrollingByClick = false; }, 600);
   document.getElementById(`section-${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -1327,7 +1266,6 @@ function scrollToSection(sectionId: string): void {
  * @return {void} 无返回值
  */
 function handleScroll(): void {
-  if (isScrollingByClick) return;
   const container = scrollContainerRef.value;
   if (!container) return;
   const sections = ['account', 'datasource', 'params', 'fields', 'sync', 'guide'];
@@ -1362,31 +1300,8 @@ function buildBookmarkCode(): string {
  * @return {Promise<void>} 无返回值
  */
 async function copyBookmarkCode(): Promise<void> {
-  try {
-
-      const textarea = document.createElement('textarea');
-      textarea.value = bookmarkCode.value;
-      textarea.style.position = 'fixed';
-      textarea.style.left = '-9999px';
-      document.body.appendChild(textarea);
-
-      textarea.focus();
-      textarea.select();
-
-      const success = document.execCommand('copy');
-      document.body.removeChild(textarea);
-
-      if (!success) {
-        throw new Error('execCommand copy failed');
-      }
-    message.success('脚本代码已复制到剪贴板！');
-    }
-
-
-     catch (err) {
-    console.error(err);
-    message.error('复制失败，请手动复制。');
-  }
+  await navigator.clipboard.writeText(bookmarkCode.value);
+  message.success('脚本代码已复制到剪贴板！');
 }
 
 /**
@@ -1433,7 +1348,7 @@ onMounted(async () => {
         resetFieldMappingByModule();
         shopIdParam.value = config.shopIdParam || shopIdParam.value;
         dateRange.value = config.dateRange || dateRange.value;
-
+        refreshFrequency.value = config.refreshFrequency || refreshFrequency.value;
         merchantUid.value = config.merchantUid || merchantUid.value;
         payChannel.value = config.payChannel || payChannel.value;
         timeType.value = config.timeType || timeType.value;
@@ -1493,7 +1408,11 @@ onUnmounted(() => {
   box-shadow: none;
 }
 
-
+.bookmark-button.compact {
+  font-size: 12px;
+  padding: 0 16px;
+  height: 38px;
+}
 
 .test-result {
   color: #389e0d;
@@ -1501,12 +1420,13 @@ onUnmounted(() => {
 }
 
 .modal-title {
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 600;
   color: #1f1f1f;
 }
 
 .account-modal-body {
+
   padding-top: 8px;
 }
 
@@ -1515,7 +1435,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 28px;
 }
 
 .modal-step {
@@ -1629,17 +1549,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 20px;
 }
-.bind-step2-wrap{
-  display: flex;
-  flex-direction: row;
-  gap: 20px;
-}
-.capture-panelleft{
-  display: flex;
-  flex-direction: column;
-  width: 340px;
 
-}
 .capture-panel {
   display: flex;
   gap: 20px;
@@ -1649,10 +1559,17 @@ onUnmounted(() => {
   background: #f7fbff;
 }
 
-.capture-panel-icon img {
+.capture-panel-icon {
   width: 82px;
-
-
+  height: 82px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #cfe0ff 0%, #edf4ff 100%);
+  color: #3f78ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  flex: none;
 }
 
 .capture-panel-content {
@@ -1664,7 +1581,7 @@ onUnmounted(() => {
 
 .capture-panel-copy {
   color: #3f3f46;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.7;
 }
 
@@ -1679,7 +1596,7 @@ onUnmounted(() => {
 
 .helper-title,
 .helper-action-title {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   color: #1f1f1f;
   margin-bottom: 14px;
@@ -1690,34 +1607,28 @@ onUnmounted(() => {
 }
 
 .helper-card-row {
-  display: flex;
- flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.helper-card{
-  display: flex;
-  flex-direction: row;
+.helper-card {
+  min-height: 88px;
+  padding: 16px 14px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
 }
 
-.helper-card-title{
-  background: #3f78ff;
-  color: #ffffff;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
+.helper-card-title {
+  font-size: 14px;
   font-weight: 600;
-  flex: none;
-  margin: 2px 4px 0 0;
+  color: #1f1f1f;
+  margin-bottom: 10px;
 }
 
 .helper-card-desc {
-  font-size: 14px;
+  font-size: 12px;
   color: #8c8c8c;
   line-height: 1.6;
 }
@@ -1728,31 +1639,11 @@ onUnmounted(() => {
 }
 
 .helper-bookmark {
-  border-color: #FDB832;
-  background: #FFF8ED;
-  width: 180px;
-  height: 50px;
-  padding: 8px;
-  display: flex;
-  flex-direction: row;
-  gap: 12px;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: #3D3D3D;
+  border-color: #ffb020;
+  background: #ffffff;
+  color: #ff9f0a;
 }
-.helper-bookmark img{
-  height: 20px;
-}
-.righ-helper-bookmark{
-  display: flex;
-  flex-direction: column;
-  gap:4px;
-}
-.righ-helper-bookmark text{
-  color: #EDA71E;
-  font-size: 10px;
-}
+
 .helper-divider {
   display: flex;
   align-items: center;
@@ -1777,14 +1668,11 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  flex-direction: row;
   margin-bottom: 10px;
   color: #595959;
   font-size: 13px;
 }
-.helper-console-row p{
-  line-height: 28px;
-}
+
 .modal-code {
   margin-top: 0;
 }

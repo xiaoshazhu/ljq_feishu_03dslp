@@ -12,12 +12,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@ant-design/icons-vue": "^7.0.1",
     "@lark-base-open/connector-api": "^0.1.0",
     "@lark-base-open/js-sdk": "^1.0.2",
     "ant-design-vue": "^4.2.6",
     "vue": "^3.5.39"
   },
   "devDependencies": {
+    "@types/node": "^26.1.0",
     "@vitejs/plugin-vue": "^6.0.7",
     "typescript": "^5.9.2",
     "vite": "^7.1.12",
