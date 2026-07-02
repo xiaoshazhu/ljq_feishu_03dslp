@@ -19,6 +19,7 @@ const { judgeEncryptSignValid } = require("./request_sign.js");
 const {
   initDb,
   saveAccount,
+  updateAccountById,
   getAccounts,
   setActiveAccount,
   deleteAccount,
@@ -28,6 +29,10 @@ const {
   saveTask,
   updateAccountModule,
   getDoudianInterfaces
+  ,
+  createSyncLog,
+  finishSyncLog,
+  listSyncLogs
 } = require("./database.js");
 
 const app = express();
@@ -48,9 +53,12 @@ app.use(express.json());
  * @return {string} 返回企业 ID
  */
 function getCompanyId(req) {
+  const embeddedConfig = extractEmbeddedConnectorConfig(req);
   return (
     req.body?.companyId ||
     req.body?.tenantKey ||
+    embeddedConfig.companyId ||
+    embeddedConfig.tenantKey ||
     req.query?.companyId ||
     req.query?.tenantKey ||
     req.headers['x-company-id'] ||
@@ -65,15 +73,33 @@ function getCompanyId(req) {
  * @return {string} 返回用户 ID
  */
 function getUserId(req) {
+  const embeddedConfig = extractEmbeddedConnectorConfig(req);
   return (
     req.body?.userId ||
     req.body?.openId ||
+    embeddedConfig.userId ||
+    embeddedConfig.openId ||
     req.query?.userId ||
     req.query?.openId ||
     req.headers['x-user-id'] ||
     req.headers['x-open-id'] ||
     'default'
   ).toString();
+}
+
+/**
+ * 功能描述：从飞书回调的 params.datasourceConfig.value 中解析连接器保存的配置。
+ * @param {object} req - Express 请求
+ * @return {object} 返回已保存的连接器配置对象
+ */
+function extractEmbeddedConnectorConfig(req) {
+  const paramsObj = parseMaybeJsonObject(req.body?.params, {});
+  const datasourceConfigObj = parseMaybeJsonObject(
+    paramsObj.datasourceConfig || req.body?.datasourceConfig || req.body?.config,
+    {}
+  );
+  const rawConfigValue = datasourceConfigObj.value || req.body?.config?.value;
+  return parseMaybeJsonObject(rawConfigValue, {});
 }
 
 // 跨域资源共享 (CORS) 拦截器：允许抖音页面上的书签提取助手跨域上报凭据
@@ -181,6 +207,13 @@ app.post("/api/records", async (req, res) => {
   const isValid = judgeEncryptSignValid(req);
   console.log("飞书加密签名验证结果：", isValid);
 
+  const syncContext = extractSyncLogContext(req.body, getCompanyId(req));
+  await createSyncLog({
+    ...syncContext,
+    status: 'running',
+    startedAt: new Date()
+  }).catch((error) => console.error("创建同步日志失败:", error));
+
   try {
     const records = await getTableRecords(req.body);
     const result = {
@@ -189,9 +222,42 @@ app.post("/api/records", async (req, res) => {
       message: "POST请求成功",
       data: normalizeRecordsResponse(records),
     };
+    finishSyncLog(syncContext.logKey, {
+      status: records.hasMore ? 'running' : 'success',
+      finishedAt: records.hasMore ? null : new Date(),
+      recordCount: Number(records.loadedCount || (Array.isArray(records.records) ? records.records.length : 0)),
+      hasMore: records.hasMore ? 1 : 0,
+      nextPageToken: records.nextPageToken || '',
+      ...(records.hasMore ? {} : { durationMs: 'auto' })
+    }, syncContext.companyId).catch((error) => console.error("更新同步成功日志失败:", error));
     res.status(200).json(result);
   } catch (e) {
+    finishSyncLog(syncContext.logKey, {
+      status: 'failed',
+      finishedAt: new Date(),
+      durationMs: 'auto',
+      errorMessage: e.message || String(e)
+    }, syncContext.companyId).catch((error) => console.error("更新同步失败日志失败:", error));
     res.status(200).json({ code: 1254500, msg: JSON.stringify({ zh: e.message, en: e.message }), message: e.message });
+  }
+});
+
+/**
+ * 功能描述：读取同步执行日志列表，支持按状态筛选。
+ * @param {object} req - Express 请求
+ * @param {object} res - Express 响应
+ */
+app.get("/api/v1/sync/logs", async (req, res) => {
+  try {
+    const logs = await listSyncLogs(getCompanyId(req), {
+      status: req.query.status,
+      limit: req.query.limit,
+      page: req.query.page,
+      pageSize: req.query.pageSize
+    });
+    res.status(200).json(logs);
+  } catch (e) {
+    res.status(500).json({ code: 500, message: `读取同步日志出错: ${e.message}` });
   }
 });
 
@@ -278,6 +344,49 @@ function normalizeRecordsResponse(recordsResult) {
       };
     })
   };
+}
+
+/**
+ * 功能描述：从飞书 /api/records 请求中提取同步执行日志所需上下文。
+ * @param {object} reqBody 飞书请求体
+ * @param {string} companyId 企业 ID
+ * @return {object} 返回日志上下文
+ */
+function extractSyncLogContext(reqBody = {}, companyId = 'default') {
+  const paramsObj = parseMaybeJsonObject(reqBody.params, {});
+  const datasourceConfigObj = parseMaybeJsonObject(
+    paramsObj.datasourceConfig || reqBody.datasourceConfig || reqBody.config,
+    {}
+  );
+  const rawConfigValue = datasourceConfigObj.value || reqBody.config?.value;
+  const config = parseMaybeJsonObject(rawConfigValue, {});
+  const transactionId = reqBody.transactionID || reqBody.transactionId || paramsObj.transactionID || paramsObj.transactionId || '';
+  const taskId = reqBody.taskId || reqBody.task_id || transactionId || `TASK_${Date.now().toString().substring(0, 8)}`;
+  const pageToken = paramsObj.pageToken || paramsObj.page_token || reqBody.pageToken || reqBody.page_token || '';
+  const syncModule = config.syncModule || '';
+  const accountName = config.accountInfo?.name || '';
+  const shopId = config.shopIdParam || config.accountInfo?.shopId || '';
+  return {
+    companyId,
+    taskId,
+    transactionId,
+    syncModule,
+    accountName,
+    shopId,
+    pageToken,
+    logKey: String(transactionId || taskId)
+  };
+}
+
+function parseMaybeJsonObject(value, fallback = {}) {
+  if (!value) return fallback;
+  if (typeof value === 'object') return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : fallback;
+  } catch (error) {
+    return fallback;
+  }
 }
 
 /**
@@ -461,6 +570,24 @@ app.post("/api/v1/connector/accounts/add", async (req, res) => {
     res.status(200).json({ code: 0, message: "账号已保存至数据库" });
   } catch (e) {
     res.status(500).json({ code: 500, message: `添加账号出错: ${e.message}` });
+  }
+});
+
+/**
+ * 功能描述：按账号 ID 局部修改账号信息，未传字段保持不变。
+ * @param {object} req - Express 请求
+ * @param {object} res - Express 响应
+ */
+app.patch("/api/v1/connector/accounts/update", async (req, res) => {
+  const { id, ...updates } = req.body || {};
+  if (!id) {
+    return res.status(400).json({ code: 400, message: "缺少账号 id" });
+  }
+  try {
+    await updateAccountById(id, updates, getCompanyId(req), getUserId(req));
+    res.status(200).json({ code: 0, message: "账号已更新" });
+  } catch (e) {
+    res.status(500).json({ code: 500, message: `更新账号出错: ${e.message}` });
   }
 });
 

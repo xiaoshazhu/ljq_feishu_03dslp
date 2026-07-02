@@ -35,12 +35,17 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
   let doudianExtraQuery = {};
   let doudianInterfaceOverride = null;
   let aggregatePageToken = '';
+  let dateRange = '';
+  const isDebugTestRequest = String(taskId || '').startsWith('TEST_');
 
   if (configOrDateRange && typeof configOrDateRange === 'object') {
     maxPageSize = Number(configOrDateRange.maxPageSize || 1000) || 1000;
     doudianExtraQuery = configOrDateRange.doudianExtraQuery || {};
     doudianInterfaceOverride = configOrDateRange.doudianInterface || null;
     aggregatePageToken = configOrDateRange.aggregatePageToken || '';
+    dateRange = String(configOrDateRange.dateRange || '');
+  } else if (configOrDateRange !== undefined && configOrDateRange !== null) {
+    dateRange = String(configOrDateRange || '');
   }
 
   const ua = userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -48,9 +53,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
   const headers = {
     'Cookie': cookie,
     'User-Agent': ua,
-    'Accept': 'application/json, text/plain, */*',
-    'Content-Type': 'application/json;charset=UTF-8',
-    'Referer': 'https://fxg.jinritemai.com/'
+    'Accept': '*/*'
   };
 
   // 1. 模式 B 规定：单次请求之间必须设定 1.5s - 3s 的随机休眠延迟（Delay），防止触发平台风控
@@ -87,18 +90,29 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     throw new Error(`DoudianInterfaceNotFound: 当前接口未接入或不存在 (${syncModule})`);
   }
   selectedInterfaceMeta = applyDoudianInterfaceOverride(selectedInterfaceMeta, doudianInterfaceOverride);
-  const builtRequest = buildDoudianRegisteredRequest(selectedInterfaceMeta, shopId, pageNum, maxPageSize, doudianExtraQuery, aggregatePageToken, cookie, ua);
+  const builtRequest = buildDoudianRegisteredRequest(selectedInterfaceMeta, shopId, pageNum, maxPageSize, doudianExtraQuery, aggregatePageToken, cookie, ua, dateRange);
   requestUrl = builtRequest.requestUrl;
   requestMethod = builtRequest.requestMethod;
   requestBody = builtRequest.requestBody;
-  headers['Referer'] = builtRequest.refererHost + '/';
-  headers['Origin'] = builtRequest.refererHost;
-  headers['Content-Type'] = builtRequest.contentType;
+  applyRequestHeaders(headers, builtRequest, requestMethod);
   if (builtRequest.requestHeaders) {
     Object.assign(headers, builtRequest.requestHeaders);
   }
 
-  console.log(`[Mode B] 真实请求 URL: ${requestUrl}, Method: ${requestMethod}`);
+  // console.log(`[Mode B] 真实请求 URL: ${requestUrl}, Method: ${requestMethod}`);
+  if (isDebugTestRequest) {
+    // console.log('[Doudian Test Request]', JSON.stringify({
+    //   syncModule,
+    //   shopId,
+    //   pageNum,
+    //   dateRange,
+    //   requestUrl,
+    //   requestMethod,
+    //   headers: sanitizeDebugHeaders(headers),
+    //   requestBody,
+    //   curl: buildDebugCurlCommand(requestMethod, requestUrl, headers, requestBody)
+    // }, null, 2));
+  }
 
   try {
     // 判断 Cookie 的有效性
@@ -115,7 +129,26 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
       fetchOptions.body = requestBody;
     }
 
+    if (isDebugTestRequest) {
+      // console.log('[Doudian Test FetchOptions]', JSON.stringify({
+      //   method: fetchOptions.method,
+      //   headers: sanitizeDebugHeaders(fetchOptions.headers || {}),
+      //   body: fetchOptions.body || null,
+      //   timeout: fetchOptions.timeout
+      // }, null, 2));
+    }
+
     const response = await fetch(requestUrl, fetchOptions);
+    const responseText = await response.text();
+
+    if (isDebugTestRequest) {
+      // console.log('[Doudian Test Response]', JSON.stringify({
+      //   status: response.status,
+      //   statusText: response.statusText,
+      //   headers: normalizeResponseHeaders(response.headers),
+      //   bodyPreview: truncateDebugText(responseText, 4000)
+      // }, null, 2));
+    }
     
     if (response.status === 401) {
       throw new Error("CredentialsExpired: 凭证失效(Cookie过期)");
@@ -126,18 +159,16 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
 
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('text/html')) {
-      const htmlText = await response.text();
-      throw new Error(`DoudianHTMLResponse: 抖店接口返回 HTML 页面，不是 JSON。通常是请求参数或风控参数不完整，不一定是 Cookie 过期。HTTP ${response.status}, snippet=${htmlText.substring(0, 160)}`);
+      throw new Error(`DoudianHTMLResponse: 抖店接口返回 HTML 页面，不是 JSON。通常是请求参数或风控参数不完整，不一定是 Cookie 过期。HTTP ${response.status}, snippet=${responseText.substring(0, 160)}`);
     }
 
-    const responseText = await response.text();
     let resJson;
     try {
       resJson = JSON.parse(responseText);
     } catch (jsonError) {
       throw new Error(`DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP ${response.status}, contentType=${contentType}, snippet=${responseText.substring(0, 160)}`);
     }
-    console.log(`[Doudian API Response] URL: ${requestUrl}, resJson:`, JSON.stringify(resJson));
+    // console.log(`[Doudian API Response] URL: ${requestUrl}, resJson:`, JSON.stringify(resJson));
     
     // 校验响应内容中的未登录或受限标记
     const errCode = String(resJson.code || resJson.errorCode || '');
@@ -216,7 +247,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
  * @param {number} pageNum 当前页码
  * @return {object} 返回请求 URL、方法、正文与 Content-Type
  */
-function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSize = 1000, runtimeExtraQuery = {}, aggregatePageToken = '', cookie = '', userAgent = '') {
+function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSize = 1000, runtimeExtraQuery = {}, aggregatePageToken = '', cookie = '', userAgent = '', dateRange = '') {
   const requestConfig = interfaceMeta.requestConfig || {};
   const contentType = requestConfig.contentType || 'application/json;charset=UTF-8';
   const requestMethod = requestConfig.method || 'POST';
@@ -227,8 +258,10 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
   const pageValue = pageStart + Math.max(Number(pageNum || 1) - 1, 0);
   const apiHost = normalizeUrlPrefix(interfaceMeta.apiHost || 'https://fxg.jinritemai.com');
 
+  const computedDateRangeParams = buildDateRangeQueryParams(requestConfig, dateRange);
   const baseParams = {
     ...(requestConfig.extraQuery || {}),
+    ...computedDateRangeParams,
     ...(runtimeExtraQuery || {}),
     [pageParam]: pageValue,
     [pageSizeParam]: pageSize
@@ -252,6 +285,9 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
         Cookie: cookie,
         'User-Agent': userAgent
       },
+      extraHeaders: requestConfig.extraHeaders || {},
+      referer: requestConfig.referer || '',
+      includeOriginHeader: requestConfig.includeOriginHeader,
       requestBody: JSON.stringify({
         interfaceKey: interfaceMeta.interfaceKey,
         sourceApiHost: interfaceMeta.sourceApiHost || '',
@@ -289,7 +325,10 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
       requestMethod: 'GET',
       requestBody: null,
       contentType,
-      refererHost: apiHost
+      refererHost: apiHost,
+      extraHeaders: requestConfig.extraHeaders || {},
+      referer: requestConfig.referer || '',
+      includeOriginHeader: requestConfig.includeOriginHeader
     };
   }
 
@@ -305,7 +344,10 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
       ? new URLSearchParams(bodyParams).toString()
       : JSON.stringify(bodyParams),
     contentType,
-    refererHost: apiHost
+    refererHost: apiHost,
+    extraHeaders: requestConfig.extraHeaders || {},
+    referer: requestConfig.referer || '',
+    includeOriginHeader: requestConfig.includeOriginHeader
   };
 }
 
@@ -337,6 +379,225 @@ function applyDoudianInterfaceOverride(interfaceMeta, override) {
  */
 function normalizeUrlPrefix(value) {
   return String(value || '').replace(/\/$/, '');
+}
+
+/**
+ * 功能描述：根据请求方法和接口配置，拼装最终请求头。
+ * @param {object} headers 当前请求头对象
+ * @param {object} builtRequest 已构造的请求信息
+ * @param {string} requestMethod 请求方法
+ * @return {void} 无返回值
+ */
+function applyRequestHeaders(headers, builtRequest, requestMethod) {
+  const method = String(requestMethod || 'GET').toUpperCase();
+  const referer = String(builtRequest?.referer || '').trim();
+  const refererHost = String(builtRequest?.refererHost || '').trim();
+  const extraHeaders = builtRequest?.extraHeaders && typeof builtRequest.extraHeaders === 'object'
+    ? builtRequest.extraHeaders
+    : {};
+  const includeOriginHeader = builtRequest?.includeOriginHeader === true;
+
+  if (method === 'GET') {
+    delete headers['Content-Type'];
+    delete headers['Origin'];
+  } else {
+    headers['Content-Type'] = builtRequest.contentType;
+    if (includeOriginHeader && refererHost) {
+      headers['Origin'] = refererHost;
+    }
+  }
+
+  if (referer) {
+    headers['Referer'] = referer;
+  } else {
+    delete headers['Referer'];
+  }
+
+  Object.entries(extraHeaders).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') return;
+    headers[key] = String(value);
+  });
+}
+
+/**
+ * 功能描述：根据统一的同步时间范围配置，计算需要写入真实接口的开始/结束时间参数。
+ * @param {object} requestConfig 接口 request_config 配置
+ * @param {string} dateRange 前端保存的同步时间范围，例如 7 / 30
+ * @return {object} 返回要并入请求的时间参数对象
+ */
+function buildDateRangeQueryParams(requestConfig, dateRange) {
+  const mapping = requestConfig?.dateRangeMapping || requestConfig?.syncTimeRangeMapping || null;
+  const days = Number(dateRange || 0);
+  if (!mapping || !Number.isFinite(days) || days <= 0) {
+    return {};
+  }
+
+  const mode = String(mapping.mode || 'natural_day');
+  const format = String(mapping.format || 'datetime');
+  const now = new Date();
+  let startAt = null;
+  let endAt = null;
+
+  if (mode === 'rolling') {
+    endAt = now;
+    startAt = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  } else {
+    endAt = endOfDay(now);
+    startAt = startOfDay(addDays(now, -(days - 1)));
+  }
+
+  const params = {};
+  if (mapping.startTime) {
+    params[mapping.startTime] = formatDateRangeValue(startAt, format);
+  }
+  if (mapping.endTime) {
+    params[mapping.endTime] = formatDateRangeValue(endAt, format);
+  }
+  return params;
+}
+
+/**
+ * 功能描述：根据配置格式输出时间范围值，支持时间戳和日期字符串。
+ * @param {Date} value 日期对象
+ * @param {string} format 输出格式
+ * @return {string|number} 返回格式化后的日期值
+ */
+function formatDateRangeValue(value, format) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) return '';
+  switch (format) {
+    case 'timestamp':
+    case 'timestamp_ms':
+      return value.getTime();
+    case 'timestamp_s':
+    case 'unix':
+      return Math.floor(value.getTime() / 1000);
+    case 'date':
+      return `${value.getFullYear()}-${padDatePart(value.getMonth() + 1)}-${padDatePart(value.getDate())}`;
+    case 'datetime':
+    default:
+      return `${value.getFullYear()}-${padDatePart(value.getMonth() + 1)}-${padDatePart(value.getDate())} ${padDatePart(value.getHours())}:${padDatePart(value.getMinutes())}:${padDatePart(value.getSeconds())}`;
+  }
+}
+
+/**
+ * 功能描述：给日期增加或减少指定天数。
+ * @param {Date} baseDate 基准日期
+ * @param {number} offsetDays 偏移天数
+ * @return {Date} 返回新的日期对象
+ */
+function addDays(baseDate, offsetDays) {
+  const next = new Date(baseDate);
+  next.setDate(next.getDate() + offsetDays);
+  return next;
+}
+
+/**
+ * 功能描述：将日期归一化到当天开始时间。
+ * @param {Date} value 原始日期
+ * @return {Date} 返回 00:00:00 的日期对象
+ */
+function startOfDay(value) {
+  const next = new Date(value);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+/**
+ * 功能描述：将日期归一化到当天结束时间。
+ * @param {Date} value 原始日期
+ * @return {Date} 返回 23:59:59.999 的日期对象
+ */
+function endOfDay(value) {
+  const next = new Date(value);
+  next.setHours(23, 59, 59, 999);
+  return next;
+}
+
+/**
+ * 功能描述：将日期数字补齐为两位。
+ * @param {number} value 日期片段
+ * @return {string} 返回补零后的字符串
+ */
+function padDatePart(value) {
+  return String(value).padStart(2, '0');
+}
+
+/**
+ * 功能描述：清洗调试日志中的请求头，避免完整输出敏感 Cookie。
+ * @param {object} headers 原始请求头
+ * @return {object} 返回适合打印的请求头
+ */
+function sanitizeDebugHeaders(headers) {
+  const safeHeaders = { ...(headers || {}) };
+  if (safeHeaders.Cookie) {
+    safeHeaders.Cookie = maskSensitiveValue(String(safeHeaders.Cookie));
+  }
+  if (safeHeaders.cookie) {
+    safeHeaders.cookie = maskSensitiveValue(String(safeHeaders.cookie));
+  }
+  return safeHeaders;
+}
+
+/**
+ * 功能描述：对敏感字符串做中间脱敏，保留头尾方便比对。
+ * @param {string} value 原始敏感值
+ * @return {string} 返回脱敏后的字符串
+ */
+function maskSensitiveValue(value) {
+  const text = String(value || '');
+  if (text.length <= 24) return text;
+  return `${text.slice(0, 12)}...${text.slice(-12)} (len=${text.length})`;
+}
+
+/**
+ * 功能描述：把请求转换成便于复现的 curl 命令，方便和 ApiPost 对照。
+ * @param {string} method 请求方法
+ * @param {string} requestUrl 完整请求 URL
+ * @param {object} headers 请求头
+ * @param {string|null} requestBody 请求体
+ * @return {string} 返回脱敏后的 curl 命令
+ */
+function buildDebugCurlCommand(method, requestUrl, headers, requestBody) {
+  const headerArgs = Object.entries(sanitizeDebugHeaders(headers || {}))
+    .map(([key, value]) => `-H ${shellEscape(`${key}: ${value}`)}`)
+    .join(' ');
+  const bodyArg = requestBody ? ` --data-raw ${shellEscape(String(requestBody))}` : '';
+  return `curl -X ${String(method || 'GET').toUpperCase()} ${shellEscape(String(requestUrl || ''))} ${headerArgs}${bodyArg}`.trim();
+}
+
+/**
+ * 功能描述：把响应头对象转成普通 JSON，便于日志比对。
+ * @param {Headers} headers Fetch 返回的响应头
+ * @return {object} 返回普通对象
+ */
+function normalizeResponseHeaders(headers) {
+  const result = {};
+  if (!headers || typeof headers.forEach !== 'function') return result;
+  headers.forEach((value, key) => {
+    result[key] = value;
+  });
+  return result;
+}
+
+/**
+ * 功能描述：截断调试文本，避免日志被大响应淹没。
+ * @param {string} text 原始文本
+ * @param {number} maxLength 最大长度
+ * @return {string} 返回裁剪后的文本
+ */
+function truncateDebugText(text, maxLength = 1000) {
+  const normalized = String(text || '');
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength)}... (truncated, len=${normalized.length})`;
+}
+
+/**
+ * 功能描述：对 shell 参数做最小转义，供 curl 调试命令使用。
+ * @param {string} value 原始值
+ * @return {string} 返回 shell 安全字符串
+ */
+function shellEscape(value) {
+  return `'${String(value || '').replace(/'/g, `'\\''`)}'`;
 }
 
 /**
@@ -385,7 +646,11 @@ function getFirstValueByPaths(json, paths) {
  */
 function getValueByPath(source, path) {
   if (!source || !path) return undefined;
-  return path.split('.').reduce((current, key) => {
+  const pathSegments = String(path)
+    .replace(/\[(\d+)\]/g, '.$1')
+    .split('.')
+    .filter(Boolean);
+  return pathSegments.reduce((current, key) => {
     if (current === undefined || current === null) return undefined;
     return current[key];
   }, source);

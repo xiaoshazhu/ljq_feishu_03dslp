@@ -99,6 +99,33 @@ async function initDb() {
   `);
 
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS sync_logs (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增主键' PRIMARY KEY,
+      log_key VARCHAR(128) NOT NULL COMMENT '同步执行日志唯一标识',
+      company_id VARCHAR(128) NOT NULL DEFAULT 'default' COMMENT '企业 ID',
+      task_id VARCHAR(128) DEFAULT NULL COMMENT '飞书同步任务 ID',
+      transaction_id VARCHAR(128) DEFAULT NULL COMMENT '飞书事务 ID',
+      sync_module VARCHAR(255) DEFAULT NULL COMMENT '同步模块标识',
+      account_name VARCHAR(255) DEFAULT NULL COMMENT '同步账号名称',
+      shop_id VARCHAR(128) DEFAULT NULL COMMENT '店铺 ID',
+      page_token VARCHAR(255) DEFAULT NULL COMMENT '本次请求分页 token',
+      next_page_token VARCHAR(255) DEFAULT NULL COMMENT '返回给飞书的下一页 token',
+      record_count INT NOT NULL DEFAULT 0 COMMENT '本次返回记录数',
+      has_more TINYINT NOT NULL DEFAULT 0 COMMENT '是否还有下一页',
+      status VARCHAR(32) NOT NULL DEFAULT 'running' COMMENT '执行状态 running/success/failed',
+      error_message TEXT COMMENT '失败错误信息',
+      started_at DATETIME NOT NULL COMMENT '开始时间',
+      finished_at DATETIME DEFAULT NULL COMMENT '结束时间',
+      duration_ms INT DEFAULT NULL COMMENT '耗时毫秒',
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+      UNIQUE KEY uk_sync_logs_key (company_id, log_key),
+      KEY idx_sync_logs_company_status (company_id, status),
+      KEY idx_sync_logs_company_started (company_id, started_at),
+      KEY idx_sync_logs_task (company_id, task_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='飞书同步执行日志表'
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS doudian_interfaces (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增主键' PRIMARY KEY,
       interface_key VARCHAR(128) NOT NULL COMMENT '接口业务唯一标识',
@@ -135,6 +162,7 @@ async function dropLegacyTables() {
     { table: 'captured_buffer', requiredColumns: ['id', 'company_id', 'user_id'] },
     { table: 'tasks', requiredColumns: ['id', 'task_key', 'company_id'] },
     { table: 'errors', requiredColumns: ['id', 'error_key', 'company_id'] },
+    { table: 'sync_logs', requiredColumns: ['id', 'log_key', 'company_id', 'status', 'started_at'] },
     { table: 'doudian_interfaces', requiredColumns: ['id', 'interface_key', 'api_host', 'api_path', 'is_enabled'] }
   ];
 
@@ -362,6 +390,84 @@ async function saveAccount(account) {
 }
 
 /**
+ * 功能描述：按账号 ID 局部更新账号信息，只修改请求中明确传入的字段。
+ * @param {number|string} id - 账号自增主键 ID
+ * @param {object} updates - 需要更新的字段集合
+ * @param {string} companyId - 企业 ID
+ * @param {string} userId - 飞书用户 ID
+ * @return {Promise<void>} 无返回值
+ */
+async function updateAccountById(id, updates, companyId = 'default', userId = 'default') {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const normalizedId = Number(id);
+    if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
+      throw new Error('账号 ID 非法');
+    }
+
+    const allowedFields = new Map([
+      ['name', 'name'],
+      ['mode', 'mode'],
+      ['status', 'status'],
+      ['cookie', 'cookie'],
+      ['shopId', 'shopId'],
+      ['module', 'module'],
+      ['shareScope', 'share_scope'],
+      ['is_active', 'is_active']
+    ]);
+
+    const setClauses = [];
+    const params = [];
+
+    for (const [payloadKey, columnName] of allowedFields.entries()) {
+      if (!Object.prototype.hasOwnProperty.call(updates, payloadKey)) continue;
+      setClauses.push(`${columnName} = ?`);
+      params.push(updates[payloadKey]);
+    }
+
+    if (setClauses.length === 0) {
+      await connection.rollback();
+      return;
+    }
+
+    if (updates.is_active === 1) {
+      await connection.query(
+        `UPDATE accounts
+         SET is_active = 0
+         WHERE company_id = ?
+           AND is_deleted = 0
+           AND (share_scope = 'company' OR user_id = ?)`,
+        [companyId, userId]
+      );
+    }
+
+    params.push(normalizedId, companyId, userId);
+    const [result] = await connection.query(
+      `UPDATE accounts
+       SET ${setClauses.join(', ')}
+       WHERE id = ?
+         AND company_id = ?
+         AND is_deleted = 0
+         AND (share_scope = 'company' OR user_id = ?)`,
+      params
+    );
+
+    if (!result.affectedRows) {
+      throw new Error('账号不存在或当前用户不可修改');
+    }
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+/**
  * 功能描述：获取所有已绑定的账号列表。
  * @param {string} companyId - 企业 ID
  * @param {string} userId - 飞书用户 ID
@@ -577,9 +683,162 @@ async function saveError(error) {
   );
 }
 
+/**
+ * 功能描述：创建一条同步执行日志，记录飞书触发的一次 records 请求开始。
+ * @param {object} log 同步日志基础信息
+ * @return {Promise<void>} 无返回值
+ */
+async function createSyncLog(log) {
+  const companyId = log.companyId || 'default';
+  await pool.query(
+    `INSERT INTO sync_logs (
+      log_key, company_id, task_id, transaction_id, sync_module, account_name, shop_id,
+      page_token, status, started_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       task_id = VALUES(task_id),
+       transaction_id = VALUES(transaction_id),
+       sync_module = VALUES(sync_module),
+       account_name = VALUES(account_name),
+       shop_id = VALUES(shop_id),
+       page_token = VALUES(page_token),
+       status = IF(status = 'failed', status, VALUES(status)),
+       finished_at = IF(status = 'failed', finished_at, NULL),
+       error_message = IF(status = 'failed', error_message, NULL),
+       updated_at = CURRENT_TIMESTAMP`,
+    [
+      log.logKey,
+      companyId,
+      log.taskId || null,
+      log.transactionId || null,
+      log.syncModule || null,
+      log.accountName || null,
+      log.shopId || null,
+      log.pageToken || null,
+      log.status || 'running',
+      log.startedAt || new Date()
+    ]
+  );
+}
+
+/**
+ * 功能描述：更新同步执行日志结果，补齐成功/失败状态及统计信息。
+ * @param {string} logKey 同步日志唯一标识
+ * @param {object} updates 需要更新的日志字段
+ * @param {string} companyId 企业 ID
+ * @return {Promise<void>} 无返回值
+ */
+async function finishSyncLog(logKey, updates = {}, companyId = 'default') {
+  const setClauses = [];
+  const params = [];
+  if (Object.prototype.hasOwnProperty.call(updates, 'status')) {
+    setClauses.push('status = ?');
+    params.push(updates.status);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'errorMessage')) {
+    setClauses.push('error_message = ?');
+    params.push(updates.errorMessage);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'finishedAt')) {
+    setClauses.push('finished_at = ?');
+    params.push(updates.finishedAt);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'recordCount')) {
+    setClauses.push('record_count = ?');
+    params.push(updates.recordCount);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'hasMore')) {
+    setClauses.push('has_more = ?');
+    params.push(updates.hasMore);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'nextPageToken')) {
+    setClauses.push('next_page_token = ?');
+    params.push(updates.nextPageToken);
+  }
+  if (updates.durationMs === 'auto' && updates.finishedAt) {
+    setClauses.push('duration_ms = ROUND(TIMESTAMPDIFF(MICROSECOND, started_at, ?) / 1000)');
+    params.push(updates.finishedAt);
+  } else if (Object.prototype.hasOwnProperty.call(updates, 'durationMs')) {
+    setClauses.push('duration_ms = ?');
+    params.push(updates.durationMs);
+  }
+
+  if (setClauses.length === 0) return;
+
+  params.push(companyId, logKey);
+  await pool.query(
+    `UPDATE sync_logs
+     SET ${setClauses.join(', ')}
+     WHERE company_id = ?
+       AND log_key = ?`,
+    params
+  );
+}
+
+/**
+ * 功能描述：读取同步执行日志，支持按状态过滤和分页。
+ * @param {string} companyId 企业 ID
+ * @param {object} options 查询选项
+ * @return {Promise<object>} 返回同步日志列表和总数
+ */
+async function listSyncLogs(companyId = 'default', options = {}) {
+  const filters = ['company_id = ?'];
+  const params = [companyId];
+
+  if (options.status) {
+    filters.push('status = ?');
+    params.push(options.status);
+  }
+
+  const pageSize = Math.min(Math.max(Number(options.pageSize || options.limit || 20), 1), 200);
+  const page = Math.max(Number(options.page || 1), 1);
+  const offset = (page - 1) * pageSize;
+
+  const [countRows] = await pool.query(
+    `SELECT COUNT(*) AS total
+     FROM sync_logs
+     WHERE ${filters.join(' AND ')}`,
+    params
+  );
+
+  const [rows] = await pool.query(
+    `SELECT id,
+            log_key AS logKey,
+            company_id AS companyId,
+            task_id AS taskId,
+            transaction_id AS transactionId,
+            sync_module AS syncModule,
+            account_name AS accountName,
+            shop_id AS shopId,
+            page_token AS pageToken,
+            next_page_token AS nextPageToken,
+            record_count AS recordCount,
+            has_more AS hasMore,
+            status,
+            error_message AS errorMessage,
+            started_at AS startedAt,
+            finished_at AS finishedAt,
+            duration_ms AS durationMs,
+            updated_at AS updatedAt
+     FROM sync_logs
+     WHERE ${filters.join(' AND ')}
+     ORDER BY started_at DESC
+     LIMIT ?
+     OFFSET ?`,
+    [...params, pageSize, offset]
+  );
+  return {
+    list: rows,
+    total: Number(countRows[0]?.total || 0),
+    page,
+    pageSize
+  };
+}
+
 module.exports = {
   initDb,
   saveAccount,
+  updateAccountById,
   getAccounts,
   setActiveAccount,
   deleteAccount,
@@ -589,6 +848,9 @@ module.exports = {
   saveTask,
   updateAccountModule,
   saveError,
+  createSyncLog,
+  finishSyncLog,
+  listSyncLogs,
   getDoudianInterfaces,
   getDoudianInterfaceByKey
 };

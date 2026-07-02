@@ -1,5 +1,215 @@
 [
   {
+    "id": "ERR_1782973276039",
+    "taskId": "TEST_1782973273795",
+    "timestamp": "2026/7/2 14:21:16",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782973173319",
+    "taskId": "TEST_1782973170979",
+    "timestamp": "2026/7/2 14:19:33",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782972973580",
+    "taskId": "TEST_1782972970615",
+    "timestamp": "2026/7/2 14:16:13",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782972914296",
+    "taskId": "TEST_1782972912491",
+    "timestamp": "2026/7/2 14:15:14",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782972910220",
+    "taskId": "TEST_1782972908312",
+    "timestamp": "2026/7/2 14:15:10",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782972905559",
+    "taskId": "TEST_1782972902721",
+    "timestamp": "2026/7/2 14:15:05",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782972867833",
+    "taskId": "TEST_1782972864784",
+    "timestamp": "2026/7/2 14:14:27",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782972671915",
+    "taskId": "TEST_1782972669553",
+    "timestamp": "2026/7/2 14:11:11",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782972665205",
+    "taskId": "TEST_1782972662588",
+    "timestamp": "2026/7/2 14:11:05",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782972630817",
+    "taskId": "TEST_1782972627858",
+    "timestamp": "2026/7/2 14:10:30",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782972529608",
+    "taskId": "TEST_1782972527523",
+    "timestamp": "2026/7/2 14:08:49",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782972020172",
+    "taskId": "TEST_1782972018120",
+    "timestamp": "2026/7/2 14:00:20",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782971979272",
+    "taskId": "TEST_1782971975946",
+    "timestamp": "2026/7/2 13:59:39",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782971913642",
+    "taskId": "TEST_1782971910382",
+    "timestamp": "2026/7/2 13:58:33",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782971669176",
+    "taskId": "TEST_1782971667031",
+    "timestamp": "2026/7/2 13:54:29",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782971651848",
+    "taskId": "TEST_1782971649656",
+    "timestamp": "2026/7/2 13:54:11",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782971621452",
+    "taskId": "TEST_1782971619046",
+    "timestamp": "2026/7/2 13:53:41",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782971433832",
+    "taskId": "TEST_1782971430964",
+    "timestamp": "2026/7/2 13:50:33",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782971415995",
+    "taskId": "TEST_1782971413672",
+    "timestamp": "2026/7/2 13:50:15",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782971104993",
+    "taskId": "TASK_17829711",
+    "timestamp": "2026/7/2 13:45:04",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782970745637",
+    "taskId": "TASK_17829707",
+    "timestamp": "2026/7/2 13:39:05",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10031] 参数错误",
+    "status": "待处理"
+  },
+  {
     "id": "ERR_1782891130993",
     "taskId": "TASK_17828911",
     "timestamp": "2026/7/1 15:32:10",

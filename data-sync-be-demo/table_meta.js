@@ -74,7 +74,7 @@ function hasEnumValueMap(field) {
  * @return {number} 返回飞书字段类型枚举
  */
 function getBitableFieldType(type) {
-  if (type === 'Number') return 2;
+  if (type === 'Number' || String(type || '').toLowerCase() === 'price') return 2;
   if (type === 'DateTime') return 5;
   if (isLinkLikeFieldType(type)) return 10;
   return 1;

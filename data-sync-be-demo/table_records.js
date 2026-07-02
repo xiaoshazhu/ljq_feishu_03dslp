@@ -82,6 +82,9 @@ const getTableRecords = async (reqBody) => {
     next_page_token: nextPageToken,
     hasMore,
     has_more: hasMore,
+    loadedCount,
+    totalCount,
+    pageNum,
     records
   };
 };
@@ -325,6 +328,9 @@ function normalizeDoudianFieldValue(value, field) {
   if (value === undefined || value === null) return '';
   const mappedValue = mapDoudianFieldValue(value, field);
   if (mappedValue !== undefined) return mappedValue;
+  if (isPriceFieldType(field.type)) {
+    return normalizePriceFieldValue(value);
+  }
   if (field.type === 'Number' || field.fieldType === 2) {
     const numericValue = Number(value);
     return Number.isNaN(numericValue) ? 0 : numericValue;
@@ -354,6 +360,26 @@ function normalizeLinkFieldValue(value, field = {}) {
     name: buildLinkDisplayName(value, field, url),
     url
   };
+}
+
+/**
+ * 功能描述：把以“分”为单位的价格字段转换成以“元”为单位的数字。
+ * @param {unknown} value 原始价格值，通常为分
+ * @return {number} 返回元单位金额，解析失败时返回 0
+ */
+function normalizePriceFieldValue(value) {
+  const numericValue = Number(value);
+  if (Number.isNaN(numericValue)) return 0;
+  return Number((numericValue / 100).toFixed(2));
+}
+
+/**
+ * 功能描述：判断字段是否为价格类型，默认按“分转元”处理。
+ * @param {string|undefined} fieldType 字段类型
+ * @return {boolean} 返回是否为价格型字段
+ */
+function isPriceFieldType(fieldType) {
+  return String(fieldType || '').toLowerCase() === 'price';
 }
 
 /**
@@ -472,7 +498,11 @@ function getDoudianInterfaceFieldValue(item, field, interfaceMeta) {
  */
 function getValueByPath(source, path) {
   if (!source || !path) return undefined;
-  return String(path).split('.').reduce((current, key) => {
+  const pathSegments = String(path)
+    .replace(/\[(\d+)\]/g, '.$1')
+    .split('.')
+    .filter(Boolean);
+  return pathSegments.reduce((current, key) => {
     if (current === undefined || current === null) return undefined;
     return current[key];
   }, source);
@@ -489,6 +519,7 @@ function getValueByPath(source, path) {
 function buildMockDoudianFieldValue(field, index, now, recordId) {
   if (field.isPrimary) return recordId;
   if (field.type === 'DateTime' || field.fieldType === 5) return now;
+  if (isPriceFieldType(field.type)) return Number((((index + 1) * 1999) / 100).toFixed(2));
   if (field.type === 'Number' || field.fieldType === 2) return index + 1;
   if (field.fieldType === 10 || isLinkLikeFieldType(field.type)) {
     return `https://example.com/doudian/${encodeURIComponent(field.key || 'file')}/${index + 1}`;

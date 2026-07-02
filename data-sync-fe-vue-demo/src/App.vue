@@ -7,12 +7,26 @@
             <div class="sidebar-header">
 
               <div class="header-tabs">
-                <button type="button" class="header-tab active">配置信息</button>
-                <button type="button" class="header-tab">账号详情</button>
+                <button
+                  type="button"
+                  class="header-tab"
+                  :class="{ active: pageTab === 'config' }"
+                  @click="pageTab = 'config'"
+                >
+                  配置信息
+                </button>
+                <button
+                  type="button"
+                  class="header-tab"
+                  :class="{ active: pageTab === 'accounts' }"
+                  @click="pageTab = 'accounts'"
+                >
+                  账号详情
+                </button>
               </div>
             </div>
 
-            <nav class="sidebar-nav">
+            <nav v-if="pageTab === 'config'" class="sidebar-nav">
               <div
                 v-for="item in navItems"
                 :key="item.key"
@@ -27,9 +41,17 @@
                 </div>
               </div>
             </nav>
+            <div v-else class="account-sidebar-panel">
+              <div class="account-sidebar-card">
+                <div class="account-sidebar-title">账号管理说明</div>
+                <div class="account-sidebar-copy">这里展示当前用户可见的全部账号，包括个人账号与企业共享账号。</div>
+              </div>
+
+            </div>
           </aside>
 
           <main
+            v-if="pageTab === 'config'"
             ref="scrollContainerRef"
             class="right-content"
             :class="{ 'dropdown-scroll-locked': isModuleDropdownOpen }"
@@ -45,50 +67,23 @@
                 <div class="account-link-text">关联账号</div>
               </div>
 
-              <div v-if="accounts.length" class="account-table-wrap">
-                <a-table
-                  :data-source="accounts"
-                  :columns="accountColumns"
-                  :pagination="false"
-                  size="small"
-                  row-key="key"
-                >
-                  <template #bodyCell="{ column, record, text }">
-                    <template v-if="column.key === 'active'">
-                      <a-radio :checked="record.isActive" @change="handleSetActiveAccount(record.key)" />
-                    </template>
-                    <template v-else-if="column.key === 'name'">
-                      <div class="account-name-cell">
-                        <div class="account-name">{{ text }}</div>
-                        <div class="account-module">{{ getAccountModuleLabel(record.module) }}</div>
-                      </div>
-                    </template>
-                    <template v-else-if="column.key === 'mode'">
-                      <span class="table-tag">{{ record.mode }}</span>
-                    </template>
-                    <template v-else-if="column.key === 'status'">
-                      <span
-                        class="table-status"
-                        :class="record.status === 'active' ? 'status-ok' : 'status-error'"
-                      >
-                        {{ record.status === 'active' ? '正常 (长效保活中)' : '凭证失效 (Cookie 过期)' }}
-                      </span>
-                    </template>
-                    <template v-else-if="column.key === 'action'">
-                      <a-space>
-                        <a @click="openAccountModal(record)">重新连接</a>
-                        <a style="color: #ff4d4f" @click="handleDeleteAccount(record)">删除</a>
-                      </a-space>
-                    </template>
-                  </template>
-                </a-table>
-              </div>
+              <CurrentAccountSummary
+                :account="currentSelectedAccount"
+                :module-label="currentSelectedAccount ? getAccountModuleLabel(currentSelectedAccount.module) : '未绑定同步模块'"
+                @manage="pageTab = 'accounts'"
+                @edit="openAccountModal"
+              />
             </section>
 
             <section id="section-datasource" class="form-section">
-              <div class="section-header">
-                <span class="section-step">2</span>
-                <span>数据源选择</span>
+              <div class="section-header between">
+                <div class="section-title-inline">
+                  <span class="section-step">2</span>
+                  <span>数据源选择</span>
+                </div>
+                <a-button size="small" :loading="isRefreshingInterfaces" @click="handleRefreshDoudianInterfaces">
+                  刷新接口配置
+                </a-button>
               </div>
               <div class="section-note">选择要同步的抖店数据源，保持当前检索方式，便于大批量接口场景使用。</div>
               <a-tree-select
@@ -123,6 +118,49 @@
                 <a-form-item label="同步时间范围" required>
                   <a-select v-model:value="dateRange" :options="dateRangeOptions" />
                 </a-form-item>
+
+                <template v-if="customQueryFields.length > 0">
+                  <a-form-item
+                    v-for="field in customQueryFields"
+                    :key="field.name"
+                    :label="field.label || field.name"
+                    :required="field.required"
+                  >
+                    <a-input-number
+                      v-if="isNumericCustomQueryField(field)"
+                      style="width: 100%"
+                      :min="field.type === 'integer' ? 0 : undefined"
+                      :precision="field.type === 'integer' ? 0 : undefined"
+                      :placeholder="field.placeholder || `请输入 ${field.label || field.name}`"
+                      :value="getNumericCustomQueryFieldValue(field.name)"
+                      @update:value="handleCustomQueryValueChange(field.name, $event)"
+                    />
+                    <a-select
+                      v-else-if="field.type === 'boolean'"
+                      style="width: 100%"
+                      :placeholder="field.placeholder || `请选择 ${field.label || field.name}`"
+                      :options="booleanCustomQueryOptions"
+                      :value="getBooleanCustomQueryFieldValue(field.name)"
+                      @update:value="handleCustomQueryValueChange(field.name, $event)"
+                    />
+                    <a-select
+                      v-else-if="Array.isArray(field.options) && field.options.length > 0"
+                      style="width: 100%"
+                      :placeholder="field.placeholder || `请选择 ${field.label || field.name}`"
+                      :options="field.options"
+                      :value="getStringCustomQueryFieldValue(field.name)"
+                      allow-clear
+                      @update:value="handleCustomQueryValueChange(field.name, $event)"
+                    />
+                    <a-input
+                      v-else
+                      :value="getStringCustomQueryFieldValue(field.name)"
+                      :placeholder="field.placeholder || `请输入 ${field.label || field.name}`"
+                      @update:value="handleCustomQueryValueChange(field.name, $event)"
+                    />
+                    <div v-if="field.helpText" class="query-field-help">{{ field.helpText }}</div>
+                  </a-form-item>
+                </template>
               </a-form>
             </section>
 
@@ -235,11 +273,31 @@
 
             </section>
           </main>
+          <main v-else class="right-content account-detail-content">
+            <AccountDetailPanel
+              :accounts="accounts"
+              :logs="syncLogs"
+              :log-status-filter="syncLogStatusFilter"
+              :log-page="syncLogPage"
+              :log-page-size="syncLogPageSize"
+              :log-total="syncLogTotal"
+              :current-user-id="userId || 'default'"
+              :get-module-label="getAccountModuleLabel"
+              @add="openAccountModal()"
+              @edit="openAccountModal"
+              @delete="handleDeleteAccount"
+              @set-active="handleSetActiveAccount"
+              @refresh-logs="fetchSyncLogs"
+              @change-log-filter="handleSyncLogFilterChange"
+              @change-log-page="handleSyncLogPageChange"
+            />
+          </main>
         </div>
 
         <div class="bottom-bar">
-          <a-button size="large" @click="handleCancel">取消</a-button>
-          <a-button size="large" type="primary" @click="handleSaveAndGoNext">创建 / 保存</a-button>
+          <a-button v-if="pageTab === 'accounts'" size="large" @click="pageTab = 'config'">返回配置</a-button>
+<!--          <a-button size="large" @click="handleCancel">取消</a-button>-->
+          <a-button v-if="pageTab === 'config'" size="large" type="primary" @click="handleSaveAndGoNext">保存</a-button>
         </div>
       </div>
 
@@ -403,7 +461,7 @@
         <div class="modal-footer">
           <a-button v-if="currentStep === 1" @click="closeAccountModal">取消</a-button>
           <a-button v-if="currentStep === 1" type="primary" @click="currentStep = 2">下一步</a-button>
-          <a-button v-if="currentStep === 2" @click="currentStep = 1">上一步</a-button>
+          <a-button v-if="currentStep === 2" @click="currentStep = 1" :disabled="reconnectingAccount">上一步</a-button>
           <a-button v-if="currentStep === 2" type="primary" @click="handleSaveAccountRelation">
             {{ reconnectingAccount ? '确认更新账号' : '确认关联并绑定' }}
           </a-button>
@@ -418,8 +476,11 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { message, } from 'ant-design-vue';
 import { bitable } from '@lark-base-open/connector-api';
 import { bridge } from '@lark-base-open/js-sdk';
-import buttonImg from '@/assets/button.png'
-import  iconImg from   '@/assets/icon.png'
+import buttonImg from './assets/button.png';
+import iconImg from './assets/icon.png';
+import AccountDetailPanel from './components/AccountDetailPanel.vue';
+import CurrentAccountSummary from './components/CurrentAccountSummary.vue';
+import type { Account, SharedAccount, SyncLog, SyncLogListResponse } from './types/account';
 import { RightOutlined } from '@ant-design/icons-vue';
 
 // 数据源字段定义：用于渲染字段映射表，也会作为保存到飞书配置中的映射来源。
@@ -427,41 +488,35 @@ interface ModuleField {
   key: string;
   label?: string;
   fieldName?: string;
-  type?: 'Text' | 'Number' | 'DateTime';
+  type?: 'Text' | 'Number' | 'DateTime' | 'price';
   defaultField?: string;
-}
-
-// 已绑定账号定义：来自后端 accounts 表，用于账号列表与同步配置 accountInfo。
-interface Account {
-  key: string;
-  name: string;
-  mode: string;
-  status: 'active' | 'expired';
-  cookie?: string;
-  shopId?: string;
-  isActive?: boolean;
-  module?: string;
-  userId?: string;
-  shareScope?: 'company' | 'private';
-}
-
-// 共享账号定义：来自企业共享账号接口，可被当前用户免密绑定复用。
-interface SharedAccount {
-  id: string;
-  key?: string;
-  name: string;
-  mode?: string;
-  status?: 'active' | 'expired';
-  cookie?: string;
-  shopId?: string;
-  module?: string;
-  shareScope?: 'company' | 'private';
 }
 
 // Ant Design Vue Select 组件的通用选项结构。
 interface BitableOption {
   value: string;
   label: string;
+}
+
+interface CustomQueryFieldOption {
+  value: string;
+  label: string;
+}
+
+interface CustomQueryField {
+  name: string;
+  label?: string;
+  type?: 'string' | 'integer' | 'number' | 'boolean';
+  required?: boolean;
+  defaultValue?: string | number | boolean;
+  placeholder?: string;
+  helpText?: string;
+  options?: CustomQueryFieldOption[];
+}
+
+interface DoudianRequestConfig {
+  extraQuery?: Record<string, unknown>;
+  customQueryFields?: CustomQueryField[];
 }
 
 // 后端抖店接口目录定义：用于动态生成模块树、字段 Schema 和接口摘要。
@@ -475,6 +530,7 @@ interface DoudianInterface {
   isEnabled: boolean;
   description?: string;
   fieldsSchema?: ModuleField[];
+  requestConfig?: DoudianRequestConfig;
 }
 
 // 模块 TreeSelect 节点定义：支持分组节点和可选叶子节点。
@@ -506,15 +562,6 @@ const BASE_MODULE_TREE_DATA: ModuleTreeNode[] = [
 
 ];
 
-// 账号表格列定义：实际渲染内容由 template 的 bodyCell 插槽控制。
-const accountColumns = [
-  { title: '启用', key: 'active', width: 60, align: 'center' },
-  { title: '账号/店铺名称', dataIndex: 'name', key: 'name' },
-  { title: '对接模式', dataIndex: 'mode', key: 'mode' },
-  { title: '凭证状态', dataIndex: 'status', key: 'status' },
-  { title: '操作', key: 'action' }
-];
-
 // 账户中心资金流水的支付通道选项。
 const payChannelOptions = [
   { value: 'aggregate', label: '聚合支付' },
@@ -535,10 +582,17 @@ const dateRangeOptions = [
   { value: '30', label: '回溯近 30 天数据（多页拉取）' }
 ];
 
+const booleanCustomQueryOptions = [
+  { value: 'true', label: '是' },
+  { value: 'false', label: '否' }
+];
+
 
 
 // 当前左侧导航高亮项。
 const activeMenu = ref('account');
+// 顶部页签：配置页或账号详情页。
+const pageTab = ref<'config' | 'accounts'>('config');
 // 当前选择的数据源平台，目前默认抖音电商。
 const platform = ref('douyin');
 // 当前飞书 Base 用户 ID，用于隔离个人账号和 Cookie 捕获缓冲。
@@ -561,6 +615,11 @@ const currentStep = ref(1);
 const accountSourceType = ref<'shared' | 'self'>('shared');
 // 企业共享账号候选列表。
 const sharedAccounts = ref<SharedAccount[]>([]);
+const syncLogs = ref<SyncLog[]>([]);
+const syncLogStatusFilter = ref<'all' | 'running' | 'success' | 'failed'>('all');
+const syncLogPage = ref(1);
+const syncLogPageSize = ref(6);
+const syncLogTotal = ref(0);
 // 当前选中的共享账号 ID。
 const selectedSharedAccountId = ref('');
 // 用户手动输入的账号/店铺显示名，优先用于账号列表展示。
@@ -577,6 +636,8 @@ const isNewAccountActive = ref(true);
 const isPolling = ref(false);
 // 是否正在测试当前抖店接口连接。
 const isTestingConnection = ref(false);
+// 是否正在刷新抖店接口目录与字段配置。
+const isRefreshingInterfaces = ref(false);
 // 模块下拉框是否打开，打开时用于锁住右侧滚动容器。
 const isModuleDropdownOpen = ref(false);
 // 书签助手捕获到的 Cookie。
@@ -607,6 +668,7 @@ const payChannel = ref('');
 const timeType = ref('');
 const customStartDate = ref('');
 const customEndDate = ref('');
+const customQueryValues = reactive<Record<string, string | number | boolean>>({});
 // 右侧滚动容器引用，用于滚动监听和导航高亮。
 const scrollContainerRef = ref<HTMLElement | null>(null);
 // Cookie 捕获轮询定时器句柄，组件卸载或停止轮询时必须清理。
@@ -616,6 +678,11 @@ let isRestoringSavedConfig = false;
 // 程序化滚动期间阻止 handleScroll 更新高亮，避免闪烁。
 let isScrollingByClick = false;
 let scrollClickTimer: ReturnType<typeof setTimeout> | null = null;
+
+// 当前配置流程使用的账号，优先展示已启用账号，没有则回退为列表第一条。
+const currentSelectedAccount = computed<Account | null>(() => (
+  accounts.value.find((account: Account) => account.isActive) || accounts.value[0] || null
+));
 
 /**
  * 功能描述：停止凭证捕获轮询并关闭顶部加载提示。
@@ -651,6 +718,10 @@ const selectedDoudianInterfaceKey = computed(() => {
 const selectedDoudianInterface = computed(() => (
   doudianInterfaces.value.find((item) => item.interfaceKey === selectedDoudianInterfaceKey.value) || null
 ));
+const customQueryFields = computed<CustomQueryField[]>(() => {
+  const fields = selectedDoudianInterface.value?.requestConfig?.customQueryFields;
+  return Array.isArray(fields) ? fields.filter((field) => Boolean(field?.name)) : [];
+});
 // 当前模块字段列表：动态接口优先使用后端 fieldsSchema，固定模块使用本地 MODULE_FIELDS。
 const currentModuleFields = computed<ModuleField[]>(() => {
   if (syncModule.value.startsWith(DOUDIAN_INTERFACE_PREFIX)) {
@@ -663,7 +734,7 @@ const currentModuleFields = computed<ModuleField[]>(() => {
 // 当前已勾选同步的字段数量。
 const selectedFieldCount = computed(() => getSelectedFieldKeys().length);
 // 共享账号 Select 选项，将共享范围拼进展示文案里。
-const sharedAccountOptions = computed(() => sharedAccounts.value.map((account) => ({
+const sharedAccountOptions = computed(() => sharedAccounts.value.map((account: SharedAccount) => ({
   value: account.id,
   label: `${account.name}${account.shareScope === 'private' ? '（仅自己可见）' : '（企业共享）'}`
 })));
@@ -705,17 +776,152 @@ function buildShopNamePrefix(rawName: string, shopId: string): string {
  */
 function resetFieldMappingByModule(): void {
   const fields = Array.isArray(currentModuleFields.value) ? currentModuleFields.value : [];
+
+  const typeMap: Record<string, string> = {
+    Text: '文本型',
+    Number: '数字型',
+    DateTime: '日期型',
+    ImageUrl: '图片型',
+    VideoUrl: '视频型',
+    price:'价格型'
+  };
+
+  const emojiMap: Record<string, string> = {
+    Text: '📝',
+    Number: '🔢',
+    DateTime: '📅',
+    ImageUrl: '🖼️',
+    VideoUrl: '🎬',
+    price:'💰'
+  };
+
   bitableFields.value = fields.map((field) => {
     const labelText = (field.label || field.fieldName || field.key).split(' (')[0];
-    const typeText = field.type === 'Text' ? '文本型' : field.type === 'Number' ? '数字型' : '日期型';
-    const emoji = field.type === 'DateTime' ? '📅' : field.type === 'Number' ? '💰' : '📝';
-    return { value: field.defaultField || field.key, label: `${emoji} ${labelText} (${typeText})` };
+
+    const type = field.type ?? 'Text';
+
+    const typeText = typeMap[type] || '未知类型';
+    const emoji = emojiMap[type] || '📌';
+
+    return {
+      value: field.defaultField || field.key,
+      label: `${emoji} ${labelText} (${typeText})`
+    };
   });
 
   Object.keys(fieldMappings).forEach((key) => delete fieldMappings[key]);
+
   fields.forEach((field) => {
     fieldMappings[field.key] = field.defaultField || field.key;
   });
+}
+
+/**
+ * 功能描述：根据当前接口的自定义 Query 字段定义重置默认值。
+ * @param {Record<string, unknown>} savedValues 已保存的自定义查询参数
+ * @return {void} 无返回值
+ */
+function resetCustomQueryValues(savedValues: Record<string, unknown> = {}): void {
+  Object.keys(customQueryValues).forEach((key) => delete customQueryValues[key]);
+  customQueryFields.value.forEach((field) => {
+    const savedValue = savedValues[field.name];
+    if (savedValue !== undefined && savedValue !== null && savedValue !== '') {
+      customQueryValues[field.name] = normalizeCustomQueryFieldValue(field, savedValue);
+      return;
+    }
+    if (field.defaultValue !== undefined && field.defaultValue !== null && field.defaultValue !== '') {
+      customQueryValues[field.name] = normalizeCustomQueryFieldValue(field, field.defaultValue);
+    }
+  });
+}
+
+/**
+ * 功能描述：判断某个自定义 Query 字段是否为数值输入。
+ * @param {CustomQueryField} field 字段定义
+ * @return {boolean} 返回是否为数值型字段
+ */
+function isNumericCustomQueryField(field: CustomQueryField): boolean {
+  return field.type === 'integer' || field.type === 'number';
+}
+
+/**
+ * 功能描述：按字段类型归一化自定义 Query 字段值。
+ * @param {CustomQueryField} field 字段定义
+ * @param {unknown} rawValue 原始输入值
+ * @return {string|number|boolean} 返回归一化后的值
+ */
+function normalizeCustomQueryFieldValue(field: CustomQueryField, rawValue: unknown): string | number | boolean {
+  if (field.type === 'boolean') {
+    return rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
+  }
+  if (field.type === 'integer') {
+    return Number.parseInt(String(rawValue), 10);
+  }
+  if (field.type === 'number') {
+    return Number(rawValue);
+  }
+  return String(rawValue);
+}
+
+/**
+ * 功能描述：获取数值型自定义 Query 字段的当前值，供 InputNumber 绑定。
+ * @param {string} fieldName 字段名
+ * @return {number|undefined} 返回数值或 undefined
+ */
+function getNumericCustomQueryFieldValue(fieldName: string): number | undefined {
+  const value = customQueryValues[fieldName];
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * 功能描述：获取布尔型自定义 Query 字段的当前值，统一转成 Select 所需字符串。
+ * @param {string} fieldName 字段名
+ * @return {string|undefined} 返回 true/false 字符串或 undefined
+ */
+function getBooleanCustomQueryFieldValue(fieldName: string): string | undefined {
+  const value = customQueryValues[fieldName];
+  return typeof value === 'boolean' ? String(value) : undefined;
+}
+
+/**
+ * 功能描述：获取字符串型自定义 Query 字段的当前值。
+ * @param {string} fieldName 字段名
+ * @return {string|undefined} 返回字符串值
+ */
+function getStringCustomQueryFieldValue(fieldName: string): string | undefined {
+  const value = customQueryValues[fieldName];
+  if (value === undefined || value === null || value === '') return undefined;
+  return String(value);
+}
+
+/**
+ * 功能描述：响应界面上自定义 Query 字段的变更。
+ * @param {string} fieldName 字段名
+ * @param {unknown} value 组件返回值
+ * @return {void} 无返回值
+ */
+function handleCustomQueryValueChange(fieldName: string, value: unknown): void {
+  if (value === undefined || value === null || value === '') {
+    delete customQueryValues[fieldName];
+    return;
+  }
+  const field = customQueryFields.value.find((item) => item.name === fieldName);
+  if (!field) {
+    customQueryValues[fieldName] = String(value);
+    return;
+  }
+  customQueryValues[fieldName] = normalizeCustomQueryFieldValue(field, value);
+}
+
+/**
+ * 功能描述：组装当前运行时需要覆盖到真实抖店请求中的 Query 参数。
+ * @return {Record<string, string|number|boolean>} 返回最终附加 Query 参数
+ */
+function buildRuntimeDoudianExtraQuery(): Record<string, string | number | boolean> {
+  return {
+    ...parseQueryText(doudianExtraQueryText.value),
+    ...customQueryValues
+  };
 }
 
 /**
@@ -755,6 +961,29 @@ async function fetchDoudianInterfaces(): Promise<void> {
     console.warn('获取抖店接口目录失败，继续使用本地基础模块', error);
     doudianInterfaces.value = [];
     moduleTreeData.value = BASE_MODULE_TREE_DATA;
+  }
+}
+
+/**
+ * 功能描述：手动刷新抖店接口目录与字段配置，避免页面继续使用旧 Schema。
+ * @return {Promise<void>} 无返回值
+ */
+async function handleRefreshDoudianInterfaces(): Promise<void> {
+  isRefreshingInterfaces.value = true;
+  try {
+    const previousModule = syncModule.value;
+    await fetchDoudianInterfaces();
+    if (previousModule) {
+      syncModule.value = previousModule;
+    }
+    resetFieldMappingByModule();
+    resetCustomQueryValues();
+    testConnectionResult.value = '';
+    message.success('已刷新接口配置，页面字段已按最新目录重载。');
+  } catch (error) {
+    message.error('刷新接口配置失败，请稍后重试。');
+  } finally {
+    isRefreshingInterfaces.value = false;
   }
 }
 
@@ -802,6 +1031,7 @@ async function fetchAccounts(): Promise<void> {
     if (!response.ok) return;
     const data = await response.json();
     const mappedList: Account[] = data.map((item: any) => ({
+      id: item.id,
       key: item.key,
       name: item.name,
       mode: item.mode,
@@ -814,7 +1044,7 @@ async function fetchAccounts(): Promise<void> {
       shareScope: item.share_scope
     }));
     accounts.value = mappedList;
-    const activeAccount = mappedList.find((account) => account.isActive);
+    const activeAccount = mappedList.find((account: Account) => account.isActive);
     if (activeAccount?.shopId) shopIdParam.value = activeAccount.shopId;
     if (activeAccount?.module?.startsWith(DOUDIAN_INTERFACE_PREFIX)) syncModule.value = activeAccount.module;
   } catch (error) {
@@ -837,6 +1067,32 @@ async function fetchSharedAccounts(): Promise<void> {
     console.warn('获取可关联账号列表失败', error);
     sharedAccounts.value = [];
     selectedSharedAccountId.value = '';
+  }
+}
+
+/**
+ * 功能描述：读取最近同步执行日志，可按状态筛选。
+ * @return {Promise<void>} 无返回值
+ */
+async function fetchSyncLogs(): Promise<void> {
+  try {
+    const params = new URLSearchParams({
+      tenantKey: tenantKey.value || 'default',
+      page: String(syncLogPage.value),
+      pageSize: String(syncLogPageSize.value)
+    });
+    if (syncLogStatusFilter.value !== 'all') {
+      params.set('status', syncLogStatusFilter.value);
+    }
+    const response = await fetch(`/api/v1/sync/logs?${params.toString()}`);
+    if (!response.ok) throw new Error('获取同步日志失败');
+    const result: SyncLogListResponse = await response.json();
+    syncLogs.value = Array.isArray(result.list) ? result.list : [];
+    syncLogTotal.value = Number(result.total || 0);
+  } catch (error) {
+    console.warn('获取同步日志失败', error);
+    syncLogs.value = [];
+    syncLogTotal.value = 0;
   }
 }
 
@@ -920,16 +1176,15 @@ function handleStartSimulatedLogin(): void {
  * @return {Promise<void>} 无返回值
  */
 async function handleSaveAccountRelation(): Promise<void> {
-  let newAccount: Account | null = null;
   const customDisplayName = accountDisplayName.value.trim();
 
   if (accountSourceType.value === 'shared') {
-    const selected = sharedAccounts.value.find((account) => account.id === selectedSharedAccountId.value);
+    const selected = sharedAccounts.value.find((account: SharedAccount) => account.id === selectedSharedAccountId.value);
     if (!selected) {
       message.error('请选择一个有效的共享账号');
       return;
     }
-    newAccount = {
+    const newAccount: Account = {
       key: selected.key || selected.id,
       name: customDisplayName || selected.name,
       mode: selected.mode || '企业共享免密',
@@ -938,25 +1193,59 @@ async function handleSaveAccountRelation(): Promise<void> {
       shopId: selected.shopId || '',
       module: selected.module || syncModule.value
     };
-  } else {
-    console.log(customDisplayName)
-    if(!customDisplayName){
+    try {
+      await fetch('/api/v1/connector/accounts/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: newAccount.key,
+          name: newAccount.name,
+          mode: newAccount.mode,
+          status: newAccount.status,
+          cookie: newAccount.cookie || '',
+          shopId: newAccount.shopId || '',
+          is_active: isNewAccountActive.value ? 1 : 0,
+          module: newAccount.module || '',
+          tenantKey: tenantKey.value || 'default',
+          userId: userId.value || 'default',
+          shareScope: selectedSharedAccountId.value
+            ? sharedAccounts.value.find((account: SharedAccount) => account.id === selectedSharedAccountId.value)?.shareScope || 'company'
+            : 'company'
+        })
+      });
+      message.success('新账号已成功绑定并存盘！');
+      await fetchAccounts();
+      closeAccountModal();
+    } catch (error) {
+      message.error('写入数据库失败');
+    }
+    return;
+  }
+
+  const existingAccount = reconnectingAccount.value;
+  if (existingAccount) {
+    if (!existingAccount.id) {
+      message.error('缺少账号 id，无法修改');
+      return;
+    }
+    if (!customDisplayName) {
       message.error('请输入账号/店铺显示名称');
       return;
     }
-    let finalCookie = capturedCookie.value || pastedCookie.value;
-    let finalShopId = capturedShopId.value;
-    let finalShopName = capturedShopName.value;
 
-    if (!finalCookie) {
+    let nextCookie = capturedCookie.value || pastedCookie.value || '';
+    let nextShopId = capturedShopId.value || '';
+    let nextNameFromCapture = capturedShopName.value || '';
+
+    if (!capturedCookie.value && !pastedCookie.value) {
       try {
         const response = await fetch(`/api/v1/connector/sources/capture-status?${getCompanyQuery()}`);
         if (response.ok) {
           const data = await response.json();
           if (data.captured && data.cookie) {
-            finalCookie = data.cookie;
-            finalShopId = data.shopId || '';
-            finalShopName = data.shopName || '已拦截抖店';
+            nextCookie = data.cookie;
+            nextShopId = data.shopId || '';
+            nextNameFromCapture = data.shopName || '';
           }
         }
       } catch (error) {
@@ -964,26 +1253,95 @@ async function handleSaveAccountRelation(): Promise<void> {
       }
     }
 
-    if (!finalCookie) {
-      message.error('请在下方登录或手动粘贴您的 Cookie 凭证！');
-      return;
+    const updatePayload: Record<string, unknown> = {
+      id: existingAccount.id,
+      name: customDisplayName,
+      shareScope: allowShare.value ? 'company' : 'private',
+      is_active: isNewAccountActive.value ? 1 : 0
+    };
+
+    if (syncModule.value) {
+      updatePayload.module = syncModule.value;
     }
 
-    const match = finalCookie.match(/shop_id=(\d+)/) || finalCookie.match(/shop_id_str=(\d+)/);
-    const displayShopId = finalShopId || (match ? match[1] : reconnectingAccount.value?.shopId || '手动录入');
-    const shopNamePrefix = buildShopNamePrefix(finalShopName, displayShopId);
-    const moduleLabel = getAccountModuleLabel(syncModule.value);
-    newAccount = {
-      key: reconnectingAccount.value?.key || `self_${Date.now()}`,
-      name: customDisplayName || reconnectingAccount.value?.name || `${shopNamePrefix} / ${moduleLabel}`,
-      mode: '模拟登录',
-      status: 'active',
-      cookie: finalCookie,
-      shopId: displayShopId,
-      module: reconnectingAccount.value?.module || syncModule.value,
-      shareScope: reconnectingAccount.value?.shareScope
-    };
+    if (nextCookie) {
+      const match = nextCookie.match(/shop_id=(\d+)/) || nextCookie.match(/shop_id_str=(\d+)/);
+      const nextResolvedShopId = nextShopId || (match ? match[1] : '');
+      updatePayload.cookie = nextCookie;
+      updatePayload.status = 'active';
+      if (nextResolvedShopId) {
+        updatePayload.shopId = nextResolvedShopId;
+      }
+      if (nextNameFromCapture && !customDisplayName) {
+        const moduleLabel = getAccountModuleLabel(syncModule.value);
+        const shopNamePrefix = buildShopNamePrefix(nextNameFromCapture, nextResolvedShopId || existingAccount.shopId || '手动录入');
+        updatePayload.name = `${shopNamePrefix} / ${moduleLabel}`;
+      }
+    }
+
+    try {
+      await fetch('/api/v1/connector/accounts/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...updatePayload,
+          tenantKey: tenantKey.value || 'default',
+          userId: userId.value || 'default'
+        })
+      });
+      message.success('账号信息已更新！');
+      await fetchAccounts();
+      closeAccountModal();
+    } catch (error) {
+      message.error('更新账号失败');
+    }
+    return;
   }
+
+  if (!customDisplayName) {
+    message.error('请输入账号/店铺显示名称');
+    return;
+  }
+
+  let finalCookie = capturedCookie.value || pastedCookie.value;
+  let finalShopId = capturedShopId.value;
+  let finalShopName = capturedShopName.value;
+
+  if (!finalCookie) {
+    try {
+      const response = await fetch(`/api/v1/connector/sources/capture-status?${getCompanyQuery()}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.captured && data.cookie) {
+          finalCookie = data.cookie;
+          finalShopId = data.shopId || '';
+          finalShopName = data.shopName || '已拦截抖店';
+        }
+      }
+    } catch (error) {
+      console.error('最后尝试获取凭证失败', error);
+    }
+  }
+
+  if (!finalCookie) {
+    message.error('请在下方登录或手动粘贴您的 Cookie 凭证！');
+    return;
+  }
+
+  const match = finalCookie.match(/shop_id=(\d+)/) || finalCookie.match(/shop_id_str=(\d+)/);
+  const displayShopId = finalShopId || (match ? match[1] : '手动录入');
+  const shopNamePrefix = buildShopNamePrefix(finalShopName, displayShopId);
+  const moduleLabel = getAccountModuleLabel(syncModule.value);
+  const newAccount: Account = {
+    key: `self_${Date.now()}`,
+    name: customDisplayName || `${shopNamePrefix} / ${moduleLabel}`,
+    mode: '模拟登录',
+    status: 'active',
+    cookie: finalCookie,
+    shopId: displayShopId,
+    module: syncModule.value,
+    shareScope: allowShare.value ? 'company' : 'private'
+  };
 
   try {
     await fetch('/api/v1/connector/accounts/add', {
@@ -1000,19 +1358,27 @@ async function handleSaveAccountRelation(): Promise<void> {
         module: newAccount.module || '',
         tenantKey: tenantKey.value || 'default',
         userId: userId.value || 'default',
-        shareScope: accountSourceType.value === 'shared'
-          ? (selectedSharedAccountId.value
-            ? sharedAccounts.value.find((account) => account.id === selectedSharedAccountId.value)?.shareScope || 'company'
-            : 'company')
-          : (newAccount.shareScope || (allowShare.value ? 'company' : 'private'))
+        shareScope: newAccount.shareScope || (allowShare.value ? 'company' : 'private')
       })
     });
-    message.success(reconnectingAccount.value ? '账号凭证已更新！' : '新账号已成功绑定并存盘！');
+    message.success('新账号已成功绑定并存盘！');
     await fetchAccounts();
     closeAccountModal();
   } catch (error) {
     message.error('写入数据库失败');
   }
+}
+
+function handleSyncLogFilterChange(value: unknown): void {
+  syncLogStatusFilter.value = (typeof value === 'string' ? value : 'all') as 'all' | 'running' | 'success' | 'failed';
+  syncLogPage.value = 1;
+  fetchSyncLogs();
+}
+
+function handleSyncLogPageChange(payload: { page: number; pageSize: number }): void {
+  syncLogPage.value = payload.page;
+  syncLogPageSize.value = payload.pageSize;
+  fetchSyncLogs();
 }
 
 /**
@@ -1047,8 +1413,7 @@ async function handleSetActiveAccount(key: string): Promise<void> {
  */
 async function handleDeleteAccount(account: Account): Promise<void> {
   if (String(account.userId || '') !== String(userId.value || 'default')) {
-    accounts.value = accounts.value.filter((item) => item.key !== account.key);
-    message.info('已从当前页面移除该共享账号，下次进入仍可重新选择');
+    message.warning('只有创建该账号的用户才能删除');
     return;
   }
 
@@ -1169,7 +1534,7 @@ async function handleTestConnection(): Promise<void> {
         syncModule: syncModule.value,
         doudianInterface: buildSelectedDoudianInterfaceConfig(),
         shopIdParam: shopIdParam.value,
-        doudianExtraQuery: parseQueryText(doudianExtraQueryText.value)
+        doudianExtraQuery: buildRuntimeDoudianExtraQuery()
       })
     });
     const result = await response.json();
@@ -1210,13 +1575,13 @@ async function handleSaveAndGoNext(): Promise<void> {
     return;
   }
 
-  const activeAccount = accounts.value.find((account) => account.isActive) || accounts.value[0];
+  const activeAccount = accounts.value.find((account: Account) => account.isActive) || accounts.value[0];
   const config = {
     platform: platform.value,
     syncModule: syncModule.value,
     doudianInterfaceKey: selectedDoudianInterfaceKey.value,
     doudianInterface: buildSelectedDoudianInterfaceConfig(),
-    doudianExtraQuery: parseQueryText(doudianExtraQueryText.value),
+    doudianExtraQuery: buildRuntimeDoudianExtraQuery(),
     shopIdParam: shopIdParam.value,
     dateRange: dateRange.value,
     fieldMappings: { ...fieldMappings },
@@ -1401,6 +1766,7 @@ function showDragBookmarkTip(): void {
 watch(syncModule, () => {
   if (isRestoringSavedConfig) return;
   resetFieldMappingByModule();
+  resetCustomQueryValues();
 });
 
 // 根据轮询开关创建或销毁定时器，集中管理 Cookie 捕获状态查询。
@@ -1411,6 +1777,12 @@ watch(isPolling, (polling) => {
   } else if (pollingTimer) {
     window.clearInterval(pollingTimer);
     pollingTimer = null;
+  }
+});
+
+watch(pageTab, (tab) => {
+  if (tab === 'accounts') {
+    fetchSyncLogs();
   }
 });
 
@@ -1439,8 +1811,13 @@ onMounted(async () => {
         timeType.value = config.timeType || timeType.value;
         customStartDate.value = config.customStartDate || customStartDate.value;
         customEndDate.value = config.customEndDate || customEndDate.value;
+        resetCustomQueryValues(config.doudianExtraQuery || {});
         if (config.doudianExtraQuery) {
-          doudianExtraQueryText.value = new URLSearchParams(config.doudianExtraQuery).toString();
+          const remainingExtraQuery = { ...config.doudianExtraQuery };
+          customQueryFields.value.forEach((field) => {
+            delete remainingExtraQuery[field.name];
+          });
+          doudianExtraQueryText.value = new URLSearchParams(remainingExtraQuery).toString();
         }
         if (Array.isArray(config.selectedFieldKeys)) {
           Object.keys(fieldMappings).forEach((key) => delete fieldMappings[key]);
@@ -1471,7 +1848,7 @@ onMounted(async () => {
     } catch (error) {
       tenantKey.value = 'unknown';
     }
-    await Promise.all([fetchAccounts(), fetchSharedAccounts()]);
+    await Promise.all([fetchAccounts(), fetchSharedAccounts(), fetchSyncLogs()]);
   } finally {
     isInitializing.value = false;
   }
