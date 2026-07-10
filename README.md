@@ -71,9 +71,91 @@
 >
 > **接下来我们要开发哪个新功能？**
 
+## 数据同步插件接口选择到同步成功流程
+1. 前端配置台先调用 `GET /api/v1/connector/doudian-interfaces`，读取数据库 `doudian_interfaces` 中 `is_enabled = 1` 的接口目录。
+2. 用户在配置台选择接口后，前端把 `doudianInterface` 快照、字段映射、时间范围、账号信息等一起保存到飞书 `datasourceConfig.value`。
+3. 飞书触发 `POST /api/table_meta` 时，后端按 `syncModule -> interface_key` 查数据库，并将 `fields_schema` 转成飞书可识别的表结构。
+4. 飞书触发 `POST /api/records` 时，后端会先按 `companyId + userId` 从数据库刷新最新账号 Cookie，再按 `request_config` 组装真实请求。
+5. 如果接口配置了 `local_aggregate_path`，则先进入本地聚合接口；本地聚合接口再根据多来源参数继续请求真实抖店接口。
+6. 真实接口响应返回后，后端先按 `request_config.listPaths` 提取列表，再依据 `fields_schema[].sourcePath` 把字段映射成飞书 records。
+7. 如果响应列表项本身是 JSON 字符串，可在数据库打开“列表项 JSON 解析”开关，后端会先把每一项 `JSON.parse` 再做字段映射。
+8. 当分页结束且 `hasMore = false` 时，本轮同步完成；若 Cookie 失效并返回 `10008`，后续轮询会重新走数据库中的最新账号凭证。
+
+## 接口配置速查表
+`doudian_interfaces.request_config` 常用字段如下，全部写在数据库 JSON 中：
+
+| 字段 | 作用 | 示例 |
+| --- | --- | --- |
+| `method` | 真实接口请求方法 | `"GET"` / `"POST"` |
+| `contentType` | POST 请求体编码方式 | `"application/json;charset=UTF-8"` |
+| `pageParam` | 页码参数名 | `"page"` |
+| `pageSizeParam` | 分页大小参数名 | `"pageSize"` / `"size"` |
+| `pageStart` | 起始页码 | `0` / `1` |
+| `pageSize` | 普通直连接口默认单页大小 | `100` |
+| `pagination` | 是否启用分页参数 | `true` / `false` |
+| `listPaths` | 响应列表路径数组 | `["data.list"]` |
+| `totalPaths` | 响应总数字段路径数组 | `["data.total"]` |
+| `extraQuery` | 静态请求参数，GET 会拼到 query，POST 会并入基础参数 | `{"req_source":"dou_dian_pc"}` |
+| `extraBody` | 仅 POST body 追加的静态参数 | `{"scene":"settlement"}` |
+| `extraHeaders` | 额外请求头 | `{"X-Requested-With":"XMLHttpRequest"}` |
+| `referer` | 自定义 Referer | `"https://fxg.jinritemai.com/"` |
+| `includeOriginHeader` | POST 时是否补 `Origin` | `true` |
+| `dateRangeMapping` / `syncTimeRangeMapping` | 时间范围字段映射 | `{"startTime":"start_time","endTime":"end_time","format":"timestamp_ms"}` |
+| `parseListItemJson` | 是否把列表每一项按 JSON 字符串解析，默认 `false` | `true` |
+| `listItemFormat` | 列表项格式开关，写 `"json"` 或 `"json_string"` 时也会触发解析 | `"json_string"` |
+
+列表项为普通对象时，无需配置 JSON 解析；只有接口返回类似下面这种字符串列表时才需要开启：
+
+```json
+{
+  "listPaths": ["data"],
+  "parseListItemJson": true
+}
+```
+
+```json
+[
+  "{\"order_id\":\"6926380170248355402\",\"pay_type\":\"PA\"}"
+]
+```
+
+开启后，后端会先将列表项解析成对象，再按 `fields_schema.sourcePath` 正常取值，例如：
+
+```json
+[
+  { "key": "order_id", "sourcePath": "order_id" },
+  { "key": "pay_type", "sourcePath": "pay_type" }
+]
+```
+
+字段类型里如果写了 `type: "percentage"`，后端会把原始小数比例转成飞书文本列可直接展示的百分比字符串。例如：
+
+```json
+{
+  "key": "ctr",
+  "type": "percentage",
+  "fieldName": "点击率",
+  "sourcePath": "ctr",
+  "defaultField": "col_ctr"
+}
+```
+
+当真实值为 `0.03958` 时，写入飞书的仍然是文本列，但值会被格式化成 `3.96%`。如需调整保留位数，可额外配置 `percentageDigits`，默认保留 2 位小数。
+
 ---
 
 # 4. 项目开发更新日志 (Project Changelog)
+
+## [2026-07-06] 百分比文本字段支持
+*   **功能更新与文档同步**：
+    *   **新增 percentage 字段格式化**：当 `fields_schema` 中字段类型配置为 `percentage` 时，后端会将 0~1 的小数比例转成百分比文本，例如 `0.03958 -> 3.96%`，便于直接写入飞书文本列展示。
+    *   **支持自定义小数位数**：字段可选配置 `percentageDigits` 控制保留位数，默认 2 位。
+
+## [2026-07-06] 接口配置文档补充与列表项 JSON 解析开关
+*   **功能更新与文档同步**：
+    *   **新增接口配置速查表**：在 README 中补充 `doudian_interfaces.request_config` 的常用字段说明，覆盖分页、静态参数、Headers、时间范围映射等数据库配置方式。
+    *   **补充同步成功链路说明**：新增“数据同步插件接口选择到同步成功流程”，描述从接口目录选择、飞书 `table_meta` / `records` 调用到真实抖店请求与分页结束的完整链路。
+    *   **新增列表项 JSON 字符串解析开关文档**：明确支持通过 `parseListItemJson=true` 或 `listItemFormat=json_string` 控制是否将列表中的 JSON 字符串项自动解析为对象，默认不开启，避免影响普通接口。
 
 ## [2026-06-29] 抖店店铺接口目录入库与可选同步入口
 *   **功能更新与架构调整**：

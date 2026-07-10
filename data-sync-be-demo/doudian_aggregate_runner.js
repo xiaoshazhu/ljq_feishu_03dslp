@@ -13,13 +13,21 @@ if (fetch && fetch.default) {
 async function runDoudianAggregate(req, options) {
   const body = req.body || {};
   const pageSize = clampNumber(body.pageSize || body.maxPageSize, 1, 1000, options.defaultPageSize || 100);
+  const fixedApiPageSize = Number.isFinite(Number(options.fixedApiPageSize))
+    ? Number(options.fixedApiPageSize)
+    : null;
   const apiPageSize = clampNumber(
-    getFirstNonEmpty(body.params?.[options.pageSizeParam || 'size'], body.params?.pageSize, body.pageSize),
+    fixedApiPageSize ?? getFirstNonEmpty(body.params?.[options.pageSizeParam || 'size'], body.params?.pageSize, body.pageSize),
     1,
     options.maxApiPageSize || 200,
-    options.defaultApiPageSize || 100
+    fixedApiPageSize ?? (options.defaultApiPageSize || 100)
   );
-  const pageStart = Number(getFirstNonEmpty(body.params?.[options.pageParam || 'page'], options.pageStart, 0));
+  const fixedApiPage = Number.isFinite(Number(options.fixedApiPage))
+    ? Number(options.fixedApiPage)
+    : null;
+  const pageStart = Number(
+    fixedApiPage ?? getFirstNonEmpty(body.params?.[options.pageParam || 'page'], options.pageStart, 0)
+  );
   const sources = normalizeSources(options.sources);
   const cursor = parseAggregateToken(body.aggregatePageToken, options.tokenPrefix, pageStart);
   const list = [];
@@ -48,7 +56,7 @@ async function runDoudianAggregate(req, options) {
     }
 
     cursor.itemOffset = 0;
-    if (pageResult.list.length < apiPageSize) {
+    if (fixedApiPage !== null || pageResult.list.length < apiPageSize) {
       cursor.sourceIndex += 1;
       cursor.page = pageStart;
     } else {
@@ -120,6 +128,14 @@ async function fetchDoudianAggregatePage(req, body, options, source, page, pageS
   }
 
   const delayMs = getRequestDelayMs(options);
+  console.log('[Doudian Aggregate Request]', JSON.stringify({
+    sourceKey: source.key,
+    sourceLabel: source.label,
+    method,
+    url: requestUrlObj.toString(),
+    headers: sanitizeAggregateHeaders(fetchOptions.headers || {}),
+    body: fetchOptions.body || null
+  }));
   console.log(`[Doudian Aggregate] 聚合来源 ${source.key} 请求前延迟 ${delayMs}ms，降低连续调用风控风险`);
   await sleep(delayMs);
 
@@ -132,13 +148,22 @@ async function fetchDoudianAggregatePage(req, body, options, source, page, pageS
     throw new Error(`DoudianAggregateNonJson: HTTP ${response.status}, snippet=${responseText.substring(0, 160)}`);
   }
 
-  const errCode = String(resJson.code ?? resJson.errorCode ?? '');
-  if (errCode && errCode !== '0' && errCode !== '200') {
-    throw new Error(`DoudianAggregateAPIError: [code=${errCode}] ${resJson.message || resJson.msg || '接口返回错误'}`);
+  const errCode = getAggregateResponseCode(resJson, options);
+  const errMessage = getAggregateResponseMessage(resJson, options);
+  if (!isSuccessfulAggregateCode(errCode, options)) {
+    throw new Error(`DoudianAggregateAPIError: [code=${errCode}] ${errMessage || '接口返回错误'}; request=${JSON.stringify({
+      sourceKey: source.key,
+      method,
+      url: requestUrlObj.toString(),
+      body: fetchOptions.body || null
+    })}`);
   }
-
+ console.log(requestUrlObj.toString())
   return {
-    list: extractListByPaths(resJson, options.listPaths || [])
+    list: normalizeAggregateListItems(
+      extractListByPaths(resJson, options.listPaths || []),
+      options
+    )
   };
 }
 
@@ -163,6 +188,33 @@ function getRequestDelayMs(options = {}) {
  */
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 功能描述：脱敏聚合请求头，避免完整打印 Cookie。
+ * @param {object} headers 原始请求头
+ * @return {object} 返回适合日志输出的请求头
+ */
+function sanitizeAggregateHeaders(headers) {
+  const safeHeaders = { ...(headers || {}) };
+  if (safeHeaders.Cookie) {
+    safeHeaders.Cookie = maskSensitiveValue(String(safeHeaders.Cookie));
+  }
+  if (safeHeaders.cookie) {
+    safeHeaders.cookie = maskSensitiveValue(String(safeHeaders.cookie));
+  }
+  return safeHeaders;
+}
+
+/**
+ * 功能描述：对敏感字符串做中间脱敏。
+ * @param {string} value 原始值
+ * @return {string} 返回脱敏结果
+ */
+function maskSensitiveValue(value) {
+  const text = String(value || '');
+  if (text.length <= 24) return text;
+  return `${text.slice(0, 12)}...${text.slice(-12)} (len=${text.length})`;
 }
 
 /**
@@ -254,6 +306,87 @@ function extractFirstArray(value) {
     if (found.length > 0) return found;
   }
   return [];
+}
+
+/**
+ * 功能描述：根据本地聚合配置决定是否把列表项从 JSON 字符串解析为对象。
+ * 默认不解析，仅当 parseListItemJson=true 或 listItemFormat=json/json_string 时启用。
+ * @param {Array} list 原始列表
+ * @param {object} options 聚合配置
+ * @return {Array} 返回归一化后的列表
+ */
+function normalizeAggregateListItems(list, options = {}) {
+  const format = String(options.listItemFormat || '').toLowerCase();
+  const shouldParseJson = options.parseListItemJson === true || format === 'json' || format === 'json_string';
+  if (!shouldParseJson) return Array.isArray(list) ? list : [];
+
+  return (Array.isArray(list) ? list : []).map((item) => {
+    if (typeof item !== 'string') return item;
+    const text = item.trim();
+    if (!text.startsWith('{') && !text.startsWith('[')) return item;
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      return item;
+    }
+  });
+}
+
+/**
+ * 功能描述：按本地聚合配置判断当前响应码是否属于成功响应。
+ * 默认兼容 0、200、100000，也支持 options.successCodes 自定义覆盖。
+ * @param {string} code 接口返回 code
+ * @param {object} options 聚合配置
+ * @return {boolean} 返回是否成功
+ */
+function isSuccessfulAggregateCode(code, options = {}) {
+  const normalizedCode = String(code || '').trim();
+  if (!normalizedCode) return true;
+  const configuredCodes = Array.isArray(options.successCodes)
+    ? options.successCodes.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+  const successCodes = configuredCodes.length > 0 ? configuredCodes : ['0', '200', '100000'];
+  return successCodes.includes(normalizedCode);
+}
+
+/**
+ * 功能描述：按本地聚合配置提取响应状态码，兼容 ret_code / BaseResp.StatusCode 等非标准字段。
+ * @param {object} resJson 接口响应 JSON
+ * @param {object} options 聚合配置
+ * @return {string} 返回状态码字符串
+ */
+function getAggregateResponseCode(resJson, options = {}) {
+  const candidatePaths = Array.isArray(options.responseCodePaths) && options.responseCodePaths.length > 0
+    ? options.responseCodePaths
+    : ['code', 'errorCode'];
+
+  for (const path of candidatePaths) {
+    const value = getValueByPath(resJson, path);
+    if (value !== undefined && value !== null && value !== '') {
+      return String(value);
+    }
+  }
+  return '';
+}
+
+/**
+ * 功能描述：按本地聚合配置提取响应错误信息，兼容 ret_message / BaseResp.StatusMessage 等字段。
+ * @param {object} resJson 接口响应 JSON
+ * @param {object} options 聚合配置
+ * @return {string} 返回错误消息
+ */
+function getAggregateResponseMessage(resJson, options = {}) {
+  const candidatePaths = Array.isArray(options.responseMessagePaths) && options.responseMessagePaths.length > 0
+    ? options.responseMessagePaths
+    : ['message', 'msg'];
+
+  for (const path of candidatePaths) {
+    const value = getValueByPath(resJson, path);
+    if (value !== undefined && value !== null && value !== '') {
+      return String(value);
+    }
+  }
+  return '';
 }
 
 /**

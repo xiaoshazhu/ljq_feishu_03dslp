@@ -1,5 +1,1425 @@
 [
   {
+    "id": "ERR_1783664088749",
+    "taskId": "TASK_17836640",
+    "timestamp": "2026/7/10 14:14:48",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=602740002] 服务编码不允许为空",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783661707568",
+    "taskId": "TASK_17836617",
+    "timestamp": "2026/7/10 13:35:07",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10001] 系统错误，请重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783661603741",
+    "taskId": "TASK_17836616",
+    "timestamp": "2026/7/10 13:33:23",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10001] 系统错误，请重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783330643774",
+    "taskId": "TASK_17833306",
+    "timestamp": "2026/7/6 17:37:23",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateNonJson: HTTP 500, snippet=Internal Server Error",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783329555207",
+    "taskId": "TASK_17833295",
+    "timestamp": "2026/7/6 17:19:15",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=602500602] 参数非法",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783321354126",
+    "taskId": "TASK_17833213",
+    "timestamp": "2026/7/6 15:02:34",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: Request with GET/HEAD method cannot have body",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783320920016",
+    "taskId": "TASK_17833209",
+    "timestamp": "2026/7/6 14:55:20",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: SubjectListNonJson: HTTP 404, snippet=404 page not found",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783317069720",
+    "taskId": "TASK_17833170",
+    "timestamp": "2026/7/6 13:51:09",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: page size; request={\"sourceKey\":\"pa_2404\",\"method\":\"POST\",\"url\":\"https://fxg.jinritemai.com/settlement/account/queryAccountFlows?req_source=dou_dian_pc\",\"body\":\"start_time=1780761600000&end_time=1783353599999&page=1&pageSize=1000&merchant_uid=7291551609760710657&uid_type=2404&member_type=2\"}",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783316992225",
+    "taskId": "TASK_17833169",
+    "timestamp": "2026/7/6 13:49:52",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: page size; request={\"sourceKey\":\"pa_2404\",\"method\":\"POST\",\"url\":\"https://fxg.jinritemai.com/settlement/account/queryAccountFlows?req_source=dou_dian_pc\",\"body\":\"start_time=1780761600000&end_time=1783353599999&page=1&pageSize=1000&merchant_uid=7291551609760710657&uid_type=2404&member_type=2\"}",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783316405270",
+    "taskId": "TASK_17833164",
+    "timestamp": "2026/7/6 13:40:05",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=100000] success",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783316289170",
+    "taskId": "TASK_17833162",
+    "timestamp": "2026/7/6 13:38:09",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=100000] success",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783316014599",
+    "taskId": "TASK_17833160",
+    "timestamp": "2026/7/6 13:33:34",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=100000] success",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783315940389",
+    "taskId": "TASK_17833159",
+    "timestamp": "2026/7/6 13:32:20",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=100000] success",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783308837609",
+    "taskId": "TASK_17833088",
+    "timestamp": "2026/7/6 11:33:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783308473175",
+    "taskId": "TASK_17833084",
+    "timestamp": "2026/7/6 11:27:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783308420690",
+    "taskId": "TASK_17833084",
+    "timestamp": "2026/7/6 11:27:00",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=, snippet=",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783308361566",
+    "taskId": "TASK_17833083",
+    "timestamp": "2026/7/6 11:26:01",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783308038201",
+    "taskId": "TASK_17833080",
+    "timestamp": "2026/7/6 11:20:38",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: page size; request={\"sourceKey\":\"pa_2404\",\"method\":\"POST\",\"url\":\"https://fxg.jinritemai.com/settlement/account/queryAccountFlows?req_source=dou_dian_pc\",\"body\":\"start_time=1780761600000&end_time=1783353599999&page=1&pageSize=1000&merchant_uid=7291551609760710657&uid_type=2404&member_type=2\"}",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783307627399",
+    "taskId": "TASK_17833076",
+    "timestamp": "2026/7/6 11:13:47",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: page size; request={\"sourceKey\":\"pa_2404\",\"method\":\"POST\",\"url\":\"https://fxg.jinritemai.com/settlement/account/queryAccountFlows?req_source=dou_dian_pc\",\"body\":\"start_time=1780761600000&end_time=1783353599999&page=1&pageSize=1000&merchant_uid=7291551609760710657&uid_type=2404&member_type=2\"}",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783307392271",
+    "taskId": "TASK_17833073",
+    "timestamp": "2026/7/6 11:09:52",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783307275790",
+    "taskId": "TASK_17833072",
+    "timestamp": "2026/7/6 11:07:55",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783306751700",
+    "taskId": "TASK_17833067",
+    "timestamp": "2026/7/6 10:59:11",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: invalid uid type ; request={\"sourceKey\":\"pa_2404\",\"method\":\"POST\",\"url\":\"https://fxg.jinritemai.com/settlement/account/queryAccountFlows?req_source=dou_dian_pc\",\"body\":\"{\\\"start_time\\\":1780761600000,\\\"end_time\\\":1783353599999,\\\"page\\\":1,\\\"pageSize\\\":100,\\\"merchant_uid\\\":\\\"7291551609760710657\\\",\\\"uid_type\\\":2404,\\\"member_type\\\":2}\"}",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783306570918",
+    "taskId": "TASK_17833065",
+    "timestamp": "2026/7/6 10:56:10",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: invalid uid type ; request={\"sourceKey\":\"pa_2404\",\"method\":\"POST\",\"url\":\"https://fxg.jinritemai.com/settlement/account/queryAccountFlows?req_source=dou_dian_pc\",\"body\":\"{\\\"start_date\\\":1780761600000,\\\"end_date\\\":1783353599999,\\\"page\\\":1,\\\"pageSize\\\":100,\\\"merchant_uid\\\":\\\"7291551609760710657\\\",\\\"uid_type\\\":2404,\\\"member_type\\\":2}\"}",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783306394028",
+    "taskId": "TASK_17833063",
+    "timestamp": "2026/7/6 10:53:14",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: invalid uid type ; request={\"sourceKey\":\"pa_2404\",\"method\":\"POST\",\"url\":\"https://fxg.jinritemai.com/settlement/account/queryAccountFlows?req_source=dou_dian_pc\",\"body\":\"{\\\"start_date\\\":1780761600000,\\\"end_date\\\":1783353599999,\\\"page\\\":1,\\\"pageSize\\\":100,\\\"merchant_uid\\\":\\\"7291551609760710657\\\",\\\"uid_type\\\":2404,\\\"member_type\\\":2,\\\"channel_type\\\":\\\"PA\\\",\\\"account_desc\\\":\\\"聚合支付账户\\\"}\"}",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783306267366",
+    "taskId": "TASK_17833062",
+    "timestamp": "2026/7/6 10:51:07",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783306131646",
+    "taskId": "TASK_17833061",
+    "timestamp": "2026/7/6 10:48:51",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 406, contentType=text/plain; charset=utf-8, snippet=fxg_no_login_10008",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783306131142",
+    "taskId": "TASK_17833061",
+    "timestamp": "2026/7/6 10:48:51",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783306130829",
+    "taskId": "TASK_17833061",
+    "timestamp": "2026/7/6 10:48:50",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 406, contentType=text/plain; charset=utf-8, snippet=fxg_no_login_10008",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783306110506",
+    "taskId": "TASK_17833061",
+    "timestamp": "2026/7/6 10:48:30",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783306074826",
+    "taskId": "TASK_17833060",
+    "timestamp": "2026/7/6 10:47:54",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 406, contentType=text/plain; charset=utf-8, snippet=fxg_no_login_10008",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783306074471",
+    "taskId": "TASK_17833060",
+    "timestamp": "2026/7/6 10:47:54",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 406, contentType=text/plain; charset=utf-8, snippet=fxg_no_login_10008",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783305962070",
+    "taskId": "TASK_17833059",
+    "timestamp": "2026/7/6 10:46:02",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783305909972",
+    "taskId": "TASK_17833059",
+    "timestamp": "2026/7/6 10:45:09",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783305892431",
+    "taskId": "TASK_17833058",
+    "timestamp": "2026/7/6 10:44:52",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783305775209",
+    "taskId": "TASK_17833057",
+    "timestamp": "2026/7/6 10:42:55",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 406, contentType=text/plain; charset=utf-8, snippet=fxg_no_login_10008",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783305533268",
+    "taskId": "TASK_17833055",
+    "timestamp": "2026/7/6 10:38:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783305522715",
+    "taskId": "TASK_17833055",
+    "timestamp": "2026/7/6 10:38:42",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783305515956",
+    "taskId": "TASK_17833055",
+    "timestamp": "2026/7/6 10:38:35",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783305345392",
+    "taskId": "TASK_17833053",
+    "timestamp": "2026/7/6 10:35:45",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783305263776",
+    "taskId": "TASK_17833052",
+    "timestamp": "2026/7/6 10:34:23",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783305199396",
+    "taskId": "TASK_17833051",
+    "timestamp": "2026/7/6 10:33:19",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783304993486",
+    "taskId": "TASK_17833049",
+    "timestamp": "2026/7/6 10:29:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783304875960",
+    "taskId": "TASK_17833048",
+    "timestamp": "2026/7/6 10:27:55",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783304785701",
+    "taskId": "TASK_17833047",
+    "timestamp": "2026/7/6 10:26:25",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783304758698",
+    "taskId": "TASK_17833047",
+    "timestamp": "2026/7/6 10:25:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783304662918",
+    "taskId": "TEST_1783304656816",
+    "timestamp": "2026/7/6 10:24:22",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=500] 本地聚合接口调用失败: DoudianAggregateAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783304577594",
+    "taskId": "TASK_17833045",
+    "timestamp": "2026/7/6 10:22:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783303870721",
+    "taskId": "TASK_17833038",
+    "timestamp": "2026/7/6 10:11:10",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783303809410",
+    "taskId": "TASK_17833038",
+    "timestamp": "2026/7/6 10:10:09",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783303718544",
+    "taskId": "TASK_17833037",
+    "timestamp": "2026/7/6 10:08:38",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302932598",
+    "taskId": "TEST_1783302929959",
+    "timestamp": "2026/7/6 09:55:32",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302826237",
+    "taskId": "TEST_1783302823168",
+    "timestamp": "2026/7/6 09:53:46",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302811824",
+    "taskId": "TEST_1783302808949",
+    "timestamp": "2026/7/6 09:53:31",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302664658",
+    "taskId": "TASK_17833026",
+    "timestamp": "2026/7/6 09:51:04",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302534045",
+    "taskId": "TASK_17833025",
+    "timestamp": "2026/7/6 09:48:54",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 406, contentType=text/plain; charset=utf-8, snippet=fxg_no_login_10008",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302533925",
+    "taskId": "TASK_17833025",
+    "timestamp": "2026/7/6 09:48:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302533168",
+    "taskId": "TASK_17833025",
+    "timestamp": "2026/7/6 09:48:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 406, contentType=text/plain; charset=utf-8, snippet=fxg_no_login_10008",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302506561",
+    "taskId": "TASK_17833025",
+    "timestamp": "2026/7/6 09:48:26",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 406, contentType=text/plain; charset=utf-8, snippet=fxg_no_login_10008",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302473567",
+    "taskId": "TASK_17833024",
+    "timestamp": "2026/7/6 09:47:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 406, contentType=text/plain; charset=utf-8, snippet=fxg_no_login_10008",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302364567",
+    "taskId": "TASK_17833023",
+    "timestamp": "2026/7/6 09:46:04",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302289531",
+    "taskId": "TASK_17833022",
+    "timestamp": "2026/7/6 09:44:49",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "凭证失效(Cookie过期)",
+    "errorMessage": "抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783302172194",
+    "taskId": "TASK_17833021",
+    "timestamp": "2026/7/6 09:42:52",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 406, contentType=text/plain; charset=utf-8, snippet=fxg_no_login_10008",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783300260563",
+    "taskId": "TASK_17833002",
+    "timestamp": "2026/7/6 09:11:00",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783296659115",
+    "taskId": "TASK_17832966",
+    "timestamp": "2026/7/6 08:10:59",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783293053180",
+    "taskId": "TASK_17832930",
+    "timestamp": "2026/7/6 07:10:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783289451186",
+    "taskId": "TASK_17832894",
+    "timestamp": "2026/7/6 06:10:51",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783285850975",
+    "taskId": "TASK_17832858",
+    "timestamp": "2026/7/6 05:10:50",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783282251125",
+    "taskId": "TASK_17832822",
+    "timestamp": "2026/7/6 04:10:51",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783278653511",
+    "taskId": "TASK_17832786",
+    "timestamp": "2026/7/6 03:10:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783275053765",
+    "taskId": "TASK_17832750",
+    "timestamp": "2026/7/6 02:10:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783271455142",
+    "taskId": "TASK_17832714",
+    "timestamp": "2026/7/6 01:10:55",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783267857036",
+    "taskId": "TASK_17832678",
+    "timestamp": "2026/7/6 00:10:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783264255163",
+    "taskId": "TASK_17832642",
+    "timestamp": "2026/7/5 23:10:55",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783260656529",
+    "taskId": "TASK_17832606",
+    "timestamp": "2026/7/5 22:10:56",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783257057282",
+    "taskId": "TASK_17832570",
+    "timestamp": "2026/7/5 21:10:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783253456182",
+    "taskId": "TASK_17832534",
+    "timestamp": "2026/7/5 20:10:56",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783249858419",
+    "taskId": "TASK_17832498",
+    "timestamp": "2026/7/5 19:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783246256710",
+    "taskId": "TASK_17832462",
+    "timestamp": "2026/7/5 18:10:56",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783242660970",
+    "taskId": "TASK_17832426",
+    "timestamp": "2026/7/5 17:11:00",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783239058980",
+    "taskId": "TASK_17832390",
+    "timestamp": "2026/7/5 16:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783235458160",
+    "taskId": "TASK_17832354",
+    "timestamp": "2026/7/5 15:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783231858295",
+    "taskId": "TASK_17832318",
+    "timestamp": "2026/7/5 14:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783228253186",
+    "taskId": "TASK_17832282",
+    "timestamp": "2026/7/5 13:10:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783224660241",
+    "taskId": "TASK_17832246",
+    "timestamp": "2026/7/5 12:11:00",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783221058461",
+    "taskId": "TASK_17832210",
+    "timestamp": "2026/7/5 11:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783217461031",
+    "taskId": "TASK_17832174",
+    "timestamp": "2026/7/5 10:11:01",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783213855488",
+    "taskId": "TASK_17832138",
+    "timestamp": "2026/7/5 09:10:55",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783210254838",
+    "taskId": "TASK_17832102",
+    "timestamp": "2026/7/5 08:10:54",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783206652489",
+    "taskId": "TASK_17832066",
+    "timestamp": "2026/7/5 07:10:52",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783203051658",
+    "taskId": "TASK_17832030",
+    "timestamp": "2026/7/5 06:10:51",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783199451753",
+    "taskId": "TASK_17831994",
+    "timestamp": "2026/7/5 05:10:51",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783195853708",
+    "taskId": "TASK_17831958",
+    "timestamp": "2026/7/5 04:10:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783192253254",
+    "taskId": "TASK_17831922",
+    "timestamp": "2026/7/5 03:10:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783188657406",
+    "taskId": "TASK_17831886",
+    "timestamp": "2026/7/5 02:10:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783185058192",
+    "taskId": "TASK_17831850",
+    "timestamp": "2026/7/5 01:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783181457194",
+    "taskId": "TASK_17831814",
+    "timestamp": "2026/7/5 00:10:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783177860534",
+    "taskId": "TASK_17831778",
+    "timestamp": "2026/7/4 23:11:00",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783174257620",
+    "taskId": "TASK_17831742",
+    "timestamp": "2026/7/4 22:10:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783170660529",
+    "taskId": "TASK_17831706",
+    "timestamp": "2026/7/4 21:11:00",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783167057003",
+    "taskId": "TASK_17831670",
+    "timestamp": "2026/7/4 20:10:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783163455492",
+    "taskId": "TASK_17831634",
+    "timestamp": "2026/7/4 19:10:55",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783159885277",
+    "taskId": "TASK_17831598",
+    "timestamp": "2026/7/4 18:11:25",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783156256042",
+    "taskId": "TASK_17831562",
+    "timestamp": "2026/7/4 17:10:56",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783152658091",
+    "taskId": "TASK_17831526",
+    "timestamp": "2026/7/4 16:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783149057431",
+    "taskId": "TASK_17831490",
+    "timestamp": "2026/7/4 15:10:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783145458087",
+    "taskId": "TASK_17831454",
+    "timestamp": "2026/7/4 14:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783141859687",
+    "taskId": "TASK_17831418",
+    "timestamp": "2026/7/4 13:10:59",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783138279339",
+    "taskId": "TASK_17831382",
+    "timestamp": "2026/7/4 12:11:19",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783134659305",
+    "taskId": "TASK_17831346",
+    "timestamp": "2026/7/4 11:10:59",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783131059164",
+    "taskId": "TASK_17831310",
+    "timestamp": "2026/7/4 10:10:59",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783127457149",
+    "taskId": "TASK_17831274",
+    "timestamp": "2026/7/4 09:10:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783123853295",
+    "taskId": "TASK_17831238",
+    "timestamp": "2026/7/4 08:10:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783120253435",
+    "taskId": "TASK_17831202",
+    "timestamp": "2026/7/4 07:10:53",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783116651006",
+    "taskId": "TASK_17831166",
+    "timestamp": "2026/7/4 06:10:51",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783113049868",
+    "taskId": "TASK_17831130",
+    "timestamp": "2026/7/4 05:10:49",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783109452811",
+    "taskId": "TASK_17831094",
+    "timestamp": "2026/7/4 04:10:52",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783105851610",
+    "taskId": "TASK_17831058",
+    "timestamp": "2026/7/4 03:10:51",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783102255454",
+    "taskId": "TASK_17831022",
+    "timestamp": "2026/7/4 02:10:55",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783098658127",
+    "taskId": "TASK_17830986",
+    "timestamp": "2026/7/4 01:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783095059449",
+    "taskId": "TASK_17830950",
+    "timestamp": "2026/7/4 00:10:59",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783091457102",
+    "taskId": "TASK_17830914",
+    "timestamp": "2026/7/3 23:10:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783087862049",
+    "taskId": "TASK_17830878",
+    "timestamp": "2026/7/3 22:11:02",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783084257909",
+    "taskId": "TASK_17830842",
+    "timestamp": "2026/7/3 21:10:57",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783080654038",
+    "taskId": "TASK_17830806",
+    "timestamp": "2026/7/3 20:10:54",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783077060965",
+    "taskId": "TASK_17830770",
+    "timestamp": "2026/7/3 19:11:00",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783073463510",
+    "taskId": "TASK_17830734",
+    "timestamp": "2026/7/3 18:11:03",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783066263831",
+    "taskId": "TASK_17830662",
+    "timestamp": "2026/7/3 16:11:03",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783062663838",
+    "taskId": "TASK_17830626",
+    "timestamp": "2026/7/3 15:11:03",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783059066310",
+    "taskId": "TASK_17830590",
+    "timestamp": "2026/7/3 14:11:06",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783055456783",
+    "taskId": "TASK_17830554",
+    "timestamp": "2026/7/3 13:10:56",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783051856290",
+    "taskId": "TASK_17830518",
+    "timestamp": "2026/7/3 12:10:56",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1783048264576",
+    "taskId": "TASK_17830482",
+    "timestamp": "2026/7/3 11:11:04",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782997858019",
+    "taskId": "TASK_17829978",
+    "timestamp": "2026/7/2 21:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782994256812",
+    "taskId": "TASK_17829942",
+    "timestamp": "2026/7/2 20:10:56",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782990658245",
+    "taskId": "TASK_17829906",
+    "timestamp": "2026/7/2 19:10:58",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782987007143",
+    "taskId": "TASK_17829870",
+    "timestamp": "2026/7/2 18:10:07",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=10011] 参数错误: invalid uid type ",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782985608566",
+    "taskId": "TEST_1782985605210",
+    "timestamp": "2026/7/2 17:46:48",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=30001] 查询流水失败，请稍后重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782985386687",
+    "taskId": "TASK_17829853",
+    "timestamp": "2026/7/2 17:43:06",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=30001] 查询流水失败，请稍后重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782985166539",
+    "taskId": "TASK_17829851",
+    "timestamp": "2026/7/2 17:39:26",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=30001] 查询流水失败，请稍后重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782985141083",
+    "taskId": "TASK_17829851",
+    "timestamp": "2026/7/2 17:39:01",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=30001] 查询流水失败，请稍后重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782985135269",
+    "taskId": "TASK_17829851",
+    "timestamp": "2026/7/2 17:38:55",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "接口500报错",
+    "errorMessage": "DoudianAPIError: [code=30001] 查询流水失败，请稍后重试",
+    "status": "待处理"
+  },
+  {
+    "id": "ERR_1782981622324",
+    "taskId": "TASK_17829816",
+    "timestamp": "2026/7/2 16:40:22",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=text/plain, snippet=404 page not found",
+    "status": "待处理"
+  },
+  {
     "id": "ERR_1782973276039",
     "taskId": "TEST_1782973273795",
     "timestamp": "2026/7/2 14:21:16",

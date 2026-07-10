@@ -4,6 +4,10 @@
  */
 
 const express = require('express');
+let fetch = require('node-fetch');
+if (fetch && fetch.default) {
+  fetch = fetch.default;
+}
 const { runDoudianAggregate } = require('./doudian_aggregate_runner.js');
 
 const doudianLocalAggregateRouter = express.Router();
@@ -14,13 +18,6 @@ const doudianLocalAggregateRouter = express.Router();
  * /demo
  */
 doudianLocalAggregateRouter.post('/demo', handleDemoAggregateRequest);
-
-/**
- * 功能描述：账户流水聚合接口 demo。后续 queryAccountFlows 三种参数聚合逻辑就在这个方法里替换。
- * 数据库 local_aggregate_path 可配置为：
- * /account-flows
- */
-doudianLocalAggregateRouter.post('/account-flows', handleAccountFlowsAggregateRequest);
 
 /**
  * 品牌资质列表
@@ -36,6 +33,44 @@ doudianLocalAggregateRouter.post('/account-flows', handleAccountFlowsAggregateRe
  * /local/center/qualification/brand/list
  */
 doudianLocalAggregateRouter.post('/local/center/qualification/brand/list', handleBrandQualificationBrandListAggregateRequest);
+/**
+ * 功能描述：账户流水聚合接口 demo。后续 queryAccountFlows 三种参数聚合逻辑就在这个方法里替换。
+ * 数据库 local_aggregate_path 可配置为：
+ * member_type、merchant_uid、uid_type、都需要从 https://fxg.jinritemai.com/account/center/getAccountList?req_source=dou_dian_pc的配置里拿到
+ */
+doudianLocalAggregateRouter.post('/local/settlement/account/queryAccountFlows', handleAccountFlowsAggregateRequest);
+
+/**
+ * 本地聚合接口  因为需要调用前置接口 https://fxg.jinritemai.com/api/ecomfinance/subject/list 拿到
+ * {
+ *    "ret_code": "0000",
+ *    "ret_message": "查询成功",
+ *    "ret_data": {
+ *        "subject_list": [
+ *            {
+ *                "CreditCode": "91540000710914616Q",
+ *                "CompanyName": "西藏高原安生物科技开发有限公司",
+ *                "ExpireTimeUnix": 0,
+ *                "IsNewSubject": true,
+ *                "HasPendingPlatformInvoiceBill": false,
+ *                "HasPendingMerchantInvoiceBill": true
+ *            }
+ *        ]
+ *    },
+ *    "BaseResp": {
+ *        "StatusMessage": "",
+ *        "StatusCode": 0
+ *    }
+ * } 里的CreditCode 然后当作参数发送过去 credit_code
+ */
+doudianLocalAggregateRouter.post('/local/api/ecomfinance/platform/invoice/record/list', handlePlatformInvoiceRecordAggregateRequest);
+
+/**
+ * 商品成长优化+新潮新品专项成长
+ * /local/api/business_product/strategy/query_product_page_v2
+ * scene 6   scene2
+ */
+doudianLocalAggregateRouter.post('/local/api/business_product/strategy/query_product_page_v2', handleQueryProductStrategyV2);
 
 /**
  * 功能描述：处理本地聚合 demo 请求。
@@ -47,12 +82,45 @@ async function handleDemoAggregateRequest(req, res) {
 }
 
 /**
- * 功能描述：处理账户流水本地聚合请求，目前先复用 demo 聚合游标逻辑。
+ * 功能描述：处理余额明细  （聚合、微信、抖音）
  * @param {object} req Express 请求
  * @param {object} res Express 响应
+ * member_type、merchant_uid、uid_type、都需要从 https://fxg.jinritemai.com/account/center/getAccountList?req_source=dou_dian_pc的配置里拿到
+ * https://fxg.jinritemai.com/account/center/getAccountList?req_source=dou_dian_pc 里放在 data.account_list
+ *
+ *
  */
 async function handleAccountFlowsAggregateRequest(req, res) {
-  await sendAggregateResponse(res, () => handleDemoAggregate(req.body));
+  await sendAggregateResponse(res, async () => {
+    const accountSources = await loadAccountFlowsAggregateSources(req);
+    console.log('[AccountFlows Aggregate Sources]', JSON.stringify(accountSources));
+    return runDoudianAggregate(req, {
+      tokenPrefix: 'accountflows',
+      apiPath: 'https://fxg.jinritemai.com/settlement/account/queryAccountFlows?req_source=dou_dian_pc',
+      method: 'POST',
+      pageParam: 'page',
+      pageSizeParam: 'pageSize',
+      pageStart: 1,
+      defaultPageSize: 1000,
+      defaultApiPageSize: 1000,
+      maxApiPageSize: 1000,
+      minDelayMs: 1500,
+      maxDelayMs: 3000,
+      contentType: 'application/x-www-form-urlencoded;charset=UTF-8',
+      listPaths: [
+        'data',
+      ],
+      sources: accountSources,
+      decorateItem(item, source) {
+        return {
+          ...item,
+          merchant_uid: source.params.merchant_uid,
+          uid_type: source.params.uid_type,
+          member_type: source.params.member_type,
+        };
+      }
+    });
+  });
 }
 
 /**
@@ -103,6 +171,87 @@ async function handleBrandQualificationBrandListAggregateRequest(req, res) {
   }));
 }
 
+/**
+ * 功能描述：处理平台开票记录聚合请求，先调用主体列表接口拿 CreditCode，再逐主体请求真实开票记录接口。
+ * @param {object} req Express 请求
+ * @param {object} res Express 响应
+ */
+async function handlePlatformInvoiceRecordAggregateRequest(req, res) {
+  await sendAggregateResponse(res, async () => {
+    const subjectSources = await loadPlatformInvoiceRecordAggregateSources(req);
+    console.log('[PlatformInvoice Aggregate Sources]', JSON.stringify(subjectSources));
+    return runDoudianAggregate(req, {
+      tokenPrefix: 'platforminvoice',
+      apiPath: 'https://fxg.jinritemai.com/api/ecomfinance/platform/invoice/record/list',
+      method: 'GET',
+      pageParam: 'page_number',
+      pageSizeParam: 'page_size',
+      pageStart: 0,
+      defaultPageSize: 100,
+      defaultApiPageSize: 100,
+      maxApiPageSize: 1000,
+      minDelayMs: 1500,
+      maxDelayMs: 3000,
+      contentType: 'application/json;charset=UTF-8',
+      responseCodePaths: ['ret_code', 'BaseResp.StatusCode', 'code', 'errorCode'],
+      responseMessagePaths: ['ret_message', 'BaseResp.StatusMessage', 'message', 'msg'],
+      successCodes: ['0000', '0', '200', '100000'],
+      listPaths: [
+        'ret_data',
+      ],
+      sources: subjectSources,
+      decorateItem(item, source) {
+        return {
+          ...item,
+          credit_code: source.params.credit_code,
+        };
+      }
+    });
+  });
+}
+
+/**
+ * 功能描述：处理商品优化成长
+ * @param {object} req Express 请求
+ * @param {object} res Express 响应
+ */
+async function handleQueryProductStrategyV2(req, res) {
+  await sendAggregateResponse(res, async () => {
+
+    return runDoudianAggregate(req, {
+      tokenPrefix: 'platforminvoice',
+      apiPath: 'https://fxg.jinritemai.com/api/business_product/strategy/query_product_page_v2',
+      method: 'POST',
+      pageParam: 'page_index',
+      pageSizeParam: 'page_size',
+      pageStart: 1,
+      defaultPageSize: 10,
+      defaultApiPageSize: 10,
+      maxApiPageSize: 10,
+      minDelayMs: 1500,
+      maxDelayMs: 3000,
+      contentType: 'application/json;charset=UTF-8',
+      responseCodePaths: ['code'],
+      responseMessagePaths: ['ret_message', 'BaseResp.StatusMessage', 'message', 'msg'],
+      successCodes: ['0000', '0', '200', '100000'],
+      listPaths: [
+        'data.product_list',
+      ],
+      sources: [
+        { key: 'brand_scene_0', label: '新潮', params: { scene: 2,filter:{flow_task:7} } },
+        { key: 'brand_scene_4', label: '商品优化成长', params: { scene: 6,filter:{flow_task:0}} },
+
+      ],
+      decorateItem(item, source) {
+        return {
+          ...item,
+          scene: source.params.scene,
+          filter: source.params.filter,
+        };
+      }
+    });
+  });
+}
 /**
  * 功能描述：统一包装聚合接口响应格式。
  * @param {object} res Express 响应
@@ -199,26 +348,7 @@ function normalizeAggregateSources(body = {}) {
       : [];
 
   const sources = configuredSources.length > 0 ? configuredSources : [
-    {
-      key: 'alliance_pay',
-      label: '聚合支付',
-      total: 7,
-      params: { uid_type: 1, member_type: 1 }
-    },
-    {
-      key: 'wechat_pay',
-      label: '微信支付',
-      total: 4,
-      params: { uid_type: 2, member_type: 2 }
-    },
-    {
-      key: 'douyin_pay',
-      label: '抖音支付',
-      total: 0,
-      params: { uid_type: 3, member_type: 3 }
-    }
   ];
-
   return sources.map((source, index) => ({
     key: String(source.key || source.name || `source_${index + 1}`),
     label: String(source.label || source.name || source.key || `来源 ${index + 1}`),
@@ -295,6 +425,239 @@ function clampNumber(value, min, max, fallback) {
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue)) return fallback;
   return Math.max(min, Math.min(max, Math.floor(numberValue)));
+}
+
+/**
+ * 功能描述：先查询抖店账户列表，再把每个支付账户转成 queryAccountFlows 的聚合来源。
+ * @param {object} req Express 请求
+ * @return {Promise<Array<object>>} 返回聚合来源配置
+ */
+async function loadAccountFlowsAggregateSources(req) {
+  const accountList = await fetchAccountList(req);
+  const filteredList = filterAccountFlowsByRequest(accountList, req.body || {});
+
+  if (filteredList.length === 0) {
+    throw new Error('AccountListEmpty: getAccountList 未返回可用支付账户，无法聚合 queryAccountFlows');
+  }
+
+  return filteredList.map((account, index) => ({
+
+    key: buildAccountSourceKey(account, index),
+    label: String(account.account_desc || account.channel_type || `账户_${index + 1}`),
+    params: {
+      merchant_uid: String(account.merchant_uid || ''),
+      uid_type: Number(account.uid_type),
+      member_type: Number(account.member_type),
+    }
+  }));
+}
+
+/**
+ * 功能描述：先查询电商财务主体列表，再把每个主体转成 platform invoice record 的聚合来源。
+ * @param {object} req Express 请求
+ * @return {Promise<Array<object>>} 返回聚合来源配置
+ */
+async function loadPlatformInvoiceRecordAggregateSources(req) {
+  const subjectList = await fetchEcomfinanceSubjectList(req);
+  if (!Array.isArray(subjectList) || subjectList.length === 0) {
+    throw new Error('SubjectListEmpty: subject/list 未返回可用主体，无法聚合 platform/invoice/record/list');
+  }
+
+  return subjectList
+    .filter((subject) => subject && String(subject.CreditCode || '').trim())
+    .map((subject, index) => ({
+      key: `credit_${String(subject.CreditCode).trim() || index + 1}`,
+      label: String(subject.CompanyName || subject.CreditCode || `主体_${index + 1}`),
+      companyName: String(subject.CompanyName || ''),
+      params: {
+        credit_code: String(subject.CreditCode || '').trim()
+      }
+    }));
+}
+
+/**
+ * 功能描述：调用主体列表前置接口，读取 ret_data.subject_list。
+ * @param {object} req Express 请求
+ * @return {Promise<Array<object>>} 返回主体数组
+ */
+async function fetchEcomfinanceSubjectList(req) {
+  const requestUrl = 'https://fxg.jinritemai.com/api/ecomfinance/subject/list';
+  const response = await fetch(requestUrl, {
+    method: 'GET',
+    headers: {
+      Cookie: req.headers.cookie || '',
+      'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+      Accept: 'application/json, text/plain, */*',
+      'Content-Type': 'application/json;charset=UTF-8',
+      Referer: 'https://fxg.jinritemai.com/',
+      Origin: 'https://fxg.jinritemai.com'
+    },
+
+    timeout: 8000
+  });
+
+  const responseText = await response.text();
+  let resJson;
+  try {
+    resJson = JSON.parse(responseText);
+  } catch (error) {
+    throw new Error(`SubjectListNonJson: HTTP ${response.status}, snippet=${responseText.substring(0, 160)}`);
+  }
+
+  const retCode = String(resJson.ret_code ?? resJson.BaseResp?.StatusCode ?? resJson.code ?? '');
+  if (retCode && !['0000', '0', '200'].includes(retCode)) {
+    throw new Error(`SubjectListAPIError: [code=${retCode}] ${resJson.ret_message || resJson.BaseResp?.StatusMessage || resJson.message || '接口返回错误'}`);
+  }
+
+  return extractFirstArrayByPaths(resJson, [
+    'ret_data.subject_list',
+    'data.subject_list',
+    'subject_list',
+    'ret_data.list',
+    'list'
+  ]);
+}
+
+/**
+ * 功能描述：调用抖店账户列表接口，读取 data.account_list。
+ * @param {object} req Express 请求
+ * @return {Promise<Array<object>>} 返回账户数组
+ */
+async function fetchAccountList(req) {
+  const requestUrl = 'https://fxg.jinritemai.com/account/center/getAccountList?req_source=dou_dian_pc';
+  const response = await fetch(requestUrl, {
+    method: 'GET',
+    headers: {
+      Cookie: req.headers.cookie || '',
+      'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+      Accept: 'application/json, text/plain, */*',
+      Referer: 'https://fxg.jinritemai.com/',
+      Origin: 'https://fxg.jinritemai.com'
+    },
+    timeout: 8000
+  });
+
+  const responseText = await response.text();
+  let resJson;
+  try {
+    resJson = JSON.parse(responseText);
+  } catch (error) {
+    throw new Error(`AccountListNonJson: HTTP ${response.status}, snippet=${responseText.substring(0, 160)}`);
+  }
+
+  const errCode = String(resJson.code ?? resJson.errorCode ?? '');
+  if (errCode && errCode !== '0' && errCode !== '200') {
+    throw new Error(`AccountListAPIError: [code=${errCode}] ${resJson.message || resJson.msg || '接口返回错误'}`);
+  }
+
+  return extractFirstArrayByPaths(resJson, [
+    'data.account_list',
+    'account_list',
+    'data.list',
+    'list'
+  ]);
+}
+
+/**
+ * 功能描述：按请求里的可选商户 UID / 支付通道做过滤；默认聚合全部账户。
+ * @param {Array<object>} accountList 账户列表
+ * @param {object} body 聚合请求体
+ * @return {Array<object>} 返回过滤结果
+ */
+function filterAccountFlowsByRequest(accountList, body = {}) {
+  const requestedMerchantUid = String(
+    body.merchantUid || body.params?.merchant_uid || body.params?.merchantUid || ''
+  ).trim();
+  const requestedPayChannel = String(
+    body.payChannel || body.params?.payChannel || body.params?.channel_type || ''
+  ).trim().toUpperCase();
+
+  return (accountList || []).filter((account) => {
+    if (!account || !account.merchant_uid || account.uid_type === undefined || account.member_type === undefined) {
+      return false;
+    }
+    if (requestedMerchantUid && String(account.merchant_uid) !== requestedMerchantUid) {
+      return false;
+    }
+    if (requestedPayChannel && !matchesRequestedPayChannel(account, requestedPayChannel)) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * 功能描述：判断支付账户是否匹配请求中的通道筛选。
+ * @param {object} account 账户信息
+ * @param {string} requestedPayChannel 请求中的支付通道
+ * @return {boolean} 返回是否匹配
+ */
+function matchesRequestedPayChannel(account, requestedPayChannel) {
+  const aliases = new Set([
+    String(account.channel_type || '').toUpperCase(),
+    String(account.account_desc || '').toUpperCase()
+  ]);
+  const normalizedMap = {
+    AGGREGATE: ['PA', '聚合支付账户'],
+    PA: ['PA', '聚合支付账户'],
+    '聚合支付': ['PA', '聚合支付账户'],
+    WECHAT: ['WX', '微信支付账户'],
+    WX: ['WX', '微信支付账户'],
+    '微信支付': ['WX', '微信支付账户'],
+    DOUYIN: ['NEW_HZ', '抖音支付账户'],
+    NEW_HZ: ['NEW_HZ', '抖音支付账户'],
+    '抖音支付': ['NEW_HZ', '抖音支付账户']
+  };
+  (normalizedMap[requestedPayChannel] || []).forEach((alias) => aliases.add(String(alias).toUpperCase()));
+  return aliases.has(requestedPayChannel);
+}
+
+/**
+ * 功能描述：给账户来源生成稳定 key。
+ * @param {object} account 账户信息
+ * @param {number} index 下标
+ * @return {string} 返回来源 key
+ */
+function buildAccountSourceKey(account, index) {
+  const channel = String(account.channel_type || account.account_desc || `account_${index + 1}`)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return `${channel || 'account'}_${String(account.uid_type || index + 1)}`;
+}
+
+/**
+ * 功能描述：按照候选路径提取第一个数组。
+ * @param {object} source 响应 JSON
+ * @param {Array<string>} paths 候选路径
+ * @return {Array} 返回命中的数组
+ */
+function extractFirstArrayByPaths(source, paths) {
+  for (const path of paths || []) {
+    const value = getValueByPath(source, path);
+    if (Array.isArray(value)) {
+      return value;
+    }
+  }
+  return [];
+}
+
+/**
+ * 功能描述：按点分路径读取对象值。
+ * @param {object} source 源对象
+ * @param {string} path 点分路径
+ * @return {unknown} 返回命中的值
+ */
+function getValueByPath(source, path) {
+  if (!source || !path) return undefined;
+  return String(path)
+    .replace(/\[(\d+)\]/g, '.$1')
+    .split('.')
+    .filter(Boolean)
+    .reduce((current, key) => {
+      if (current === undefined || current === null) return undefined;
+      return current[key];
+    }, source);
 }
 
 module.exports = {

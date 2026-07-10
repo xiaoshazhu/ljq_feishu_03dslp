@@ -168,7 +168,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     } catch (jsonError) {
       throw new Error(`DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP ${response.status}, contentType=${contentType}, snippet=${responseText.substring(0, 160)}`);
     }
-    // console.log(`[Doudian API Response] URL: ${requestUrl}, resJson:`, JSON.stringify(resJson));
+    console.log(`[Doudian API Response] URL: ${requestUrl}`);
     
     // 校验响应内容中的未登录或受限标记
     const errCode = String(resJson.code || resJson.errorCode || '');
@@ -178,7 +178,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
       throw new Error("CredentialsExpired: 凭证失效(Cookie过期)");
     }
 
-    if (errCode && errCode !== '0' && errCode !== '200') {
+    if (!isSuccessfulResponseCode(errCode, selectedInterfaceMeta?.requestConfig || {})) {
       throw new Error(`DoudianAPIError: [code=${errCode}] ${errMsg || '接口返回错误'}`);
     }
 
@@ -199,7 +199,10 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
       }
     }
     
-    const resultList = Array.isArray(list) ? list : [];
+    const resultList = normalizeListItemsByConfig(
+      Array.isArray(list) ? list : [],
+      selectedInterfaceMeta?.requestConfig || {}
+    );
     const configuredTotal = selectedInterfaceMeta
       ? getFirstValueByPaths(resJson, selectedInterfaceMeta.requestConfig?.totalPaths || [])
       : undefined;
@@ -249,6 +252,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
  */
 function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSize = 1000, runtimeExtraQuery = {}, aggregatePageToken = '', cookie = '', userAgent = '', dateRange = '') {
   const requestConfig = interfaceMeta.requestConfig || {};
+  const paginationEnabled = requestConfig.pagination !== false;
   const contentType = requestConfig.contentType || 'application/json;charset=UTF-8';
   const requestMethod = requestConfig.method || 'POST';
   const pageParam = requestConfig.pageParam || 'page';
@@ -262,10 +266,12 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
   const baseParams = {
     ...(requestConfig.extraQuery || {}),
     ...computedDateRangeParams,
-    ...(runtimeExtraQuery || {}),
-    [pageParam]: pageValue,
-    [pageSizeParam]: pageSize
+    ...(runtimeExtraQuery || {})
   };
+  if (paginationEnabled) {
+    baseParams[pageParam] = pageValue;
+    baseParams[pageSizeParam] = pageSize;
+  }
   if (requestConfig.includeShopId) {
     baseParams.shop_id = shopId;
     baseParams.shopId = shopId;
@@ -293,10 +299,11 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
         sourceApiHost: interfaceMeta.sourceApiHost || '',
         sourceApiPath: interfaceMeta.sourceApiPath || '',
         shopId,
-        page: pageValue,
-        pageSize,
-        pageParam,
-        pageSizeParam,
+        page: paginationEnabled ? pageValue : undefined,
+        pageSize: paginationEnabled ? pageSize : undefined,
+        pageParam: paginationEnabled ? pageParam : undefined,
+        pageSizeParam: paginationEnabled ? pageSizeParam : undefined,
+        paginationEnabled,
         aggregatePageToken,
         sources: requestConfig.localAggregateSources || requestConfig.aggregateSources || [],
         params: {
@@ -427,6 +434,9 @@ function applyRequestHeaders(headers, builtRequest, requestMethod) {
  */
 function buildDateRangeQueryParams(requestConfig, dateRange) {
   const mapping = requestConfig?.dateRangeMapping || requestConfig?.syncTimeRangeMapping || null;
+  if (String(dateRange || '').trim().toLowerCase() === 'all') {
+    return {};
+  }
   const days = Number(dateRange || 0);
   if (!mapping || !Number.isFinite(days) || days <= 0) {
     return {};
@@ -669,6 +679,49 @@ function extractFirstArray(value) {
     if (found.length > 0) return found;
   }
   return [];
+}
+
+/**
+ * 功能描述：按接口 request_config 判断当前响应码是否属于成功响应。
+ * 默认兼容抖店常见成功码 0、200、100000，也支持数据库 successCodes 自定义覆盖。
+ * @param {string} code 接口返回 code
+ * @param {object} requestConfig 数据库 request_config
+ * @return {boolean} 返回是否成功
+ */
+function isSuccessfulResponseCode(code, requestConfig = {}) {
+  const normalizedCode = String(code || '').trim();
+  if (!normalizedCode) return true;
+  const configuredCodes = Array.isArray(requestConfig.successCodes)
+    ? requestConfig.successCodes.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+  const successCodes = configuredCodes.length > 0 ? configuredCodes : ['0', '200', '100000'];
+  return successCodes.includes(normalizedCode);
+}
+
+/**
+ * 功能描述：根据数据库 request_config 的开关，决定是否把列表项从 JSON 字符串解析为对象。
+ * 默认不解析，仅当 parseListItemJson=true 或 listItemFormat=json/json_string 时启用。
+ * @param {Array} list 原始列表
+ * @param {object} requestConfig 接口 request_config 配置
+ * @return {Array} 返回归一化后的列表
+ */
+function normalizeListItemsByConfig(list, requestConfig = {}) {
+  const shouldParseJson = requestConfig?.parseListItemJson === true
+    || String(requestConfig?.listItemFormat || '').toLowerCase() === 'json'
+    || String(requestConfig?.listItemFormat || '').toLowerCase() === 'json_string';
+
+  if (!shouldParseJson) return list;
+
+  return (list || []).map((item) => {
+    if (typeof item !== 'string') return item;
+    const text = item.trim();
+    if (!text.startsWith('{') && !text.startsWith('[')) return item;
+    try {
+      return JSON.parse(text);
+    } catch (error) {
+      return item;
+    }
+  });
 }
 
 /**

@@ -488,7 +488,7 @@ interface ModuleField {
   key: string;
   label?: string;
   fieldName?: string;
-  type?: 'Text' | 'Number' | 'DateTime' | 'price';
+  type?: 'Text' | 'Number' | 'DateTime' | 'price' | 'percentage';
   defaultField?: string;
 }
 
@@ -577,6 +577,7 @@ const timeTypeOptions = [
 
 // 普通模块的相对同步时间范围选项。
 const dateRangeOptions = [
+  { value: 'all', label: '全量数据（不传时间范围参数）' },
   { value: '3', label: '回溯近 3 天数据（高频增量，推荐）' },
   { value: '7', label: '回溯近 7 天数据' },
   { value: '30', label: '回溯近 30 天数据（多页拉取）' }
@@ -783,7 +784,8 @@ function resetFieldMappingByModule(): void {
     DateTime: '日期型',
     ImageUrl: '图片型',
     VideoUrl: '视频型',
-    price:'价格型'
+    price: '价格型',
+    percentage: '百分比'
   };
 
   const emojiMap: Record<string, string> = {
@@ -792,7 +794,9 @@ function resetFieldMappingByModule(): void {
     DateTime: '📅',
     ImageUrl: '🖼️',
     VideoUrl: '🎬',
-    price:'💰'
+    price: '💰',
+    percentage: '📊'
+
   };
 
   bitableFields.value = fields.map((field) => {

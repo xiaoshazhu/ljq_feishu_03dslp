@@ -1,6 +1,7 @@
 const { fetchRealDoudianData } = require('./dy_helper.js');
 const {
-  getDoudianInterfaceByKey
+  getDoudianInterfaceByKey,
+  getAccounts
 } = require('./database.js');
 const {
   isDoudianInterfaceModule,
@@ -12,9 +13,9 @@ const {
  * @param {object} reqBody 飞书同步服务发来的 POST 请求体，包含配置 JSON
  * @return {Promise<object>} 返回符合飞书 Bitable 连接协议规范的分页记录数据结构
  */
-const getTableRecords = async (reqBody) => {
+const getTableRecords = async (reqBody, context = {}) => {
   const requestContext = parseRecordsRequest(reqBody);
-  const config = requestContext.config;
+  const config = await hydrateConnectorConfigWithLatestAccount(requestContext.config, context);
   const pageToken = requestContext.pageToken;
   const maxPageSize = requestContext.maxPageSize;
 
@@ -88,6 +89,92 @@ const getTableRecords = async (reqBody) => {
     records
   };
 };
+
+/**
+ * 功能描述：每次 /api/records 同步前优先从数据库刷新账号凭证，避免飞书任务长期持有过期 Cookie。
+ * @param {object} config 飞书保存的原始配置
+ * @param {object} context 请求上下文
+ * @return {Promise<object>} 返回带最新账号凭证的配置
+ */
+async function hydrateConnectorConfigWithLatestAccount(config = {}, context = {}) {
+  const companyId = String(context.companyId || 'default');
+  const userId = String(context.userId || 'default');
+  const accountInfo = config.accountInfo && typeof config.accountInfo === 'object' ? config.accountInfo : {};
+  const currentCookie = String(accountInfo.cookie || '');
+
+  if (currentCookie.startsWith('mock_')) {
+    return config;
+  }
+
+  const accounts = await getAccounts(companyId, userId);
+  if (!Array.isArray(accounts) || accounts.length === 0) {
+    return config;
+  }
+
+  const matchedAccount = resolveLatestAccount(accounts, config);
+  if (!matchedAccount?.cookie) {
+    return config;
+  }
+
+  return {
+    ...config,
+    shopIdParam: config.shopIdParam || matchedAccount.shopId || '',
+    accountInfo: {
+      ...accountInfo,
+      key: matchedAccount.key || accountInfo.key || '',
+      id: matchedAccount.id || accountInfo.id || '',
+      name: matchedAccount.name || accountInfo.name || '',
+      mode: matchedAccount.mode || accountInfo.mode || '',
+      cookie: matchedAccount.cookie,
+      shopId: matchedAccount.shopId || accountInfo.shopId || ''
+    }
+  };
+}
+
+/**
+ * 功能描述：优先按已保存账号特征匹配数据库中的最新账号，未命中时回退到当前活跃账号。
+ * @param {Array<object>} accounts 数据库账号列表
+ * @param {object} config 飞书保存的配置
+ * @return {object|null} 返回匹配到的账号
+ */
+function resolveLatestAccount(accounts, config = {}) {
+  const accountInfo = config.accountInfo && typeof config.accountInfo === 'object' ? config.accountInfo : {};
+  const configuredShopId = String(config.shopIdParam || accountInfo.shopId || '').trim();
+  const configuredName = String(accountInfo.name || '').trim();
+  const configuredMode = String(accountInfo.mode || '').trim();
+  const configuredKey = String(accountInfo.key || accountInfo.id || '').trim();
+
+  const candidates = accounts.filter((account) => account && account.cookie);
+  if (candidates.length === 0) return null;
+
+  const byKey = configuredKey
+    ? candidates.find((account) => String(account.key || account.id || '') === configuredKey)
+    : null;
+  if (byKey) return byKey;
+
+  const byShopAndName = candidates.find((account) => (
+    configuredShopId &&
+    configuredName &&
+    String(account.shopId || '') === configuredShopId &&
+    String(account.name || '') === configuredName
+  ));
+  if (byShopAndName) return byShopAndName;
+
+  const byShop = configuredShopId
+    ? candidates.find((account) => String(account.shopId || '') === configuredShopId)
+    : null;
+  if (byShop) return byShop;
+
+  const byNameAndMode = candidates.find((account) => (
+    configuredName &&
+    configuredMode &&
+    String(account.name || '') === configuredName &&
+    String(account.mode || '') === configuredMode
+  ));
+  if (byNameAndMode) return byNameAndMode;
+
+  return candidates.find((account) => Number(account.is_active) === 1) || candidates[0];
+}
 
 /**
  * 功能描述：把一条抖店接口原始记录转换为飞书 records 协议数据。
@@ -328,6 +415,9 @@ function normalizeDoudianFieldValue(value, field) {
   if (value === undefined || value === null) return '';
   const mappedValue = mapDoudianFieldValue(value, field);
   if (mappedValue !== undefined) return mappedValue;
+  if (isPercentageFieldType(field.type)) {
+    return normalizePercentageFieldValue(value, field);
+  }
   if (isPriceFieldType(field.type)) {
     return normalizePriceFieldValue(value);
   }
@@ -374,12 +464,46 @@ function normalizePriceFieldValue(value) {
 }
 
 /**
+ * 功能描述：把小数比例字段转成文本百分比，供飞书文本列展示。
+ * 例如 0.03958 -> 3.96%。
+ * @param {unknown} value 原始比例值，通常为 0~1 小数
+ * @param {object} field 字段配置
+ * @return {string} 返回百分比字符串，解析失败时返回空字符串
+ */
+function normalizePercentageFieldValue(value, field = {}) {
+  const numericValue = Number(value);
+  if (Number.isNaN(numericValue)) return '';
+  const digits = resolvePercentageDigits(field);
+  return `${(numericValue * 100).toFixed(digits)}%`;
+}
+
+/**
  * 功能描述：判断字段是否为价格类型，默认按“分转元”处理。
  * @param {string|undefined} fieldType 字段类型
  * @return {boolean} 返回是否为价格型字段
  */
 function isPriceFieldType(fieldType) {
   return String(fieldType || '').toLowerCase() === 'price';
+}
+
+/**
+ * 功能描述：判断字段是否为百分比文本类型。
+ * @param {string|undefined} fieldType 字段类型
+ * @return {boolean} 返回是否为百分比
+ */
+function isPercentageFieldType(fieldType) {
+  return String(fieldType || '').toLowerCase() === 'percentage';
+}
+
+/**
+ * 功能描述：解析百分比保留小数位数，默认保留 2 位。
+ * @param {object} field 字段配置
+ * @return {number} 返回小数位数
+ */
+function resolvePercentageDigits(field = {}) {
+  const digits = Number(field.percentageDigits ?? field.digits ?? 2);
+  if (!Number.isFinite(digits)) return 2;
+  return Math.max(0, Math.min(6, Math.floor(digits)));
 }
 
 /**

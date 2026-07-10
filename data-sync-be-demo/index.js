@@ -116,11 +116,24 @@ app.use((req, res, next) => {
 const frontendDevServer = process.env.FRONTEND_DEV_SERVER || "http://127.0.0.1:5173";
 
 /**
- * 功能描述：检查服务状态主入口
+ * 功能描述：浏览器直接访问根路径时跳转到前端页面；非页面探活请求仍返回纯文本状态。
  * @param {object} req - Express 请求
  * @param {object} res - Express 响应
  */
 app.get("/", (req, res) => {
+  const accept = req.headers.accept || "";
+  if (accept.includes("text/html")) {
+    return res.redirect("/index.html");
+  }
+  res.send("飞书连接器后端服务正在平稳运行中！");
+});
+
+/**
+ * 功能描述：提供稳定的后端健康检查接口。
+ * @param {object} req - Express 请求
+ * @param {object} res - Express 响应
+ */
+app.get("/healthz", (req, res) => {
   res.send("飞书连接器后端服务正在平稳运行中！");
 });
 
@@ -159,7 +172,7 @@ app.get("/meta.json", (req, res) => {
  * @param {object} res - Express 响应
  */
 app.post("/api/table_meta", async (req, res) => {
-  console.log("table_meta 请求数据", req.body);
+  // console.log("table_meta 请求数据", req.body);
   const isValid = judgeEncryptSignValid(req);
   console.log("飞书加密签名验证结果：", isValid);
 
@@ -215,7 +228,10 @@ app.post("/api/records", async (req, res) => {
   }).catch((error) => console.error("创建同步日志失败:", error));
 
   try {
-    const records = await getTableRecords(req.body);
+    const records = await getTableRecords(req.body, {
+      companyId: getCompanyId(req),
+      userId: getUserId(req)
+    });
     const result = {
       code: 0,
       msg: "",
@@ -635,7 +651,7 @@ app.delete("/api/v1/connector/accounts/:key", async (req, res) => {
  * @param {object} res - Express 响应
  */
 app.post("/api/v1/sync/tasks/save", async (req, res) => {
-  console.log("保存同步任务配置", req.body);
+  // console.log("保存同步任务配置", req.body);
   const { syncModule } = req.body;
   const companyId = getCompanyId(req);
   const userId = getUserId(req);
