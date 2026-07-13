@@ -96,10 +96,14 @@ async function fetchDoudianAggregatePage(req, body, options, source, page, pageS
   const params = {
     ...(body.params || {}),
     ...(options.baseParams || {}),
-    ...(source.params || {}),
-    [pageParam]: page,
-    [pageSizeParam]: pageSize
+    ...(source.params || {})
   };
+  if (method === 'GET') {
+    params[pageParam] = page;
+    params[pageSizeParam] = pageSize;
+  } else {
+    applyPaginationParams(params, pageParam, pageSizeParam, page, pageSize);
+  }
 
   const contentType = options.contentType || 'application/json;charset=UTF-8';
   const fetchOptions = {
@@ -291,6 +295,48 @@ function getValueByPath(source, path) {
     if (current === undefined || current === null) return undefined;
     return current[key];
   }, source);
+}
+
+/**
+ * 功能描述：把分页参数写入请求体，支持 page.current 这类点分嵌套路径。
+ * @param {object} target 请求体参数对象
+ * @param {string} pageParam 页码字段或点分路径
+ * @param {string} pageSizeParam 每页大小字段或点分路径
+ * @param {number} page 当前页码
+ * @param {number} pageSize 每页大小
+ * @return {void} 无返回值
+ */
+function applyPaginationParams(target, pageParam, pageSizeParam, page, pageSize) {
+  setValueByConfigPath(target, pageParam, page);
+  setValueByConfigPath(target, pageSizeParam, pageSize);
+}
+
+/**
+ * 功能描述：按配置路径写入对象值；路径无点号时保持原来的扁平字段行为。
+ * @param {object} target 目标对象
+ * @param {string} path 字段名或点分路径，例如 page.current
+ * @param {unknown} value 要写入的值
+ * @return {void} 无返回值
+ */
+function setValueByConfigPath(target, path, value) {
+  if (!target || typeof target !== 'object' || !path) return;
+  const pathSegments = String(path)
+    .replace(/\[(\d+)\]/g, '.$1')
+    .split('.')
+    .filter(Boolean);
+  if (pathSegments.length === 0) return;
+
+  let current = target;
+  pathSegments.forEach((key, index) => {
+    if (index === pathSegments.length - 1) {
+      current[key] = value;
+      return;
+    }
+    if (!current[key] || typeof current[key] !== 'object' || Array.isArray(current[key])) {
+      current[key] = {};
+    }
+    current = current[key];
+  });
 }
 
 /**

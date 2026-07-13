@@ -1,5 +1,15 @@
 [
   {
+    "id": "ERR_1783670519746",
+    "taskId": "TASK_17836705",
+    "timestamp": "2026/7/10 16:01:59",
+    "platform": "抖音电商罗盘",
+    "shopName": "店铺_130480051",
+    "errorType": "抖店接口请求参数不完整",
+    "errorMessage": "DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP 404, contentType=, snippet=",
+    "status": "待处理"
+  },
+  {
     "id": "ERR_1783664088749",
     "taskId": "TASK_17836640",
     "timestamp": "2026/7/10 14:14:48",

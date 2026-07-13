@@ -268,7 +268,7 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
     ...computedDateRangeParams,
     ...(runtimeExtraQuery || {})
   };
-  if (paginationEnabled) {
+  if (paginationEnabled && requestMethod.toUpperCase() === 'GET') {
     baseParams[pageParam] = pageValue;
     baseParams[pageSizeParam] = pageSize;
   }
@@ -284,6 +284,11 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
   // aggregatePageToken 就是飞书本次传进 /api/records 的 pageToken，用来让聚合接口继续上次的多来源游标。
   if (interfaceMeta.useLocalAggregate) {
     const requestUrlObj = new URL(interfaceMeta.apiPath, apiHost);
+    const aggregateParams = {
+      ...baseParams,
+      ...(requestConfig.extraBody || {})
+    };
+    applyPaginationParams(aggregateParams, pageParam, pageSizeParam, pageValue, pageSize, paginationEnabled);
     return {
       requestUrl: requestUrlObj.toString(),
       requestMethod: 'POST',
@@ -306,10 +311,7 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
         paginationEnabled,
         aggregatePageToken,
         sources: requestConfig.localAggregateSources || requestConfig.aggregateSources || [],
-        params: {
-          ...baseParams,
-          ...(requestConfig.extraBody || {})
-        }
+        params: aggregateParams
       }),
       contentType: 'application/json;charset=UTF-8',
       refererHost: apiHost
@@ -343,6 +345,7 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
     ...baseParams,
     ...(requestConfig.extraBody || {})
   };
+  applyPaginationParams(bodyParams, pageParam, pageSizeParam, pageValue, pageSize, paginationEnabled);
 
   return {
     requestUrl: requestUrlObj.toString(),
@@ -356,6 +359,50 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
     referer: requestConfig.referer || '',
     includeOriginHeader: requestConfig.includeOriginHeader
   };
+}
+
+/**
+ * 功能描述：把分页参数写入请求体，支持 page.current 这类点分嵌套路径。
+ * @param {object} target 请求体参数对象
+ * @param {string} pageParam 页码字段或点分路径
+ * @param {string} pageSizeParam 每页大小字段或点分路径
+ * @param {number} pageValue 当前页码值
+ * @param {number} pageSize 每页大小
+ * @param {boolean} paginationEnabled 是否启用分页
+ * @return {void} 无返回值
+ */
+function applyPaginationParams(target, pageParam, pageSizeParam, pageValue, pageSize, paginationEnabled) {
+  if (!paginationEnabled) return;
+  setValueByConfigPath(target, pageParam, pageValue);
+  setValueByConfigPath(target, pageSizeParam, pageSize);
+}
+
+/**
+ * 功能描述：按配置路径写入对象值；路径无点号时保持原来的扁平字段行为。
+ * @param {object} target 目标对象
+ * @param {string} path 字段名或点分路径，例如 page.current
+ * @param {unknown} value 要写入的值
+ * @return {void} 无返回值
+ */
+function setValueByConfigPath(target, path, value) {
+  if (!target || typeof target !== 'object' || !path) return;
+  const pathSegments = String(path)
+    .replace(/\[(\d+)\]/g, '.$1')
+    .split('.')
+    .filter(Boolean);
+  if (pathSegments.length === 0) return;
+
+  let current = target;
+  pathSegments.forEach((key, index) => {
+    if (index === pathSegments.length - 1) {
+      current[key] = value;
+      return;
+    }
+    if (!current[key] || typeof current[key] !== 'object' || Array.isArray(current[key])) {
+      current[key] = {};
+    }
+    current = current[key];
+  });
 }
 
 /**

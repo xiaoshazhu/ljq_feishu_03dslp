@@ -81,7 +81,13 @@
                   <span class="section-step">2</span>
                   <span>数据源选择</span>
                 </div>
-                <a-button size="small" :loading="isRefreshingInterfaces" @click="handleRefreshDoudianInterfaces">
+                <a-button
+                  class="toolbar-button"
+                  size="small"
+                  :loading="isRefreshingInterfaces"
+                  @click="handleRefreshDoudianInterfaces"
+                >
+                  <template #icon><ReloadOutlined /></template>
                   刷新接口配置
                 </a-button>
               </div>
@@ -115,7 +121,7 @@
                   <span v-if="testConnectionResult" class="test-result">{{ testConnectionResult }}</span>
                 </div>
 
-                <a-form-item label="同步时间范围" required>
+                <a-form-item v-if="hasDateRangeMapping" label="同步时间范围" required>
                   <a-select v-model:value="dateRange" :options="dateRangeOptions" />
                 </a-form-item>
 
@@ -170,50 +176,61 @@
                   <span class="section-step">4</span>
                   <span>字段设置</span>
                 </div>
-                <a-space>
+                <div class="field-toolbar">
                   <span class="field-selected-count">已选择 {{ selectedFieldCount }} / {{ currentModuleFields.length }}</span>
-                  <a-button size="small" @click="handleClearFieldSelection">清空选择</a-button>
-                  <a-button type="primary" size="small" @click="handleAutoMapFields">全选并自动映射</a-button>
-                </a-space>
+                  <a-button class="toolbar-button" size="small" @click="handleClearFieldSelection">
+                    <template #icon><ClearOutlined /></template>
+                    清空
+                  </a-button>
+                  <a-button class="toolbar-button primary" type="primary" size="small" @click="handleAutoMapFields">
+                    <template #icon><CheckSquareOutlined /></template>
+                    全选映射
+                  </a-button>
+                </div>
               </div>
               <div class="section-note">配置字段映射规则</div>
-              <table class="field-map-table">
-                <thead>
-                  <tr>
-                    <th style="width: 88px">是否同步</th>
-                    <th>源数据字段</th>
-                    <th>字段类型</th>
-                    <th>目标多维表格映射列</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="field in currentModuleFields"
-                    :key="field.key"
-                    :class="{ 'field-row-disabled': !isFieldSelected(field.key) }"
-                  >
-                    <td>
-                      <a-checkbox
-                        :checked="isFieldSelected(field.key)"
-                        @change="handleFieldSyncToggle(field.key, $event.target.checked)"
-                      />
-                    </td>
-                    <td class="field-label-cell">{{ field.label }}</td>
-                    <td class="field-type-cell">{{ field.type }}</td>
-                    <td>
-                      <a-select
-                        style="width: 240px"
-                        placeholder="选择要写入的列"
-                        :value="fieldMappings[field.key]"
-                        :options="bitableFields"
-                        :disabled="!isFieldSelected(field.key)"
-                        allow-clear
-                        @change="handleFieldSelectChange(field.key, $event)"
-                      />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <div class="field-table-wrap">
+                <table class="field-map-table">
+                  <colgroup>
+                    <col class="field-col-sync" />
+                    <col class="field-col-source" />
+                    <col class="field-col-target" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>是否同步</th>
+                      <th>源数据字段</th>
+                      <th>目标多维表格映射列</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="field in currentModuleFields"
+                      :key="field.key"
+                      :class="{ 'field-row-disabled': !isFieldSelected(field.key) }"
+                    >
+                      <td>
+                        <a-checkbox
+                          :checked="isFieldSelected(field.key)"
+                          @change="handleFieldSyncToggle(field.key, $event.target.checked)"
+                        />
+                      </td>
+                      <td class="field-label-cell">{{ field.label }}</td>
+                      <td>
+                        <a-select
+                          class="field-target-select"
+                          placeholder="选择要写入的列"
+                          :value="fieldMappings[field.key]"
+                          :options="bitableFields"
+                          :disabled="!isFieldSelected(field.key)"
+                          allow-clear
+                          @change="handleFieldSelectChange(field.key, $event)"
+                        />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </section>
 
 
@@ -481,7 +498,7 @@ import iconImg from './assets/icon.png';
 import AccountDetailPanel from './components/AccountDetailPanel.vue';
 import CurrentAccountSummary from './components/CurrentAccountSummary.vue';
 import type { Account, SharedAccount, SyncLog, SyncLogListResponse } from './types/account';
-import { RightOutlined } from '@ant-design/icons-vue';
+import { CheckSquareOutlined, ClearOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons-vue';
 
 // 数据源字段定义：用于渲染字段映射表，也会作为保存到飞书配置中的映射来源。
 interface ModuleField {
@@ -514,9 +531,16 @@ interface CustomQueryField {
   options?: CustomQueryFieldOption[];
 }
 
+interface DateRangeMappingConfig {
+  startTime?: string;
+  endTime?: string;
+  format?: string;
+}
+
 interface DoudianRequestConfig {
   extraQuery?: Record<string, unknown>;
   customQueryFields?: CustomQueryField[];
+  dateRangeMapping?: DateRangeMappingConfig;
 }
 
 // 后端抖店接口目录定义：用于动态生成模块树、字段 Schema 和接口摘要。
@@ -531,6 +555,7 @@ interface DoudianInterface {
   description?: string;
   fieldsSchema?: ModuleField[];
   requestConfig?: DoudianRequestConfig;
+  detailLoaded?: boolean;
 }
 
 // 模块 TreeSelect 节点定义：支持分组节点和可选叶子节点。
@@ -606,6 +631,7 @@ const accounts = ref<Account[]>([]);
 const isInitializing = ref(true);
 // 后端返回的抖店接口目录列表。
 const doudianInterfaces = ref<DoudianInterface[]>([]);
+const doudianInterfaceDetailRequests = new Map<string, Promise<DoudianInterface | null>>();
 // 模块选择树数据，固定模块和动态抖店接口都会合并到这里。
 const moduleTreeData = ref<ModuleTreeNode[]>(BASE_MODULE_TREE_DATA);
 // 账号关联弹窗是否打开。
@@ -676,6 +702,7 @@ const scrollContainerRef = ref<HTMLElement | null>(null);
 let pollingTimer: number | null = null;
 // 恢复飞书已保存配置时，避免模块 watcher 把字段选择重置成全选。
 let isRestoringSavedConfig = false;
+let syncModuleDetailRequestId = 0;
 // 程序化滚动期间阻止 handleScroll 更新高亮，避免闪烁。
 let isScrollingByClick = false;
 let scrollClickTimer: ReturnType<typeof setTimeout> | null = null;
@@ -722,6 +749,11 @@ const selectedDoudianInterface = computed(() => (
 const customQueryFields = computed<CustomQueryField[]>(() => {
   const fields = selectedDoudianInterface.value?.requestConfig?.customQueryFields;
   return Array.isArray(fields) ? fields.filter((field) => Boolean(field?.name)) : [];
+});
+// 只有接口 request_config 显式配置 dateRangeMapping 时，才展示同步时间范围。
+const hasDateRangeMapping = computed(() => {
+  const mapping = selectedDoudianInterface.value?.requestConfig?.dateRangeMapping;
+  return Boolean(mapping && typeof mapping === 'object' && (mapping.startTime || mapping.endTime));
 });
 // 当前模块字段列表：动态接口优先使用后端 fieldsSchema，固定模块使用本地 MODULE_FIELDS。
 const currentModuleFields = computed<ModuleField[]>(() => {
@@ -929,6 +961,21 @@ function buildRuntimeDoudianExtraQuery(): Record<string, string | number | boole
 }
 
 /**
+ * 功能描述：校验 request_config.customQueryFields 中标记为必填的动态查询字段。
+ * @return {boolean} 返回是否全部已填写
+ */
+function validateRequiredCustomQueryFields(): boolean {
+  const missingField = customQueryFields.value.find((field) => {
+    if (field.required !== true) return false;
+    const value = customQueryValues[field.name];
+    return value === undefined || value === null || value === '';
+  });
+  if (!missingField) return true;
+  message.error(`请填写${missingField.label || missingField.name}`);
+  return false;
+}
+
+/**
  * 功能描述：判断某个源字段是否已被勾选进入同步范围。
  * @param {string} sourceKey 数据源字段标识
  * @return {boolean} 返回是否同步该字段
@@ -949,11 +996,23 @@ function getSelectedFieldKeys(): string[] {
 
 /**
  * 功能描述：从后端 MySQL 数据库中拉取抖店接口目录，并合并到同步模块树。
- * @return {Promise<void>} 无返回值
+ * @return {Promise<boolean>} 返回是否成功获取或保留了接口目录
  */
-async function fetchDoudianInterfaces(): Promise<void> {
+async function fetchDoudianInterfaces(): Promise<boolean> {
+  const previousInterfaces = doudianInterfaces.value;
+  const requestUrl = `/api/v1/connector/doudian-interfaces?_t=${Date.now()}`;
   try {
-    const response = await fetch('/api/v1/connector/doudian-interfaces');
+    const response = await fetch(requestUrl, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache'
+      }
+    });
+    if (response.status === 304) {
+      console.warn('抖店接口目录返回 304，继续使用当前页面已有接口目录。');
+      return true;
+    }
     if (!response.ok) throw new Error('获取接口目录失败');
     const data: DoudianInterface[] = await response.json();
     doudianInterfaces.value = data;
@@ -961,11 +1020,72 @@ async function fetchDoudianInterfaces(): Promise<void> {
     if (!syncModule.value && data[0]) {
       syncModule.value = `${DOUDIAN_INTERFACE_PREFIX}${data[0].interfaceKey}`;
     }
+    return true;
   } catch (error) {
-    console.warn('获取抖店接口目录失败，继续使用本地基础模块', error);
-    doudianInterfaces.value = [];
-    moduleTreeData.value = BASE_MODULE_TREE_DATA;
+    console.warn('获取抖店接口目录失败，继续使用当前页面已有接口目录', error);
+    doudianInterfaces.value = previousInterfaces;
+    moduleTreeData.value = previousInterfaces.length > 0
+      ? buildModuleTreeWithDoudianInterfaces(previousInterfaces)
+      : BASE_MODULE_TREE_DATA;
+    return false;
   }
+}
+
+/**
+ * 功能描述：按需读取当前选中抖店接口的完整字段与请求配置，避免列表接口返回大 JSON。
+ * @param {string} interfaceKey 抖店接口 key
+ * @return {Promise<DoudianInterface|null>} 返回接口详情
+ */
+async function fetchDoudianInterfaceDetail(interfaceKey: string): Promise<DoudianInterface | null> {
+  if (!interfaceKey) return null;
+  const existing = doudianInterfaces.value.find((item) => item.interfaceKey === interfaceKey);
+  if (existing?.detailLoaded) return existing;
+  const pending = doudianInterfaceDetailRequests.get(interfaceKey);
+  if (pending) return pending;
+
+  const request = (async () => {
+    try {
+      const response = await fetch(`/api/v1/connector/doudian-interfaces/${encodeURIComponent(interfaceKey)}?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache'
+        }
+      });
+      if (response.status === 304) {
+        return existing || null;
+      }
+      if (!response.ok) throw new Error('获取接口详情失败');
+      const detail: DoudianInterface = await response.json();
+      const nextDetail = { ...detail, detailLoaded: true };
+      const index = doudianInterfaces.value.findIndex((item) => item.interfaceKey === interfaceKey);
+      if (index >= 0) {
+        doudianInterfaces.value.splice(index, 1, {
+          ...doudianInterfaces.value[index],
+          ...nextDetail
+        });
+      } else {
+        doudianInterfaces.value.push(nextDetail);
+      }
+      return nextDetail;
+    } catch (error) {
+      console.warn('获取抖店接口详情失败', error);
+      return existing || null;
+    } finally {
+      doudianInterfaceDetailRequests.delete(interfaceKey);
+    }
+  })();
+
+  doudianInterfaceDetailRequests.set(interfaceKey, request);
+  return request;
+}
+
+/**
+ * 功能描述：确保当前选中的动态抖店接口已加载完整详情。
+ * @return {Promise<DoudianInterface|null>} 返回当前接口详情
+ */
+async function ensureSelectedDoudianInterfaceDetail(): Promise<DoudianInterface | null> {
+  return fetchDoudianInterfaceDetail(selectedDoudianInterfaceKey.value);
 }
 
 /**
@@ -976,10 +1096,13 @@ async function handleRefreshDoudianInterfaces(): Promise<void> {
   isRefreshingInterfaces.value = true;
   try {
     const previousModule = syncModule.value;
-    await fetchDoudianInterfaces();
+    doudianInterfaceDetailRequests.clear();
+    const refreshed = await fetchDoudianInterfaces();
+    if (!refreshed) throw new Error('获取接口目录失败');
     if (previousModule) {
       syncModule.value = previousModule;
     }
+    await ensureSelectedDoudianInterfaceDetail();
     resetFieldMappingByModule();
     resetCustomQueryValues();
     testConnectionResult.value = '';
@@ -1573,6 +1696,9 @@ async function handleSaveAndGoNext(): Promise<void> {
     message.error('请选择一个抖店接口！');
     return;
   }
+  if (!validateRequiredCustomQueryFields()) {
+    return;
+  }
   const selectedFieldKeys = getSelectedFieldKeys();
   if (currentModuleFields.value.length > 0 && selectedFieldKeys.length === 0) {
     message.error('请至少选择一个需要同步的字段！');
@@ -1587,7 +1713,7 @@ async function handleSaveAndGoNext(): Promise<void> {
     doudianInterface: buildSelectedDoudianInterfaceConfig(),
     doudianExtraQuery: buildRuntimeDoudianExtraQuery(),
     shopIdParam: shopIdParam.value,
-    dateRange: dateRange.value,
+    dateRange: hasDateRangeMapping.value ? dateRange.value : 'all',
     fieldMappings: { ...fieldMappings },
     selectedFieldKeys,
 
@@ -1767,8 +1893,11 @@ function showDragBookmarkTip(): void {
 }
 
 // 切换同步模块后重建字段列表和默认映射，保证字段配置区跟随模块变化。
-watch(syncModule, () => {
+watch(syncModule, async () => {
   if (isRestoringSavedConfig) return;
+  const requestId = ++syncModuleDetailRequestId;
+  await ensureSelectedDoudianInterfaceDetail();
+  if (requestId !== syncModuleDetailRequestId) return;
   resetFieldMappingByModule();
   resetCustomQueryValues();
 });
@@ -1796,6 +1925,7 @@ onMounted(async () => {
   try {
     isInitializing.value = true;
     await fetchDoudianInterfaces();
+    await ensureSelectedDoudianInterfaceDetail();
     resetFieldMappingByModule();
 
     try {
@@ -1806,6 +1936,7 @@ onMounted(async () => {
         if (config.syncModule?.startsWith(DOUDIAN_INTERFACE_PREFIX)) {
           syncModule.value = config.syncModule;
         }
+        await ensureSelectedDoudianInterfaceDetail();
         resetFieldMappingByModule();
         shopIdParam.value = config.shopIdParam || shopIdParam.value;
         dateRange.value = config.dateRange || dateRange.value;
@@ -1852,10 +1983,12 @@ onMounted(async () => {
     } catch (error) {
       tenantKey.value = 'unknown';
     }
-    await Promise.all([fetchAccounts(), fetchSharedAccounts(), fetchSyncLogs()]);
+    await Promise.all([fetchAccounts(), fetchSharedAccounts()]);
   } finally {
     isInitializing.value = false;
   }
+
+  fetchSyncLogs();
 });
 
 // 组件销毁时清理轮询定时器，避免切页后仍在后台请求捕获状态接口。

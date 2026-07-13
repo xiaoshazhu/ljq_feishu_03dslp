@@ -215,6 +215,7 @@ body {
 
 .section-header.between {
   justify-content: space-between;
+  gap: 12px;
 }
 
 .section-title-inline {
@@ -455,9 +456,67 @@ body {
   line-height: 1.5;
 }
 
+.toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border-color: #dfe5f3;
+  color: #4b5565;
+  background: #ffffff;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(31, 45, 61, 0.04);
+}
+
+.toolbar-button:hover,
+.toolbar-button:focus {
+  border-color: #8fb0ff;
+  color: #2f66e8;
+  background: #f7faff;
+}
+
+.toolbar-button.primary {
+  border-color: #3f78ff;
+  background: #3f78ff;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(63, 120, 255, 0.18);
+}
+
+.toolbar-button.primary:hover,
+.toolbar-button.primary:focus {
+  border-color: #2f66e8;
+  background: #2f66e8;
+  color: #ffffff;
+}
+
+.field-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .field-selected-count {
-  color: #8c8c8c;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: #647084;
   font-size: 12px;
+  background: #f6f8fc;
+  white-space: nowrap;
+}
+
+.field-table-wrap {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #edf0f5;
+  border-radius: 12px;
+  background: #ffffff;
 }
 
 .field-map-table {
@@ -465,25 +524,37 @@ body {
   border-collapse: separate;
   border-spacing: 0;
   background: #ffffff;
-  border: 1px solid #edf0f5;
-  border-radius: 12px;
-  overflow: hidden;
+  table-layout: fixed;
+}
+
+.field-col-sync {
+  width: 72px;
+}
+
+.field-col-source {
+  width: 32%;
+}
+
+.field-col-target {
+  width: auto;
 }
 
 .field-map-table th {
-  padding: 12px 14px;
+  padding: 12px;
   text-align: left;
   font-size: 12px;
   color: #8c8c8c;
   background: #fafbfc;
   border-bottom: 1px solid #edf0f5;
+  white-space: nowrap;
 }
 
 .field-map-table td {
-  padding: 14px;
+  padding: 13px 12px;
   border-bottom: 1px solid #f4f6fa;
   font-size: 13px;
   color: #3f3f46;
+  vertical-align: middle;
 }
 
 .field-map-table tbody tr:last-child td {
@@ -497,11 +568,14 @@ body {
 
 .field-label-cell {
   font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 
-.field-type-cell {
-  color: #8c8c8c;
-  font-size: 12px;
+.field-target-select {
+  width: 100%;
+  min-width: 0;
 }
 
 .guide-copy {

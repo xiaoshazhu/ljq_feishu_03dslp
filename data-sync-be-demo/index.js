@@ -28,8 +28,8 @@ const {
   clearCapturedBuffer,
   saveTask,
   updateAccountModule,
-  getDoudianInterfaces
-  ,
+  getDoudianInterfaces,
+  getDoudianInterfaceByKey,
   createSyncLog,
   finishSyncLog,
   listSyncLogs
@@ -511,10 +511,33 @@ app.get("/api/v1/connector/accounts", async (req, res) => {
  */
 app.get("/api/v1/connector/doudian-interfaces", async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     const list = await getDoudianInterfaces(true);
     res.status(200).json(list);
   } catch (e) {
     res.status(500).json({ code: 500, message: `获取抖店接口目录出错: ${e.message}` });
+  }
+});
+
+/**
+ * 功能描述：按接口 key 读取单个抖店接口完整配置，包含字段 Schema 与请求配置。
+ * @param {object} req - Express 请求
+ * @param {object} res - Express 响应
+ */
+app.get("/api/v1/connector/doudian-interfaces/:interfaceKey", async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    const detail = await getDoudianInterfaceByKey(req.params.interfaceKey);
+    if (!detail) {
+      return res.status(404).json({ code: 404, message: "抖店接口不存在或未启用" });
+    }
+    res.status(200).json(detail);
+  } catch (e) {
+    res.status(500).json({ code: 500, message: `获取抖店接口详情出错: ${e.message}` });
   }
 });
 
@@ -675,21 +698,7 @@ app.post("/api/v1/sync/tasks/save", async (req, res) => {
     console.error("写入 MySQL 任务配置出错:", e);
   }
 
-  // 3. 依然保留一份任务文件 (兼容性支持)
-  const taskDir = path.join(__dirname, 'data');
-  if (!fs.existsSync(taskDir)) {
-    fs.mkdirSync(taskDir, { recursive: true });
-  }
-  try {
-    fs.writeFileSync(
-      path.join(taskDir, 'tasks.json'),
-      JSON.stringify(req.body, null, 2),
-      'utf8'
-    );
-    res.status(200).json({ code: 0, message: "同步任务配置在后台存储成功" });
-  } catch (e) {
-    res.status(500).json({ code: 500, message: `保存任务配置出错: ${e.message}` });
-  }
+  res.status(200).json({ code: 0, message: "同步任务配置在后台存储成功" });
 });
 
 app.use(doudianLocalAggregateRouter);

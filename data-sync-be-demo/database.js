@@ -178,8 +178,13 @@ async function dropLegacyTables() {
  * @param {boolean} enabledOnly 是否只返回“是否接入=是”的接口
  * @return {Promise<Array>} 返回接口目录数组
  */
-async function getDoudianInterfaces(enabledOnly = true) {
+async function getDoudianInterfaces(enabledOnly = true, includeSchema = false) {
   const whereSql = enabledOnly ? 'WHERE platform = ? AND is_enabled = 1' : 'WHERE platform = ?';
+  const schemaColumns = includeSchema
+    ? `,
+            request_config AS requestConfig,
+            fields_schema AS fieldsSchema`
+    : '';
   const [rows] = await pool.query(
     `SELECT interface_key AS interfaceKey,
             platform,
@@ -189,9 +194,8 @@ async function getDoudianInterfaces(enabledOnly = true) {
             api_path AS apiPath,
             local_aggregate_path AS localAggregatePath,
             is_enabled AS isEnabled,
-            description,
-            request_config AS requestConfig,
-            fields_schema AS fieldsSchema
+            description
+            ${schemaColumns}
      FROM doudian_interfaces
      ${whereSql}
      ORDER BY module_group ASC, id ASC`,
