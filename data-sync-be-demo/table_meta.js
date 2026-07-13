@@ -5,9 +5,12 @@ const {
   isDoudianInterfaceModule,
   getInterfaceKeyFromModule
 } = require('./doudian_interface_utils.js');
+const {
+  appendConnectorFields
+} = require('./connector_fields.js');
 
 /**
- * 功能描述：获取飞书多维表格连接器的数据字段元信息，字段完全来源于 doudian_interfaces.fields_schema。
+ * 功能描述：获取飞书多维表格连接器的数据字段元信息，并追加账号名称等连接器公共字段。
  * @param {string} module 同步模块标识
  * @param {object} config 前端保存的同步配置
  * @return {object} 返回飞书多维表格定义的数据表 schema
@@ -22,10 +25,11 @@ const getTableMeta = async (module, config = {}) => {
     throw new Error(`DoudianInterfaceNotFound: 当前接口未接入或不存在 (${module})`);
   }
 
-  const fields = Array.isArray(interfaceMeta.fieldsSchema) ? interfaceMeta.fieldsSchema : [];
-  if (fields.length === 0) {
+  const interfaceFields = Array.isArray(interfaceMeta.fieldsSchema) ? interfaceMeta.fieldsSchema : [];
+  if (interfaceFields.length === 0) {
     throw new Error(`DoudianFieldsSchemaMissing: 当前接口缺少 fields_schema (${interfaceMeta.interfaceKey})`);
   }
+  const fields = appendConnectorFields(interfaceFields);
   const selectedFields = filterModuleFieldsByConfig(fields, config);
   return {
     tableName: `抖店-${interfaceMeta.interfaceName}`,
@@ -46,7 +50,8 @@ function convertModuleFieldToBitableField(field, config = {}) {
     fieldName: field.fieldName || String(field.label || field.key).replace(/\s*\(.+\)$/, ''),
     fieldType,
     isPrimary: field.isPrimary === true,
-    description: field.description || field.label || field.key
+    description: field.description || field.label || field.key,
+    isConnectorField: field.isConnectorField === true
   };
   if (fieldType === 5) {
     result.property = {
@@ -98,13 +103,16 @@ function isLinkLikeFieldType(type) {
 function filterModuleFieldsByConfig(fields, config = {}) {
   const selectedFieldKeys = normalizeSelectedFieldKeys(config.selectedFieldKeys);
   if (selectedFieldKeys) {
-    return fields.filter((field) => selectedFieldKeys.has(field.key));
+    return fields.filter((field) => field.isConnectorField || selectedFieldKeys.has(field.key));
   }
 
   const mappings = getFieldMappings(config);
   const mappingKeys = Object.keys(mappings);
   if (mappingKeys.length > 0) {
-    return fields.filter((field) => Object.prototype.hasOwnProperty.call(mappings, field.key) && Boolean(mappings[field.key]));
+    return fields.filter((field) => (
+      field.isConnectorField ||
+      (Object.prototype.hasOwnProperty.call(mappings, field.key) && Boolean(mappings[field.key]))
+    ));
   }
 
   return fields;

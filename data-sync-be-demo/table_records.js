@@ -7,6 +7,9 @@ const {
   isDoudianInterfaceModule,
   getInterfaceKeyFromModule
 } = require('./doudian_interface_utils.js');
+const {
+  ACCOUNT_NAME_FIELD
+} = require('./connector_fields.js');
 
 /**
  * 功能描述：在飞书多维表格引擎发起数据同步任务时，按 doudian_interfaces 注册表拉取并组装抖店数据。
@@ -32,6 +35,7 @@ const getTableRecords = async (reqBody, context = {}) => {
 
   const shopId = config.shopIdParam || config.accountInfo?.shopId || '';
   const cookie = config.accountInfo?.cookie || '';
+  const accountName = String(config.accountInfo?.name || '').trim();
   const mappings = config.fieldMappings || {};
   const selectedFieldKeys = normalizeSelectedFieldKeys(config.selectedFieldKeys);
   const taskId = reqBody?.taskId || reqBody?.task_id || `TASK_${Date.now().toString().substring(0, 8)}`;
@@ -56,7 +60,8 @@ const getTableRecords = async (reqBody, context = {}) => {
     fieldsSchema,
     interfaceMeta,
     mappings,
-    selectedFieldKeys
+    selectedFieldKeys,
+    accountName
   }));
 
   const aggregateHasMore = typeof rawList.hasMore === 'boolean' ? rawList.hasMore : rawList.has_more;
@@ -181,7 +186,16 @@ function resolveLatestAccount(accounts, config = {}) {
  * @param {object} options 转换上下文
  * @return {object} 返回飞书 record
  */
-function buildDoudianRecord({ item, index, pageNum, fieldsSchema, interfaceMeta, mappings, selectedFieldKeys }) {
+function buildDoudianRecord({
+  item,
+  index,
+  pageNum,
+  fieldsSchema,
+  interfaceMeta,
+  mappings,
+  selectedFieldKeys,
+  accountName
+}) {
   const primaryField = fieldsSchema.find((field) => field.isPrimary) || fieldsSchema[0];
   const recordId = primaryField
     ? getValueByPath(item, primaryField.sourcePath || primaryField.key)
@@ -198,12 +212,27 @@ function buildDoudianRecord({ item, index, pageNum, fieldsSchema, interfaceMeta,
     const rawValue = getDoudianInterfaceFieldValue(item, field, interfaceMeta);
     data[fieldId] = normalizeDoudianFieldValue(rawValue, field);
   });
+  const accountNameFieldId = resolveConnectorFieldId(mappings, ACCOUNT_NAME_FIELD);
+  data[accountNameFieldId] = accountName;
 
   return {
     primaryID: primaryId,
     primaryId,
     data
   };
+}
+
+/**
+ * 功能描述：解析连接器公共字段的目标列，公共字段不受业务字段勾选状态影响。
+ * @param {object} mappings 字段映射配置
+ * @param {object} field 连接器公共字段
+ * @return {string} 返回目标字段 ID
+ */
+function resolveConnectorFieldId(mappings, field) {
+  const mappedFieldId = mappings && typeof mappings === 'object' ? mappings[field.key] : '';
+  return typeof mappedFieldId === 'string' && mappedFieldId.trim()
+    ? mappedFieldId.trim()
+    : field.defaultField;
 }
 
 /**
@@ -413,6 +442,9 @@ function parseOptionalTimestamp(value) {
  */
 function normalizeDoudianFieldValue(value, field) {
   if (value === undefined || value === null) return '';
+  if (Array.isArray(value)) {
+    return normalizeArrayFieldValue(value, field);
+  }
   const mappedValue = mapDoudianFieldValue(value, field);
   if (mappedValue !== undefined) return mappedValue;
   if (isPercentageFieldType(field.type)) {
@@ -435,6 +467,55 @@ function normalizeDoudianFieldValue(value, field) {
     return JSON.stringify(value);
   }
   return String(value);
+}
+
+/**
+ * 功能描述：把通配路径读取到的数组值转换成飞书单元格可写入的值。
+ * @param {Array<unknown>} values 原始数组值
+ * @param {object} field 字段配置
+ * @return {unknown} 返回归一化后的字段值
+ */
+function normalizeArrayFieldValue(values, field = {}) {
+  const nonEmptyValues = flattenArray(values).filter((value) => (
+    value !== undefined &&
+    value !== null &&
+    value !== ''
+  ));
+  if (nonEmptyValues.length === 0) return '';
+
+  const arrayMode = String(field.arrayMode || '').toLowerCase();
+  if (arrayMode === 'first') {
+    return normalizeDoudianFieldValue(nonEmptyValues[0], { ...field, arrayMode: '' });
+  }
+  if (arrayMode === 'json') {
+    return JSON.stringify(nonEmptyValues);
+  }
+
+  if (isPriceFieldType(field.type)) {
+    return Number(nonEmptyValues.reduce((sum, value) => sum + normalizePriceFieldValue(value), 0).toFixed(2));
+  }
+  if (field.type === 'Number' || field.fieldType === 2 || arrayMode === 'sum') {
+    const sum = nonEmptyValues.reduce((total, value) => {
+      const numericValue = Number(value);
+      return Number.isNaN(numericValue) ? total : total + numericValue;
+    }, 0);
+    return Number(sum.toFixed(6));
+  }
+  if (field.type === 'DateTime' || field.fieldType === 5) {
+    return parseOptionalTimestamp(nonEmptyValues[0]);
+  }
+  if (field.fieldType === 10 || isLinkLikeFieldType(field.type)) {
+    return normalizeLinkFieldValue(nonEmptyValues[0], field);
+  }
+
+  const separator = field.arrayJoiner || field.joiner || '、';
+  return nonEmptyValues
+    .map((value) => {
+      const mappedValue = mapDoudianFieldValue(value, field);
+      if (mappedValue !== undefined) return mappedValue;
+      return typeof value === 'object' ? JSON.stringify(value) : String(value);
+    })
+    .join(separator);
 }
 
 /**
@@ -622,14 +703,69 @@ function getDoudianInterfaceFieldValue(item, field, interfaceMeta) {
  */
 function getValueByPath(source, path) {
   if (!source || !path) return undefined;
-  const pathSegments = String(path)
-    .replace(/\[(\d+)\]/g, '.$1')
+  const normalizedPath = String(path).trim();
+  const terminalArrayPath = normalizedPath.replace(/\[\s*(?:\*)?\s*\]\s*$/, '');
+  if (terminalArrayPath !== normalizedPath) {
+    const terminalArrayValue = getValueByPath(source, terminalArrayPath);
+    return Array.isArray(terminalArrayValue)
+      ? normalizePathResult(terminalArrayValue)
+      : undefined;
+  }
+
+  const pathSegments = normalizedPath
+    .replace(/\[\s*\*\s*\]/g, '.*')
+    .replace(/\[\s*\]/g, '.*')
+    .replace(/\[\s*(\d+)\s*\]/g, '.$1')
     .split('.')
+    .map((segment) => segment.trim())
     .filter(Boolean);
-  return pathSegments.reduce((current, key) => {
-    if (current === undefined || current === null) return undefined;
-    return current[key];
-  }, source);
+  return normalizePathResult(resolvePathSegments(source, pathSegments));
+}
+
+/**
+ * 功能描述：递归解析字段路径，支持 * 通配数组。
+ * @param {unknown} current 当前对象或数组
+ * @param {Array<string>} segments 剩余路径片段
+ * @return {unknown} 返回路径命中的值
+ */
+function resolvePathSegments(current, segments) {
+  if (current === undefined || current === null) return undefined;
+  if (segments.length === 0) return current;
+
+  const [key, ...rest] = segments;
+  if (key === '*') {
+    if (!Array.isArray(current)) return undefined;
+    return current.map((item) => resolvePathSegments(item, rest));
+  }
+
+  if (Array.isArray(current) && !Number.isInteger(Number(key))) {
+    return current.map((item) => resolvePathSegments(item, segments));
+  }
+
+  return resolvePathSegments(current[key], rest);
+}
+
+/**
+ * 功能描述：清理通配路径返回值，去掉空数组层级。
+ * @param {unknown} value 原始路径结果
+ * @return {unknown} 返回清理后的结果
+ */
+function normalizePathResult(value) {
+  if (!Array.isArray(value)) return value;
+  const flattened = flattenArray(value).filter((item) => item !== undefined && item !== null);
+  if (flattened.length === 0) return undefined;
+  return flattened;
+}
+
+/**
+ * 功能描述：递归拉平数组。
+ * @param {Array<unknown>} values 原始数组
+ * @return {Array<unknown>} 拉平后的数组
+ */
+function flattenArray(values) {
+  return values.reduce((result, value) => (
+    result.concat(Array.isArray(value) ? flattenArray(value) : value)
+  ), []);
 }
 
 /**

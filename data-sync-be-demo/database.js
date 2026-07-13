@@ -16,7 +16,10 @@ const pool = mysql.createPool({
   database: process.env.MYSQL_DATABASE || 'feishu_connector_dd',
   waitForConnections: true,
   connectionLimit: Number(process.env.MYSQL_CONNECTION_LIMIT || 10),
-  queueLimit: 0,
+  queueLimit: Number(process.env.MYSQL_QUEUE_LIMIT || 200),
+  connectTimeout: Number(process.env.MYSQL_CONNECT_TIMEOUT_MS || 5000),
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
   charset: 'utf8mb4'
 });
 

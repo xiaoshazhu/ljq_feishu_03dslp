@@ -14,6 +14,12 @@ const { getTableRecords } = require("./table_records.js");
 const { fetchRealDoudianData } = require("./dy_helper.js");
 const { doudianLocalAggregateRouter } = require("./doudian_local_aggregate.js");
 const { judgeEncryptSignValid } = require("./request_sign.js");
+const { ACCOUNT_NAME_FIELD } = require("./connector_fields.js");
+const {
+  acquireSyncSlot,
+  ConcurrencyLimitError,
+  syncConcurrencySettings
+} = require("./concurrency_control.js");
 
 // 引入 MySQL 数据库操作
 const {
@@ -216,11 +222,47 @@ app.post("/api/table_meta", async (req, res) => {
  * @param {object} res - Express 响应
  */
 app.post("/api/records", async (req, res) => {
-  console.log("table_records 请求数据", req.body);
   const isValid = judgeEncryptSignValid(req);
-  console.log("飞书加密签名验证结果：", isValid);
 
   const syncContext = extractSyncLogContext(req.body, getCompanyId(req));
+  console.log('[Sync Request]', {
+    companyId: syncContext.companyId,
+    transactionId: syncContext.transactionId,
+    pageToken: syncContext.pageToken,
+    accountKey: syncContext.accountKey,
+    syncModule: syncContext.syncModule,
+    signatureValid: isValid
+  });
+  let releaseSyncSlot = null;
+
+  try {
+    releaseSyncSlot = await acquireSyncSlot(syncContext);
+  } catch (error) {
+    if (error instanceof ConcurrencyLimitError) {
+      console.warn('[Sync Concurrency] 拒绝过载请求', {
+        companyId: syncContext.companyId,
+        accountKey: syncContext.accountKey,
+        transactionId: syncContext.transactionId,
+        pageToken: syncContext.pageToken,
+        scope: error.scope
+      });
+      return res.status(200).json({
+        code: 1254500,
+        msg: JSON.stringify({
+          zh: '当前同步请求较多，请稍后重试',
+          en: 'The sync service is busy. Please retry shortly.'
+        }),
+        message: error.message,
+        retryable: true
+      });
+    }
+    console.error('[Sync Concurrency] 获取执行槽位失败:', error);
+    return res.status(500).json({
+      code: 500,
+      message: `同步调度失败: ${error.message || String(error)}`
+    });
+  }
+
   await createSyncLog({
     ...syncContext,
     status: 'running',
@@ -255,6 +297,8 @@ app.post("/api/records", async (req, res) => {
       errorMessage: e.message || String(e)
     }, syncContext.companyId).catch((error) => console.error("更新同步失败日志失败:", error));
     res.status(200).json({ code: 1254500, msg: JSON.stringify({ zh: e.message, en: e.message }), message: e.message });
+  } finally {
+    if (releaseSyncSlot) releaseSyncSlot();
   }
 });
 
@@ -337,7 +381,14 @@ function filterTableMetaFieldsByConfig(tableMeta, config = {}) {
 
   return {
     ...tableMeta,
-    fields: fields.filter((field) => selectedFieldIds.has(field.fieldId || field.fieldID || field.field_id))
+    fields: fields.filter((field) => {
+      const fieldId = field.fieldId || field.fieldID || field.field_id;
+      return (
+        field.isConnectorField === true ||
+        fieldId === ACCOUNT_NAME_FIELD.defaultField ||
+        selectedFieldIds.has(fieldId)
+      );
+    })
   };
 }
 
@@ -382,12 +433,14 @@ function extractSyncLogContext(reqBody = {}, companyId = 'default') {
   const syncModule = config.syncModule || '';
   const accountName = config.accountInfo?.name || '';
   const shopId = config.shopIdParam || config.accountInfo?.shopId || '';
+  const accountKey = config.accountInfo?.key || config.accountInfo?.id || shopId || accountName || 'unknown';
   return {
     companyId,
     taskId,
     transactionId,
     syncModule,
     accountName,
+    accountKey,
     shopId,
     pageToken,
     logKey: String(transactionId || taskId)
@@ -717,6 +770,7 @@ app.use(frontendProxy);
 const server = app.listen(3000, () => {
   console.log("🚀 Express 飞书连接器后端服务器在端口 3000 上启动运行！");
   console.log(`🧩 Vue 开发服务器代理目标: ${frontendDevServer}`);
+  console.log("⚙️ 同步并发配置:", syncConcurrencySettings);
 });
 
 server.on("upgrade", frontendProxy.upgrade);

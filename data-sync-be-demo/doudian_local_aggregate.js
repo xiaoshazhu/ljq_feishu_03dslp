@@ -147,12 +147,8 @@ async function handleBrandQualificationBrandListAggregateRequest(req, res) {
     //   qualification_type: 1
     // },
     listPaths: [
-      'data.list',
-      'data.brand_list',
+
       'data.brand_qual_list',
-      'data.qualification_list',
-      'data.data',
-      'list'
     ],
     sources: [
       { key: 'brand_status_0', label: '生效中', params: { brand_status: 0 } },

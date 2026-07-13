@@ -133,16 +133,16 @@
                     :required="field.required"
                   >
                     <a-input-number
-                      v-if="isNumericCustomQueryField(field)"
+                      v-if="!hasCustomQueryOptions(field) && isNumericCustomQueryField(field)"
                       style="width: 100%"
-                      :min="field.type === 'integer' ? 0 : undefined"
-                      :precision="field.type === 'integer' ? 0 : undefined"
+                      :min="getCustomQueryFieldType(field) === 'integer' ? 0 : undefined"
+                      :precision="getCustomQueryFieldType(field) === 'integer' ? 0 : undefined"
                       :placeholder="field.placeholder || `请输入 ${field.label || field.name}`"
                       :value="getNumericCustomQueryFieldValue(field.name)"
                       @update:value="handleCustomQueryValueChange(field.name, $event)"
                     />
                     <a-select
-                      v-else-if="field.type === 'boolean'"
+                      v-else-if="!hasCustomQueryOptions(field) && getCustomQueryFieldType(field) === 'boolean'"
                       style="width: 100%"
                       :placeholder="field.placeholder || `请选择 ${field.label || field.name}`"
                       :options="booleanCustomQueryOptions"
@@ -150,11 +150,11 @@
                       @update:value="handleCustomQueryValueChange(field.name, $event)"
                     />
                     <a-select
-                      v-else-if="Array.isArray(field.options) && field.options.length > 0"
+                      v-else-if="hasCustomQueryOptions(field)"
                       style="width: 100%"
                       :placeholder="field.placeholder || `请选择 ${field.label || field.name}`"
                       :options="field.options"
-                      :value="getStringCustomQueryFieldValue(field.name)"
+                      :value="getCustomQueryFieldValue(field.name)"
                       allow-clear
                       @update:value="handleCustomQueryValueChange(field.name, $event)"
                     />
@@ -516,14 +516,16 @@ interface BitableOption {
 }
 
 interface CustomQueryFieldOption {
-  value: string;
+  value: string | number | boolean;
   label: string;
 }
+
+type CustomQueryFieldType = 'string' | 'integer' | 'number' | 'boolean';
 
 interface CustomQueryField {
   name: string;
   label?: string;
-  type?: 'string' | 'integer' | 'number' | 'boolean';
+  type?: CustomQueryFieldType | 'String' | 'Integer' | 'Number' | 'Boolean';
   required?: boolean;
   defaultValue?: string | number | boolean;
   placeholder?: string;
@@ -877,7 +879,30 @@ function resetCustomQueryValues(savedValues: Record<string, unknown> = {}): void
  * @return {boolean} 返回是否为数值型字段
  */
 function isNumericCustomQueryField(field: CustomQueryField): boolean {
-  return field.type === 'integer' || field.type === 'number';
+  const fieldType = getCustomQueryFieldType(field);
+  return fieldType === 'integer' || fieldType === 'number';
+}
+
+/**
+ * 功能描述：判断自定义 Query 字段是否配置了选项。
+ * @param {CustomQueryField} field 字段定义
+ * @return {boolean} 返回是否有选项
+ */
+function hasCustomQueryOptions(field: CustomQueryField): boolean {
+  return Array.isArray(field.options) && field.options.length > 0;
+}
+
+/**
+ * 功能描述：归一化自定义 Query 字段类型，兼容 Number/number 等大小写写法。
+ * @param {CustomQueryField} field 字段定义
+ * @return {CustomQueryFieldType} 返回标准字段类型
+ */
+function getCustomQueryFieldType(field: CustomQueryField): CustomQueryFieldType {
+  const type = String(field.type || 'string').toLowerCase();
+  if (type === 'integer' || type === 'int') return 'integer';
+  if (type === 'number' || type === 'numeric') return 'number';
+  if (type === 'boolean' || type === 'bool') return 'boolean';
+  return 'string';
 }
 
 /**
@@ -887,13 +912,14 @@ function isNumericCustomQueryField(field: CustomQueryField): boolean {
  * @return {string|number|boolean} 返回归一化后的值
  */
 function normalizeCustomQueryFieldValue(field: CustomQueryField, rawValue: unknown): string | number | boolean {
-  if (field.type === 'boolean') {
+  const fieldType = getCustomQueryFieldType(field);
+  if (fieldType === 'boolean') {
     return rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
   }
-  if (field.type === 'integer') {
+  if (fieldType === 'integer') {
     return Number.parseInt(String(rawValue), 10);
   }
-  if (field.type === 'number') {
+  if (fieldType === 'number') {
     return Number(rawValue);
   }
   return String(rawValue);
@@ -928,6 +954,16 @@ function getStringCustomQueryFieldValue(fieldName: string): string | undefined {
   const value = customQueryValues[fieldName];
   if (value === undefined || value === null || value === '') return undefined;
   return String(value);
+}
+
+/**
+ * 功能描述：获取自定义 Query 字段当前值，供 Select 绑定并保留 number/boolean 类型。
+ * @param {string} fieldName 字段名
+ * @return {string|number|boolean|undefined} 返回当前值
+ */
+function getCustomQueryFieldValue(fieldName: string): string | number | boolean | undefined {
+  const value = customQueryValues[fieldName];
+  return value === undefined || value === null || value === '' ? undefined : value;
 }
 
 /**
@@ -971,8 +1007,28 @@ function validateRequiredCustomQueryFields(): boolean {
     return value === undefined || value === null || value === '';
   });
   if (!missingField) return true;
-  message.error(`请填写${missingField.label || missingField.name}`);
+  message.error(`${getRequiredCustomQueryFieldAction(missingField)}${getCustomQueryFieldLabel(missingField)}`);
   return false;
+}
+
+/**
+ * 功能描述：根据自定义 Query 控件类型返回必填提示动作。
+ * @param {CustomQueryField} field 字段定义
+ * @return {string} 返回“请选择”或“请填写”
+ */
+function getRequiredCustomQueryFieldAction(field: CustomQueryField): string {
+  return hasCustomQueryOptions(field) || getCustomQueryFieldType(field) === 'boolean'
+    ? '请选择'
+    : '请填写';
+}
+
+/**
+ * 功能描述：获取自定义 Query 字段展示名，避免必填提示为空。
+ * @param {CustomQueryField} field 字段定义
+ * @return {string} 返回展示名
+ */
+function getCustomQueryFieldLabel(field: CustomQueryField): string {
+  return String(field.label || field.placeholder || field.name || '必填项').trim() || '必填项';
 }
 
 /**
@@ -998,7 +1054,7 @@ function getSelectedFieldKeys(): string[] {
  * 功能描述：从后端 MySQL 数据库中拉取抖店接口目录，并合并到同步模块树。
  * @return {Promise<boolean>} 返回是否成功获取或保留了接口目录
  */
-async function fetchDoudianInterfaces(): Promise<boolean> {
+async function fetchDoudianInterfaces(autoSelect = true): Promise<boolean> {
   const previousInterfaces = doudianInterfaces.value;
   const requestUrl = `/api/v1/connector/doudian-interfaces?_t=${Date.now()}`;
   try {
@@ -1017,7 +1073,7 @@ async function fetchDoudianInterfaces(): Promise<boolean> {
     const data: DoudianInterface[] = await response.json();
     doudianInterfaces.value = data;
     moduleTreeData.value = buildModuleTreeWithDoudianInterfaces(data);
-    if (!syncModule.value && data[0]) {
+    if (autoSelect && !syncModule.value && data[0]) {
       syncModule.value = `${DOUDIAN_INTERFACE_PREFIX}${data[0].interfaceKey}`;
     }
     return true;
@@ -1725,6 +1781,8 @@ async function handleSaveAndGoNext(): Promise<void> {
     tenantKey: tenantKey.value || 'default',
     userId: userId.value || 'default',
     accountInfo: {
+      key: activeAccount?.key || '',
+      id: activeAccount?.id || '',
       mode: activeAccount?.mode || '模拟登录',
       name: activeAccount?.name || '抖店模拟账号',
       cookie: activeAccount?.cookie || pastedCookie.value,
@@ -1924,9 +1982,7 @@ onMounted(async () => {
 
   try {
     isInitializing.value = true;
-    await fetchDoudianInterfaces();
-    await ensureSelectedDoudianInterfaceDetail();
-    resetFieldMappingByModule();
+    await fetchDoudianInterfaces(false);
 
     try {
       const config = await bitable.getConfig();
@@ -1970,6 +2026,12 @@ onMounted(async () => {
       isRestoringSavedConfig = false;
       console.warn('读取飞书配置失败，继续使用默认配置', error);
     }
+
+    if (!syncModule.value && doudianInterfaces.value[0]) {
+      syncModule.value = `${DOUDIAN_INTERFACE_PREFIX}${doudianInterfaces.value[0].interfaceKey}`;
+    }
+    await ensureSelectedDoudianInterfaceDetail();
+    resetFieldMappingByModule();
 
     try {
       userId.value = (await bridge.getBaseUserId()) || 'unknown';
