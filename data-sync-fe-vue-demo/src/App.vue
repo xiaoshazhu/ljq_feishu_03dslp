@@ -41,13 +41,21 @@
                 </div>
               </div>
             </nav>
-            <div v-else class="account-sidebar-panel">
-              <div class="account-sidebar-card">
-                <div class="account-sidebar-title">账号管理说明</div>
-                <div class="account-sidebar-copy">这里展示当前用户可见的全部账号，包括个人账号与企业共享账号。</div>
+            <nav v-else class="sidebar-nav">
+              <div
+                v-for="item in accountNavItems"
+                :key="item.key"
+                class="nav-item"
+                :class="{ active: activeAccountMenu === item.key }"
+                @click="scrollToAccountSection(item.key)"
+              >
+                <span class="nav-badge">{{ item.step }}</span>
+                <div class="nav-copy">
+                  <div class="nav-label">{{ item.label }}</div>
+                  <div class="nav-desc">{{ item.desc }}</div>
+                </div>
               </div>
-
-            </div>
+            </nav>
           </aside>
 
           <main
@@ -302,7 +310,12 @@
 
             </section>
           </main>
-          <main v-else class="right-content account-detail-content">
+          <main
+            v-else
+            ref="accountScrollContainerRef"
+            class="right-content account-detail-content"
+            @scroll="handleAccountScroll"
+          >
             <AccountDetailPanel
               :accounts="accounts"
               :logs="syncLogs"
@@ -310,6 +323,7 @@
               :log-page="syncLogPage"
               :log-page-size="syncLogPageSize"
               :log-total="syncLogTotal"
+              :log-loading="isSyncLogLoading"
               :current-user-id="userId || 'default'"
               :get-module-label="getAccountModuleLabel"
               @add="openAccountModal()"
@@ -596,6 +610,11 @@ const navItems = [
   { key: 'guide', step: '5', label: '使用说明', desc: '配置同步步骤' }
 ];
 
+const accountNavItems = [
+  { key: 'management', step: '1', label: '账号管理', desc: '管理账号与凭证' },
+  { key: 'logs', step: '2', label: '同步日志', desc: '查看同步记录' }
+];
+
 // 固定模块树配置：保留为空时，只展示后端动态返回的抖店接口目录。
 const BASE_MODULE_TREE_DATA: ModuleTreeNode[] = [
 
@@ -631,6 +650,7 @@ const booleanCustomQueryOptions = [
 
 // 当前左侧导航高亮项。
 const activeMenu = ref('account');
+const activeAccountMenu = ref('management');
 // 顶部页签：配置页或账号详情页。
 const pageTab = ref<'config' | 'accounts'>('config');
 // 当前选择的数据源平台，目前默认抖音电商。
@@ -663,6 +683,7 @@ const syncLogStatusFilter = ref<'all' | 'running' | 'success' | 'failed'>('all')
 const syncLogPage = ref(1);
 const syncLogPageSize = ref(6);
 const syncLogTotal = ref(0);
+const isSyncLogLoading = ref(false);
 // 当前选中的共享账号 ID。
 const selectedSharedAccountId = ref('');
 // 用户手动输入的账号/店铺显示名，优先用于账号列表展示。
@@ -723,11 +744,13 @@ const customEndDate = ref('');
 const customQueryValues = reactive<Record<string, string | number | boolean>>({});
 // 右侧滚动容器引用，用于滚动监听和导航高亮。
 const scrollContainerRef = ref<HTMLElement | null>(null);
+const accountScrollContainerRef = ref<HTMLElement | null>(null);
 // Cookie 捕获轮询定时器句柄，组件卸载或停止轮询时必须清理。
 let pollingTimer: number | null = null;
 // 恢复飞书已保存配置时，避免模块 watcher 把字段选择重置成全选。
 let isRestoringSavedConfig = false;
 let syncModuleDetailRequestId = 0;
+let syncLogRequestId = 0;
 // 程序化滚动期间阻止 handleScroll 更新高亮，避免闪烁。
 let isScrollingByClick = false;
 let scrollClickTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1366,6 +1389,8 @@ async function fetchSharedAccounts(): Promise<void> {
  * @return {Promise<void>} 无返回值
  */
 async function fetchSyncLogs(): Promise<void> {
+  const requestId = ++syncLogRequestId;
+  isSyncLogLoading.value = true;
   try {
     const params = new URLSearchParams({
       tenantKey: tenantKey.value || 'default',
@@ -1378,12 +1403,18 @@ async function fetchSyncLogs(): Promise<void> {
     const response = await fetch(`/api/v1/sync/logs?${params.toString()}`);
     if (!response.ok) throw new Error('获取同步日志失败');
     const result: SyncLogListResponse = await response.json();
+    if (requestId !== syncLogRequestId) return;
     syncLogs.value = Array.isArray(result.list) ? result.list : [];
     syncLogTotal.value = Number(result.total || 0);
   } catch (error) {
+    if (requestId !== syncLogRequestId) return;
     console.warn('获取同步日志失败', error);
     syncLogs.value = [];
     syncLogTotal.value = 0;
+  } finally {
+    if (requestId === syncLogRequestId) {
+      isSyncLogLoading.value = false;
+    }
   }
 }
 
@@ -1991,6 +2022,19 @@ function scrollToSection(sectionId: string): void {
 }
 
 /**
+ * 功能描述：滚动到账号详情页指定区块。
+ * @param {string} sectionId 账号详情区块 ID 后缀
+ * @return {void} 无返回值
+ */
+function scrollToAccountSection(sectionId: string): void {
+  activeAccountMenu.value = sectionId;
+  isScrollingByClick = true;
+  if (scrollClickTimer) clearTimeout(scrollClickTimer);
+  scrollClickTimer = setTimeout(() => { isScrollingByClick = false; }, 600);
+  document.getElementById(`account-section-${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
  * 功能描述：根据滚动位置高亮当前配置区块。
  * @return {void} 无返回值
  */
@@ -2011,6 +2055,29 @@ function handleScroll(): void {
     }
   }
   activeMenu.value = currentSection;
+}
+
+/**
+ * 功能描述：根据滚动位置高亮账号详情页当前区块。
+ * @return {void} 无返回值
+ */
+function handleAccountScroll(): void {
+  if (isScrollingByClick) return;
+  const container = accountScrollContainerRef.value;
+  if (!container) return;
+  const sections = ['management', 'logs'];
+  let currentSection = 'management';
+  let minDiff = Number.POSITIVE_INFINITY;
+  for (const section of sections) {
+    const element = document.getElementById(`account-section-${section}`);
+    if (!element) continue;
+    const diff = Math.abs(element.getBoundingClientRect().top - container.getBoundingClientRect().top);
+    if (diff < minDiff && element.getBoundingClientRect().top - container.getBoundingClientRect().top <= 100) {
+      minDiff = diff;
+      currentSection = section;
+    }
+  }
+  activeAccountMenu.value = currentSection;
 }
 
 /**

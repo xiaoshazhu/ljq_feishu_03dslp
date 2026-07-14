@@ -704,7 +704,7 @@ body {
 }
 
 .account-detail-panel {
-  min-height: calc(100% - 28px);
+  min-height: 0;
 }
 
 .account-detail-header {
@@ -721,15 +721,15 @@ body {
 }
 
 .account-detail-note {
-  margin-top: 8px;
-  margin-bottom: 0;
+  margin-top: -4px;
+  margin-bottom: 16px;
 }
 
 .account-detail-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 0;
 }
 
 .account-stat-card {
@@ -829,9 +829,7 @@ body {
 }
 
 .sync-log-section {
-  margin-top: 22px;
-  padding-top: 22px;
-  border-top: 1px solid #edf0f5;
+  min-height: 0;
 }
 
 .sync-log-header {

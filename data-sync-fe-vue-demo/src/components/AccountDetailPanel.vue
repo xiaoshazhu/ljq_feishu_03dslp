@@ -1,9 +1,9 @@
 <template>
-  <section class="form-section account-detail-panel">
-    <div class="account-detail-header">
-      <div>
-        <div class="account-detail-title">账号详情</div>
-
+  <section id="account-section-management" class="form-section account-detail-panel">
+    <div class="section-header between account-section-header">
+      <div class="section-title-inline">
+        <span class="section-step">1</span>
+        <span>账号管理</span>
       </div>
       <a-button type="primary" @click="$emit('add')">新增账号</a-button>
     </div>
@@ -74,24 +74,29 @@
         </div>
       </div>
     </div>
+  </section>
 
-    <div class="sync-log-section">
-      <div class="sync-log-header">
-        <div>
-          <div class="account-detail-title sync-log-title">同步日志</div>
-          <div class="section-note account-detail-note">展示最近的同步执行结果，可以按状态筛选。</div>
-        </div>
-        <div class="sync-log-toolbar">
-          <a-select
-            :value="logStatusFilter"
-            style="width: 140px"
-            :options="statusOptions"
-            @change="$emit('change-log-filter', $event)"
-          />
-          <a-button @click="$emit('refresh-logs')">刷新</a-button>
-        </div>
+  <section id="account-section-logs" class="form-section sync-log-section">
+    <div class="section-header between account-section-header">
+      <div class="section-title-inline">
+        <span class="section-step">2</span>
+        <span>同步日志</span>
       </div>
+      <div class="sync-log-toolbar">
+        <a-select
+          :value="logStatusFilter"
+          style="width: 140px"
+          :options="statusOptions"
+          :loading="logLoading"
+          :disabled="logLoading"
+          @change="$emit('change-log-filter', $event)"
+        />
+        <a-button :loading="logLoading" @click="$emit('refresh-logs')">刷新</a-button>
+      </div>
+    </div>
+    <div class="section-note account-detail-note">展示最近的同步执行结果，可以按状态筛选。</div>
 
+    <a-spin :spinning="logLoading" tip="正在加载同步日志...">
       <div v-if="logs.length" class="sync-log-card-list">
         <div v-for="log in logs" :key="log.id" class="sync-log-card">
           <div class="sync-log-card-top">
@@ -138,6 +143,7 @@
             :page-size-options="['3', '10', '20']"
             :show-total="(total: number) => `共 ${total} 条`"
             size="small"
+            :disabled="logLoading"
             @change="handlePaginationChange"
             @showSizeChange="handlePageSizeChange"
           />
@@ -148,7 +154,7 @@
 <!--        <div class="account-summary-empty-title">还没有同步日志</div>-->
         <div class="account-summary-empty-desc">暂无数据</div>
       </div>
-    </div>
+    </a-spin>
   </section>
 </template>
 
@@ -163,6 +169,7 @@ const props = defineProps<{
   logPage: number;
   logPageSize: number;
   logTotal: number;
+  logLoading: boolean;
   currentUserId: string;
   getModuleLabel: (module?: string) => string;
 }>();
