@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-/data-sync-be-demo/node_modules/
+/feishu-doudian-connector-server/node_modules/
 /data-sync-fe-demo/node_modules/
 
 # OS metadata
@@ -10,7 +10,7 @@ Thumbs.db
 # Databases & Logs
 *.db
 *.log
-data-sync-be-demo/data/connector.db
+feishu-doudian-connector-server/data/connector.db
 .local/
 .replit
 replit.nix

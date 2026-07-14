@@ -42,6 +42,11 @@ const {
 } = require("./database.js");
 
 const app = express();
+const isProductionRuntime = process.env.NODE_ENV === "production";
+const frontendDevServer = process.env.FRONTEND_DEV_SERVER || "http://127.0.0.1:5173";
+const frontendPublicUrl = (process.env.FRONTEND_PUBLIC_URL || "").replace(/\/+$/, "");
+const frontendDistPath = path.resolve(__dirname, "../data-sync-fe-vue-demo/dist");
+const serverPort = Number(process.env.PORT || 3000);
 
 // 初始化 MySQL 数据库
 initDb().then(() => {
@@ -119,8 +124,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const frontendDevServer = process.env.FRONTEND_DEV_SERVER || "http://127.0.0.1:5173";
-
 /**
  * 功能描述：浏览器直接访问根路径时跳转到前端页面；非页面探活请求仍返回纯文本状态。
  * @param {object} req - Express 请求
@@ -161,7 +164,9 @@ app.get("/meta.json", (req, res) => {
       }
       try {
         const json = JSON.parse(data);
-        json.extraData.dataSourceConfigUiUri = `${proto}://${host}/index.html`;
+        json.extraData.dataSourceConfigUiUri = frontendPublicUrl
+          ? `${frontendPublicUrl}/index.html`
+          : `${proto}://${host}/index.html`;
         
         res.set("Content-Type", "application/json");
         res.status(200).send(JSON.stringify(json, null, 2));
@@ -762,21 +767,56 @@ app.post("/api/v1/sync/tasks/save", async (req, res) => {
 
 app.use(doudianLocalAggregateRouter);
 
-const frontendProxy = createProxyMiddleware({
-  target: frontendDevServer,
-  changeOrigin: true,
-  ws: true,
-  logLevel: "warn"
-});
+let frontendProxy = null;
 
-// 开发模式下不再托管 dist，所有未命中的前端页面与 HMR 资源请求均代理给 Vue Vite dev server。
-app.use(frontendProxy);
+if (isProductionRuntime) {
+  const frontendIndexPath = path.join(frontendDistPath, "index.html");
 
-// 监听 3000 端口
-const server = app.listen(3000, () => {
-  console.log("🚀 Express 飞书连接器后端服务器在端口 3000 上启动运行！");
-  console.log(`🧩 Vue 开发服务器代理目标: ${frontendDevServer}`);
+  if (!fs.existsSync(frontendIndexPath)) {
+    console.warn(`⚠️ 前端构建产物不存在，请先在 data-sync-fe-vue-demo 执行 npm run build: ${frontendIndexPath}`);
+  }
+
+  app.use(express.static(frontendDistPath));
+  app.get("/index.html", (req, res) => {
+    res.sendFile(frontendIndexPath);
+  });
+
+  // 生产环境中，刷新前端路由或直接访问页面路径时统一回落到 Vue 入口。
+  app.use((req, res, next) => {
+    const accept = req.headers.accept || "";
+    const shouldServeFrontend = (
+      (req.method === "GET" || req.method === "HEAD") &&
+      accept.includes("text/html") &&
+      !req.path.startsWith("/api/") &&
+      req.path !== "/meta.json" &&
+      req.path !== "/healthz"
+    );
+    if (!shouldServeFrontend) return next();
+    res.sendFile(frontendIndexPath);
+  });
+} else {
+  frontendProxy = createProxyMiddleware({
+    target: frontendDevServer,
+    changeOrigin: true,
+    ws: true,
+    logLevel: "warn"
+  });
+
+  // 开发模式下不托管 dist，所有未命中的前端页面与 HMR 资源请求均代理给 Vue Vite dev server。
+  app.use(frontendProxy);
+}
+
+// 监听后端服务端口，生产环境可通过 PORT 环境变量调整。
+const server = app.listen(serverPort, () => {
+  console.log(`🚀 Express 飞书连接器后端服务器在端口 ${serverPort} 上启动运行！`);
+  if (isProductionRuntime) {
+    console.log(`📦 Vue 生产构建目录: ${frontendDistPath}`);
+  } else {
+    console.log(`🧩 Vue 开发服务器代理目标: ${frontendDevServer}`);
+  }
   console.log("⚙️ 同步并发配置:", syncConcurrencySettings);
 });
 
-server.on("upgrade", frontendProxy.upgrade);
+if (frontendProxy) {
+  server.on("upgrade", frontendProxy.upgrade);
+}
