@@ -703,21 +703,11 @@ function getDoudianInterfaceFieldValue(item, field, interfaceMeta) {
  */
 function getValueByPath(source, path) {
   if (!source || !path) return undefined;
-  const normalizedPath = String(path).trim();
-  const terminalArrayPath = normalizedPath.replace(/\[\s*(?:\*)?\s*\]\s*$/, '');
-  if (terminalArrayPath !== normalizedPath) {
-    const terminalArrayValue = getValueByPath(source, terminalArrayPath);
-    return Array.isArray(terminalArrayValue)
-      ? normalizePathResult(terminalArrayValue)
-      : undefined;
-  }
-
-  const pathSegments = normalizedPath
-    .replace(/\[\s*\*\s*\]/g, '.*')
-    .replace(/\[\s*\]/g, '.*')
-    .replace(/\[\s*(\d+)\s*\]/g, '.$1')
+  const pathSegments = String(path)
+    .replace(/\[\]/g, '.*')
+    .replace(/\[\*\]/g, '.*')
+    .replace(/\[(\d+)\]/g, '.$1')
     .split('.')
-    .map((segment) => segment.trim())
     .filter(Boolean);
   return normalizePathResult(resolvePathSegments(source, pathSegments));
 }
