@@ -81,19 +81,19 @@
                   <span class="section-step">2</span>
                   <span>数据源选择</span>
                 </div>
-                <a-button
-                  class="toolbar-button"
-                  size="small"
-                  :loading="isRefreshingInterfaces"
-                  @click="handleRefreshDoudianInterfaces"
-                >
-                  <template #icon><ReloadOutlined /></template>
-                  刷新接口配置
-                </a-button>
+<!--                <a-button-->
+<!--                  class="toolbar-button"-->
+<!--                  size="small"-->
+<!--                  :loading="isRefreshingInterfaces"-->
+<!--                  @click="handleRefreshDoudianInterfaces"-->
+<!--                >-->
+<!--                  <template #icon><ReloadOutlined /></template>-->
+<!--                  刷新配置-->
+<!--                </a-button>-->
               </div>
-              <div class="section-note">选择要同步的抖店数据源，保持当前检索方式，便于大批量接口场景使用。</div>
+<!--              <div class="section-note">选择要同步的抖店数据源，保持当前检索方式，便于大批量接口场景使用。</div>-->
               <a-tree-select
-                v-model:value="syncModule"
+                v-model:value="syncModuleSelectValue"
                 show-search
                 tree-node-filter-prop="title"
                 style="width: 100%"
@@ -178,11 +178,11 @@
                 </div>
                 <div class="field-toolbar">
                   <span class="field-selected-count">已选择 {{ selectedFieldCount }} / {{ currentModuleFields.length }}</span>
-                  <a-button class="toolbar-button" size="small" @click="handleClearFieldSelection">
+                  <a-button class="toolbar-button"  @click="handleClearFieldSelection">
                     <template #icon><ClearOutlined /></template>
                     清空
                   </a-button>
-                  <a-button class="toolbar-button primary" type="primary" size="small" @click="handleAutoMapFields">
+                  <a-button class="toolbar-button primary" type="primary"  @click="handleAutoMapFields">
                     <template #icon><CheckSquareOutlined /></template>
                     全选映射
                   </a-button>
@@ -195,12 +195,14 @@
                     <col class="field-col-sync" />
                     <col class="field-col-source" />
                     <col class="field-col-target" />
+                    <col class="field-col-name" />
                   </colgroup>
                   <thead>
                     <tr>
                       <th>是否同步</th>
                       <th>源数据字段</th>
                       <th>目标多维表格映射列</th>
+                      <th>目标列名称</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -225,6 +227,16 @@
                           :disabled="!isFieldSelected(field.key)"
                           allow-clear
                           @change="handleFieldSelectChange(field.key, $event)"
+                        />
+                      </td>
+                      <td>
+                        <a-input
+                          v-model:value="targetFieldNames[field.key]"
+                          class="field-target-name-input"
+                          :placeholder="getDefaultTargetFieldName(field)"
+                          :disabled="!isFieldSelected(field.key)"
+                          :maxlength="100"
+                          @blur="handleTargetFieldNameBlur(field)"
                         />
                       </td>
                     </tr>
@@ -627,6 +639,8 @@ const platform = ref('douyin');
 const userId = ref('');
 // 当前飞书租户 Key，用于企业维度的数据隔离。
 const tenantKey = ref('');
+// 当前同步表的独立连接器配置 ID，用于隔离同一 Base 内多张同步表的后台任务。
+const connectorConfigId = ref('');
 // 当前可用账号列表，包含个人账号和可见的共享账号。
 const accounts = ref<Account[]>([]);
 // 页面初始化期间显示加载态，避免配置恢复前展示默认信息。
@@ -677,6 +691,13 @@ const capturedShopId = ref('');
 const capturedShopName = ref('');
 // 当前选择的同步模块，统一使用 DOUDIAN_INTERFACE_PREFIX + interfaceKey。
 const syncModule = ref('');
+// TreeSelect 需要 undefined 才会展示 placeholder，内部仍统一用空字符串表示未选择。
+const syncModuleSelectValue = computed<string | undefined>({
+  get: () => syncModule.value || undefined,
+  set: (value) => {
+    syncModule.value = value || '';
+  }
+});
 // 用户配置的抖音店铺 ID。
 const shopIdParam = ref('');
 // 动态抖店接口的附加 Query 参数文本，保存前会被解析成对象。
@@ -691,6 +712,8 @@ const bitableFields = ref<BitableOption[]>([]);
 const fieldMappings = reactive<Record<string, string>>({
 
 });
+// 源字段 key 到当前任务目标列显示名称的映射关系，只影响本次导出的多维表格。
+const targetFieldNames = reactive<Record<string, string>>({});
 
 const merchantUid = ref('');
 const payChannel = ref('');
@@ -848,10 +871,96 @@ function resetFieldMappingByModule(): void {
   });
 
   Object.keys(fieldMappings).forEach((key) => delete fieldMappings[key]);
+  Object.keys(targetFieldNames).forEach((key) => delete targetFieldNames[key]);
 
   fields.forEach((field) => {
     fieldMappings[field.key] = field.defaultField || field.key;
+    targetFieldNames[field.key] = getDefaultTargetFieldName(field);
   });
+}
+
+/**
+ * 功能描述：获取字段创建到多维表格时使用的默认列名。
+ * @param {ModuleField} field 当前源字段
+ * @return {string} 返回默认目标列名
+ */
+function getDefaultTargetFieldName(field: ModuleField): string {
+  return String(field.fieldName || field.label || field.key).replace(/\s*\(.+\)$/, '').trim();
+}
+
+/**
+ * 功能描述：目标列名称失焦时清理首尾空格，空值自动恢复默认名称。
+ * @param {ModuleField} field 当前源字段
+ * @return {void} 无返回值
+ */
+function handleTargetFieldNameBlur(field: ModuleField): void {
+  targetFieldNames[field.key] = String(targetFieldNames[field.key] || '').trim() || getDefaultTargetFieldName(field);
+}
+
+/**
+ * 功能描述：校验当前选中字段的目标列名称不为空且不重复。
+ * @param {string[]} selectedFieldKeys 当前选中的源字段 key
+ * @return {boolean} 返回目标列名称是否有效
+ */
+function validateTargetFieldNames(selectedFieldKeys: string[]): boolean {
+  const usedNames = new Set<string>();
+  for (const sourceKey of selectedFieldKeys) {
+    const field = currentModuleFields.value.find((item) => item.key === sourceKey);
+    if (!field) continue;
+    const targetName = String(targetFieldNames[sourceKey] || '').trim() || getDefaultTargetFieldName(field);
+    targetFieldNames[sourceKey] = targetName;
+    if (usedNames.has(targetName)) {
+      message.error(`目标列名称“${targetName}”重复，请修改后再保存。`);
+      return false;
+    }
+    usedNames.add(targetName);
+  }
+  return true;
+}
+
+/**
+ * 功能描述：判断当前页面是否通过飞书“新建连接器”入口打开。
+ * @return {boolean} 返回是否为新建模式
+ */
+function isCreateConnectorMode(): boolean {
+  const isNew = new URLSearchParams(window.location.search).get('isNew');
+  console.log('isNew', isNew);
+  return Boolean(isNew);
+}
+
+/**
+ * 功能描述：生成当前同步表稳定使用的连接器配置 ID。
+ * @return {string} 返回配置 ID
+ */
+function createConnectorConfigId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `connector_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+}
+
+/**
+ * 功能描述：兼容解析 saveConfigAndGoNext 保存的 value JSON 包装和旧版扁平配置。
+ * @param {Record<string, unknown>|null|undefined} savedConfig 飞书返回的原始配置
+ * @return {Record<string, any>|null} 返回连接器业务配置
+ */
+function parseSavedConnectorConfig(
+  savedConfig: Record<string, unknown> | null | undefined
+): Record<string, any> | null {
+  if (!savedConfig || typeof savedConfig !== 'object') return null;
+  if (typeof savedConfig.value === 'string') {
+    try {
+      const parsed = JSON.parse(savedConfig.value);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+      console.warn('解析飞书连接器 value 配置失败', error);
+      return null;
+    }
+  }
+  if (savedConfig.value && typeof savedConfig.value === 'object') {
+    return savedConfig.value as Record<string, any>;
+  }
+  return savedConfig as Record<string, any>;
 }
 
 /**
@@ -1054,7 +1163,7 @@ function getSelectedFieldKeys(): string[] {
  * 功能描述：从后端 MySQL 数据库中拉取抖店接口目录，并合并到同步模块树。
  * @return {Promise<boolean>} 返回是否成功获取或保留了接口目录
  */
-async function fetchDoudianInterfaces(autoSelect = true): Promise<boolean> {
+async function fetchDoudianInterfaces(autoSelect = false): Promise<boolean> {
   const previousInterfaces = doudianInterfaces.value;
   const requestUrl = `/api/v1/connector/doudian-interfaces?_t=${Date.now()}`;
   try {
@@ -1228,8 +1337,7 @@ async function fetchAccounts(): Promise<void> {
     }));
     accounts.value = mappedList;
     const activeAccount = mappedList.find((account: Account) => account.isActive);
-    if (activeAccount?.shopId) shopIdParam.value = activeAccount.shopId;
-    if (activeAccount?.module?.startsWith(DOUDIAN_INTERFACE_PREFIX)) syncModule.value = activeAccount.module;
+    if (!shopIdParam.value && activeAccount?.shopId) shopIdParam.value = activeAccount.shopId;
   } catch (error) {
     console.error('从 MySQL 数据库获取账户列表失败', error);
   }
@@ -1293,7 +1401,6 @@ async function checkCaptureStatus(): Promise<void> {
       capturedCookie.value = data.cookie;
       capturedShopId.value = data.shopId || '';
       capturedShopName.value = data.shopName || '已拦截抖店';
-      if (data.module?.startsWith(DOUDIAN_INTERFACE_PREFIX)) syncModule.value = data.module;
       message.success(`成功拦截到抖店登录凭据！店铺名: ${data.shopName || '未命名'}`);
     }
   } catch (error) {
@@ -1698,7 +1805,7 @@ async function handleTestConnection(): Promise<void> {
     return;
   }
   if (!selectedDoudianInterface.value) {
-    message.error('请选择一个抖店接口');
+    message.error('请选择一个数据源');
     return;
   }
   if (accounts.value.length === 0) {
@@ -1760,9 +1867,16 @@ async function handleSaveAndGoNext(): Promise<void> {
     message.error('请至少选择一个需要同步的字段！');
     return;
   }
+  if (!validateTargetFieldNames(selectedFieldKeys)) {
+    return;
+  }
 
   const activeAccount = accounts.value.find((account: Account) => account.isActive) || accounts.value[0];
+  if (!connectorConfigId.value) {
+    connectorConfigId.value = createConnectorConfigId();
+  }
   const config = {
+    connectorConfigId: connectorConfigId.value,
     platform: platform.value,
     syncModule: syncModule.value,
     doudianInterfaceKey: selectedDoudianInterfaceKey.value,
@@ -1771,6 +1885,7 @@ async function handleSaveAndGoNext(): Promise<void> {
     shopIdParam: shopIdParam.value,
     dateRange: hasDateRangeMapping.value ? dateRange.value : 'all',
     fieldMappings: { ...fieldMappings },
+    targetFieldNames: { ...targetFieldNames },
     selectedFieldKeys,
 
     merchantUid: merchantUid.value,
@@ -1797,7 +1912,7 @@ async function handleSaveAndGoNext(): Promise<void> {
       body: JSON.stringify(config)
     });
     if (!response.ok) throw new Error('后端任务保存失败');
-    bitable.saveConfigAndGoNext({ value: JSON.stringify(config) });
+    await bitable.saveConfigAndGoNext({ value: JSON.stringify(config) });
   } catch (error: any) {
     message.error(`任务保存失败: ${error.message}`);
   }
@@ -1985,9 +2100,11 @@ onMounted(async () => {
     await fetchDoudianInterfaces(false);
 
     try {
-      const config = await bitable.getConfig();
+      const savedConfig = isCreateConnectorMode() ? null : await bitable.getConfig();
+      const config = parseSavedConnectorConfig(savedConfig);
       if (config) {
         isRestoringSavedConfig = true;
+        connectorConfigId.value = config.connectorConfigId || connectorConfigId.value;
         platform.value = config.platform || platform.value;
         if (config.syncModule?.startsWith(DOUDIAN_INTERFACE_PREFIX)) {
           syncModule.value = config.syncModule;
@@ -2020,18 +2137,27 @@ onMounted(async () => {
           Object.keys(fieldMappings).forEach((key) => delete fieldMappings[key]);
           Object.assign(fieldMappings, config.fieldMappings);
         }
+        if (config.targetFieldNames && typeof config.targetFieldNames === 'object') {
+          Object.entries(config.targetFieldNames).forEach(([key, value]) => {
+            if (typeof value === 'string' && value.trim()) {
+              targetFieldNames[key] = value.trim();
+            }
+          });
+        }
         isRestoringSavedConfig = false;
       }
     } catch (error) {
       isRestoringSavedConfig = false;
       console.warn('读取飞书配置失败，继续使用默认配置', error);
     }
-
-    if (!syncModule.value && doudianInterfaces.value[0]) {
-      syncModule.value = `${DOUDIAN_INTERFACE_PREFIX}${doudianInterfaces.value[0].interfaceKey}`;
+    if (!connectorConfigId.value) {
+      connectorConfigId.value = createConnectorConfigId();
     }
+
     await ensureSelectedDoudianInterfaceDetail();
-    resetFieldMappingByModule();
+    if (Object.keys(fieldMappings).length === 0) {
+      resetFieldMappingByModule();
+    }
 
     try {
       userId.value = (await bridge.getBaseUserId()) || 'unknown';

@@ -47,7 +47,7 @@ function convertModuleFieldToBitableField(field, config = {}) {
   const fieldType = hasEnumValueMap(field) ? 1 : (field.fieldType || getBitableFieldType(field.type));
   const result = {
     fieldId: resolveMappedFieldId(config, field.key, field.defaultField || field.fieldId),
-    fieldName: field.fieldName || String(field.label || field.key).replace(/\s*\(.+\)$/, ''),
+    fieldName: resolveTargetFieldName(config, field),
     fieldType,
     isPrimary: field.isPrimary === true,
     description: field.description || field.label || field.key,
@@ -59,6 +59,23 @@ function convertModuleFieldToBitableField(field, config = {}) {
     };
   }
   return result;
+}
+
+/**
+ * 功能描述：读取当前任务自定义的目标列名，未配置时回退数据库字段名称。
+ * @param {object} config 前端保存的同步配置
+ * @param {object} field 数据库字段配置
+ * @return {string} 返回当前任务实际使用的目标列名
+ */
+function resolveTargetFieldName(config, field) {
+  const targetFieldNames = config.targetFieldNames && typeof config.targetFieldNames === 'object'
+    ? config.targetFieldNames
+    : {};
+  const customName = targetFieldNames[field.key];
+  if (typeof customName === 'string' && customName.trim()) {
+    return customName.trim();
+  }
+  return field.fieldName || String(field.label || field.key).replace(/\s*\(.+\)$/, '');
 }
 
 /**

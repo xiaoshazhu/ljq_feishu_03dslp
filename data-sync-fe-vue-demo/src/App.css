@@ -532,11 +532,15 @@ body {
 }
 
 .field-col-source {
-  width: 32%;
+  width: 24%;
 }
 
 .field-col-target {
-  width: auto;
+  width: 36%;
+}
+
+.field-col-name {
+  width: 28%;
 }
 
 .field-map-table th {
@@ -574,6 +578,11 @@ body {
 }
 
 .field-target-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.field-target-name-input {
   width: 100%;
   min-width: 0;
 }

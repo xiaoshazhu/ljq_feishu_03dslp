@@ -3,9 +3,7 @@
     <div class="account-detail-header">
       <div>
         <div class="account-detail-title">账号详情</div>
-        <div class="section-note account-detail-note">
-          展示当前可见的全部账号，包含个人账号和企业共享账号。只有创建该账号的用户才能删除。
-        </div>
+
       </div>
       <a-button type="primary" @click="$emit('add')">新增账号</a-button>
     </div>

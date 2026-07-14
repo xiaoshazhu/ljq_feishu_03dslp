@@ -744,9 +744,15 @@ app.post("/api/v1/sync/tasks/save", async (req, res) => {
     console.error("更新活跃账号模块出错:", e);
   }
 
-  // 2. 保存到 MySQL tasks 中
+  // 2. 按同步表独立配置 ID 保存到 MySQL tasks 中，避免同一企业多张同步表互相覆盖。
   try {
-    await saveTask('bitable_task', req.body, companyId);
+    const connectorConfigId = String(req.body.connectorConfigId || '')
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, '');
+    const taskKey = connectorConfigId
+      ? `bitable_task_${connectorConfigId}`.slice(0, 128)
+      : 'bitable_task';
+    await saveTask(taskKey, req.body, companyId);
   } catch (e) {
     console.error("写入 MySQL 任务配置出错:", e);
   }
