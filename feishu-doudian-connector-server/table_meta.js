@@ -6,8 +6,10 @@ const {
   getInterfaceKeyFromModule
 } = require('./doudian_interface_utils.js');
 const {
+  CONNECTOR_PRIMARY_FIELD,
   ACCOUNT_NAME_FIELD,
-  appendConnectorFields
+  appendConnectorFields,
+  isConnectorReservedField
 } = require('./connector_fields.js');
 
 /**
@@ -30,22 +32,18 @@ const getTableMeta = async (module, config = {}) => {
   if (interfaceFields.length === 0) {
     throw new Error(`DoudianFieldsSchemaMissing: 当前接口缺少 fields_schema (${interfaceMeta.interfaceKey})`);
   }
-  const reservedField = interfaceFields.find((field) => (
-    field?.key === ACCOUNT_NAME_FIELD.key ||
-    field?.defaultField === ACCOUNT_NAME_FIELD.defaultField ||
-    field?.fieldId === ACCOUNT_NAME_FIELD.defaultField
-  ));
+  const reservedField = interfaceFields.find((field) => isConnectorReservedField(field));
   if (reservedField) {
     throw new Error(
-      `DoudianFieldSchemaInvalid: 接口 ${interfaceMeta.interfaceKey} 占用了连接器保留字段 ${ACCOUNT_NAME_FIELD.defaultField}`
+      `DoudianFieldSchemaInvalid: 接口 ${interfaceMeta.interfaceKey} 占用了连接器保留字段 ${reservedField.defaultField || reservedField.key || reservedField.fieldId}`
     );
   }
   const fields = appendConnectorFields(interfaceFields);
   const selectedFields = filterModuleFieldsByConfig(fields, config);
-  const primaryFields = selectedFields.filter((field) => field.isPrimary === true);
+  const primaryFields = selectedFields.filter((field) => field.isConnectorPrimary === true);
   if (primaryFields.length !== 1) {
     throw new Error(
-      `DoudianPrimaryFieldInvalid: 接口 ${interfaceMeta.interfaceKey} 必须且只能配置一个主键字段，当前为 ${primaryFields.length} 个`
+      `DoudianPrimaryFieldInvalid: 接口 ${interfaceMeta.interfaceKey} 必须且只能包含一个连接器主键字段，当前为 ${primaryFields.length} 个`
     );
   }
   const convertedFields = ensureConnectorFieldNamesUnique(
@@ -82,7 +80,10 @@ function ensureConnectorFieldNamesUnique(fields) {
       return field;
     }
 
-    const uniqueName = resolveUniqueConnectorFieldName(usedNames);
+    const uniqueName = resolveUniqueConnectorFieldName(
+      usedNames,
+      field.isConnectorPrimary === true ? CONNECTOR_PRIMARY_FIELD : ACCOUNT_NAME_FIELD
+    );
     usedNames.add(uniqueName);
     return {
       ...field,
@@ -96,8 +97,8 @@ function ensureConnectorFieldNamesUnique(fields) {
  * @param {Set<string>} usedNames 已占用字段名集合
  * @return {string} 返回可安全用于飞书表结构的字段名
  */
-function resolveUniqueConnectorFieldName(usedNames) {
-  const baseName = String(ACCOUNT_NAME_FIELD.fieldName || ACCOUNT_NAME_FIELD.label || '同步账号').trim();
+function resolveUniqueConnectorFieldName(usedNames, connectorField = ACCOUNT_NAME_FIELD) {
+  const baseName = String(connectorField.fieldName || connectorField.label || connectorField.defaultField).trim();
   if (!usedNames.has(baseName)) return baseName;
   let index = 2;
   while (usedNames.has(`${baseName} ${index}`)) {
@@ -150,9 +151,10 @@ function convertModuleFieldToBitableField(field, config = {}) {
     fieldId: resolveMappedFieldId(config, field.key, field.defaultField || field.fieldId),
     fieldName: resolveTargetFieldName(config, field),
     fieldType,
-    isPrimary: field.isPrimary === true,
+    isPrimary: field.isConnectorPrimary === true,
     description: field.description || field.label || field.key,
-    isConnectorField: field.isConnectorField === true
+    isConnectorField: field.isConnectorField === true,
+    isConnectorPrimary: field.isConnectorPrimary === true
   };
   if (fieldType === 5) {
     result.property = {
@@ -223,7 +225,6 @@ function filterModuleFieldsByConfig(fields, config = {}) {
   if (selectedFieldKeys) {
     return fields.filter((field) => (
       field.isConnectorField ||
-      field.isPrimary === true ||
       selectedFieldKeys.has(field.key)
     ));
   }
@@ -233,7 +234,6 @@ function filterModuleFieldsByConfig(fields, config = {}) {
   if (mappingKeys.length > 0) {
     return fields.filter((field) => (
       field.isConnectorField ||
-      field.isPrimary === true ||
       (Object.prototype.hasOwnProperty.call(mappings, field.key) && Boolean(mappings[field.key]))
     ));
   }

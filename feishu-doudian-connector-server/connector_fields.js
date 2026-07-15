@@ -1,3 +1,16 @@
+const CONNECTOR_PRIMARY_FIELD = Object.freeze({
+  key: 'sys_record_id',
+  label: '连接器记录ID',
+  fieldName: '连接器记录ID',
+  type: 'Text',
+  fieldType: 1,
+  defaultField: 'sys_record_id',
+  description: '连接器生成的同步记录主键',
+  isPrimary: true,
+  isConnectorField: true,
+  isConnectorPrimary: true
+});
+
 const ACCOUNT_NAME_FIELD = Object.freeze({
   key: 'sys_name',
   label: '同步账号',
@@ -15,22 +28,38 @@ const ACCOUNT_NAME_FIELD = Object.freeze({
  * @return {Array<object>} 返回包含公共字段的新数组
  */
 function appendConnectorFields(fields = []) {
-  const safeFields = Array.isArray(fields) ? fields : [];
-  const matchedIndex = safeFields.findIndex((field) => (
-    field?.key === ACCOUNT_NAME_FIELD.key ||
-    field?.defaultField === ACCOUNT_NAME_FIELD.defaultField ||
-    field?.fieldId === ACCOUNT_NAME_FIELD.defaultField
-  ));
-  if (matchedIndex < 0) return [...safeFields, ACCOUNT_NAME_FIELD];
+  const safeFields = Array.isArray(fields) ? fields.map((field) => ({
+    ...field,
+    isPrimary: false,
+    isConnectorPrimary: false
+  })) : [];
+  const fieldsWithoutConnectorReserved = safeFields.filter((field) => !isConnectorReservedField(field));
+  return [
+    CONNECTOR_PRIMARY_FIELD,
+    ...fieldsWithoutConnectorReserved,
+    ACCOUNT_NAME_FIELD
+  ];
+}
 
-  return safeFields.map((field, index) => (
-    index === matchedIndex
-      ? { ...ACCOUNT_NAME_FIELD, ...field, isConnectorField: true }
-      : field
+/**
+ * 功能描述：判断字段是否占用了连接器内部字段 ID。
+ * @param {object} field 字段配置
+ * @return {boolean} 返回是否为连接器保留字段
+ */
+function isConnectorReservedField(field) {
+  return [
+    CONNECTOR_PRIMARY_FIELD,
+    ACCOUNT_NAME_FIELD
+  ].some((connectorField) => (
+    field?.key === connectorField.key ||
+    field?.defaultField === connectorField.defaultField ||
+    field?.fieldId === connectorField.defaultField
   ));
 }
 
 module.exports = {
+  CONNECTOR_PRIMARY_FIELD,
   ACCOUNT_NAME_FIELD,
-  appendConnectorFields
+  appendConnectorFields,
+  isConnectorReservedField
 };

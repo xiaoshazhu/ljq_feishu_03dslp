@@ -222,7 +222,6 @@
                       <td>
                         <a-checkbox
                           :checked="isFieldSelected(field.key)"
-                          :disabled="field.isPrimary === true"
                           @change="handleFieldSyncToggle(field.key, $event.target.checked)"
                         />
                       </td>
@@ -234,7 +233,7 @@
                           :value="fieldMappings[field.key]"
                           :options="bitableFields"
                           :disabled="!isFieldSelected(field.key)"
-                          :allow-clear="field.isPrimary !== true"
+                          :allow-clear="true"
                           @change="handleFieldSelectChange(field.key, $event)"
                         />
                       </td>
@@ -1048,8 +1047,8 @@ function validateTargetFieldNames(selectedFieldKeys: string[]): boolean {
       message.error(`字段“${field.label || sourceKey}”缺少目标列映射。`);
       return false;
     }
-    if (['sys_name', 'account_name'].includes(targetFieldId)) {
-      message.error(`目标列“${targetFieldId}”由连接器用于写入同步账号，请为业务字段选择其他目标列。`);
+    if (['sys_record_id', 'sys_name', 'account_name'].includes(targetFieldId)) {
+      message.error(`目标列“${targetFieldId}”由连接器保留使用，请为业务字段选择其他目标列。`);
       return false;
     }
     if (usedFieldIds.has(targetFieldId)) {
@@ -1305,8 +1304,7 @@ function getCustomQueryFieldLabel(field: CustomQueryField): string {
  * @return {boolean} 返回是否同步该字段
  */
 function isFieldSelected(sourceKey: string): boolean {
-  const field = currentModuleFields.value.find((item) => item.key === sourceKey);
-  return field?.isPrimary === true || Boolean(fieldMappings[sourceKey]);
+  return Boolean(fieldMappings[sourceKey]);
 }
 
 /**
@@ -1315,7 +1313,7 @@ function isFieldSelected(sourceKey: string): boolean {
  */
 function getSelectedFieldKeys(): string[] {
   return currentModuleFields.value
-    .filter((field) => field.isPrimary === true || Boolean(fieldMappings[field.key]))
+    .filter((field) => Boolean(fieldMappings[field.key]))
     .map((field) => field.key);
 }
 
@@ -1911,12 +1909,7 @@ function handleAutoMapFields(): void {
  */
 function handleClearFieldSelection(): void {
   Object.keys(fieldMappings).forEach((key) => delete fieldMappings[key]);
-  currentModuleFields.value
-    .filter((field) => field.isPrimary === true)
-    .forEach((field) => {
-      fieldMappings[field.key] = field.defaultField || field.key;
-    });
-  message.info('已清空可选字段，主键字段会继续保留。');
+  message.info('已清空可选字段。');
 }
 
 /**
@@ -1927,11 +1920,6 @@ function handleClearFieldSelection(): void {
  */
 function handleFieldSyncToggle(sourceKey: string, checked: boolean): void {
   const field = currentModuleFields.value.find((item) => item.key === sourceKey);
-  if (field?.isPrimary === true && !checked) {
-    fieldMappings[sourceKey] = field.defaultField || sourceKey;
-    message.warning('主键字段用于识别和更新记录，不能取消同步。');
-    return;
-  }
   if (!checked) {
     delete fieldMappings[sourceKey];
     return;
@@ -1960,13 +1948,7 @@ function handleMapFieldChange(sourceKey: string, bitableFieldId: string): void {
  * @return {void} 无返回值
  */
 function handleFieldSelectChange(sourceKey: string, value: unknown): void {
-  const field = currentModuleFields.value.find((item) => item.key === sourceKey);
   const mappedValue = typeof value === 'string' ? value : '';
-  if (field?.isPrimary === true && !mappedValue) {
-    fieldMappings[sourceKey] = field.defaultField || sourceKey;
-    message.warning('主键字段必须保留目标列映射。');
-    return;
-  }
   handleMapFieldChange(sourceKey, mappedValue);
 }
 

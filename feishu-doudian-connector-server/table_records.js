@@ -8,6 +8,7 @@ const {
   getInterfaceKeyFromModule
 } = require('./doudian_interface_utils.js');
 const {
+  CONNECTOR_PRIMARY_FIELD,
   ACCOUNT_NAME_FIELD
 } = require('./connector_fields.js');
 const {
@@ -68,22 +69,21 @@ const getTableRecords = async (reqBody, context = {}) => {
   const fieldsSchema = Array.isArray(rawList.interfaceMeta?.fieldsSchema)
     ? rawList.interfaceMeta.fieldsSchema
     : interfaceMeta.fieldsSchema || [];
-  const primaryFields = fieldsSchema.filter((field) => field.isPrimary === true);
-  if (primaryFields.length !== 1) {
-    throw new Error(
-      `DoudianPrimaryFieldInvalid: 接口 ${interfaceMeta.interfaceKey} 必须且只能配置一个主键字段，当前为 ${primaryFields.length} 个`
-    );
-  }
   const boundedRawList = rawList.slice(0, maxPageSize);
+  const pageSize = Number(rawList.pageSize || maxPageSize || boundedRawList.length || 1000);
+  const loadedBefore = parseLoadedCountFromToken(pageToken);
+  const baseRecordOffset = loadedBefore === null ? (pageNum - 1) * pageSize : loadedBefore;
   const records = boundedRawList.map((item, index) => buildDoudianRecord({
     item,
     index,
     pageNum,
+    absoluteIndex: baseRecordOffset + index + 1,
     fieldsSchema,
     interfaceMeta,
     mappings,
     selectedFieldKeys,
-    accountName
+    accountName,
+    accountKey: config.accountInfo?.key || config.accountInfo?.id || shopId || accountName || 'default'
   }));
   const primaryIds = new Set();
   records.forEach((record) => {
@@ -104,8 +104,6 @@ const getTableRecords = async (reqBody, context = {}) => {
   ) {
     throw new Error('AggregatePageTokenMissing: 聚合接口仍有后续数据但未返回下一页令牌');
   }
-  const pageSize = Number(rawList.pageSize || maxPageSize || boundedRawList.length || 1000);
-  const loadedBefore = parseLoadedCountFromToken(pageToken);
   const loadedCount = Number(rawList.loadedCount || rawList.loaded_count || (
     loadedBefore === null
       ? (pageNum - 1) * pageSize + boundedRawList.length
@@ -246,24 +244,20 @@ function buildDoudianRecord({
   item,
   index,
   pageNum,
+  absoluteIndex,
   fieldsSchema,
   interfaceMeta,
   mappings,
   selectedFieldKeys,
-  accountName
+  accountName,
+  accountKey
 }) {
-  const primaryField = fieldsSchema.find((field) => field.isPrimary === true);
-  const recordId = primaryField
-    ? getValueByPath(item, primaryField.sourcePath || primaryField.key)
-    : undefined;
-  let primaryId = recordId === undefined || recordId === null
-    ? ''
-    : String(recordId).substring(0, 100);
-  if (!primaryId || primaryId === 'undefined') {
-    throw new Error(
-      `DoudianPrimaryValueMissing: 第 ${pageNum} 页第 ${index + 1} 条记录缺少主键字段 ${primaryField?.key || 'unknown'}`
-    );
-  }
+  const primaryId = buildConnectorPrimaryId({
+    interfaceKey: interfaceMeta.interfaceKey,
+    accountKey,
+    absoluteIndex,
+    fallbackIndex: index + 1
+  });
 
   const data = {};
   fieldsSchema.forEach((field) => {
@@ -272,7 +266,7 @@ function buildDoudianRecord({
       selectedFieldKeys,
       field.key,
       field.defaultField,
-      field.isPrimary === true
+      false
     );
     if (!fieldId) return;
     const rawValue = getDoudianInterfaceFieldValue(item, field, interfaceMeta);
@@ -283,6 +277,14 @@ function buildDoudianRecord({
     }
     data[fieldId] = normalizeDoudianFieldValue(rawValue, field);
   });
+  const primaryFieldId = resolveConnectorFieldId(mappings, CONNECTOR_PRIMARY_FIELD);
+  if (Object.prototype.hasOwnProperty.call(data, primaryFieldId)) {
+    throw new Error(
+      `DoudianFieldMappingDuplicate: 业务字段不能映射到连接器保留字段 ${primaryFieldId}`
+    );
+  }
+  data[primaryFieldId] = primaryId;
+
   const accountNameFieldId = resolveConnectorFieldId(mappings, ACCOUNT_NAME_FIELD);
   if (Object.prototype.hasOwnProperty.call(data, accountNameFieldId)) {
     throw new Error(
@@ -312,6 +314,38 @@ function resolveConnectorFieldId(mappings, field) {
 }
 
 /**
+ * 功能描述：生成连接器自己的记录主键，避免依赖抖店接口字段是否存在唯一 ID。
+ * @param {object} options 主键上下文
+ * @return {string} 返回飞书记录主键
+ */
+function buildConnectorPrimaryId({
+  interfaceKey,
+  accountKey,
+  absoluteIndex,
+  fallbackIndex
+}) {
+  const safeInterfaceKey = normalizePrimaryIdPart(interfaceKey || 'interface');
+  const safeAccountKey = normalizePrimaryIdPart(accountKey || 'account');
+  const sequence = Number.isSafeInteger(Number(absoluteIndex)) && Number(absoluteIndex) > 0
+    ? Number(absoluteIndex)
+    : Number(fallbackIndex || 1);
+  return `DD_${safeInterfaceKey}_${safeAccountKey}_${String(sequence).padStart(8, '0')}`.substring(0, 100);
+}
+
+/**
+ * 功能描述：清理主键片段中的特殊字符，保证飞书记录主键稳定可读。
+ * @param {unknown} value 原始片段
+ * @return {string} 返回可拼接的主键片段
+ */
+function normalizePrimaryIdPart(value) {
+  const normalized = String(value || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return (normalized || 'default').substring(0, 32);
+}
+
+/**
  * 功能描述：为没有真实 Cookie 的调试场景生成与接口字段 schema 一致的轻量 Mock 列表。
  * @param {object} interfaceMeta 接口元信息
  * @return {Array} 返回模拟接口列表
@@ -319,12 +353,11 @@ function resolveConnectorFieldId(mappings, field) {
 function buildMockDoudianInterfaceList(interfaceMeta) {
   const fieldsSchema = Array.isArray(interfaceMeta?.fieldsSchema) ? interfaceMeta.fieldsSchema : [];
   const list = Array.from({ length: 5 }).map((_, index) => {
-    const recordId = `DOUDIAN_MOCK_${String(index + 1).padStart(3, '0')}`;
     const now = Date.now() - index * 3600000;
     const item = {};
     fieldsSchema.forEach((field) => {
       if (field.key === 'raw_json') return;
-      item[field.sourcePath || field.key] = buildMockDoudianFieldValue(field, index, now, recordId);
+      item[field.sourcePath || field.key] = buildMockDoudianFieldValue(field, index, now);
     });
     return item;
   });
@@ -849,11 +882,9 @@ function flattenArray(values) {
  * @param {object} field 字段配置
  * @param {number} index 记录序号
  * @param {number} now 当前模拟时间戳
- * @param {string} recordId 模拟记录 ID
  * @return {unknown} 返回符合字段类型的 Mock 值
  */
-function buildMockDoudianFieldValue(field, index, now, recordId) {
-  if (field.isPrimary) return recordId;
+function buildMockDoudianFieldValue(field, index, now) {
   if (field.type === 'DateTime' || field.fieldType === 5) return now;
   if (isPriceFieldType(field.type)) return Number((((index + 1) * 1999) / 100).toFixed(2));
   if (field.type === 'Number' || field.fieldType === 2) return index + 1;
