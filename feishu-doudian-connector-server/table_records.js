@@ -10,6 +10,15 @@ const {
 const {
   ACCOUNT_NAME_FIELD
 } = require('./connector_fields.js');
+const {
+  forbiddenError,
+  notFoundError
+} = require('./app_error.js');
+const {
+  isMockDataAllowed,
+  isProduction,
+  readInteger
+} = require('./runtime_config.js');
 
 /**
  * 功能描述：在飞书多维表格引擎发起数据同步任务时，按 doudian_interfaces 注册表拉取并组装抖店数据。
@@ -39,21 +48,34 @@ const getTableRecords = async (reqBody, context = {}) => {
   const mappings = config.fieldMappings || {};
   const selectedFieldKeys = normalizeSelectedFieldKeys(config.selectedFieldKeys);
   const taskId = reqBody?.taskId || reqBody?.task_id || `TASK_${Date.now().toString().substring(0, 8)}`;
-  const pageNum = parsePageNumFromToken(pageToken, 1);
+  const pageNum = resolvePageNum(pageToken);
   const fetchConfig = {
     ...config,
+    companyId: String(context.companyId || config.companyId || config.tenantKey || 'default'),
     maxPageSize,
-    aggregatePageToken: pageToken
+    aggregatePageToken: pageToken,
+    deadlineAt: Number(context.deadlineAt || 0)
   };
 
   const rawList = cookie && !cookie.startsWith('mock_')
     ? await fetchRealDoudianData(cookie, shopId, syncModule, fetchConfig, null, taskId, pageNum)
-    : buildMockDoudianInterfaceList(interfaceMeta);
+    : canUseMockCredential(cookie)
+      ? buildMockDoudianInterfaceList(interfaceMeta)
+      : (() => {
+          throw notFoundError('未找到可用的抖店账号凭证，请重新绑定账号', 'ACCOUNT_CREDENTIAL_NOT_FOUND');
+        })();
 
   const fieldsSchema = Array.isArray(rawList.interfaceMeta?.fieldsSchema)
     ? rawList.interfaceMeta.fieldsSchema
     : interfaceMeta.fieldsSchema || [];
-  const records = rawList.map((item, index) => buildDoudianRecord({
+  const primaryFields = fieldsSchema.filter((field) => field.isPrimary === true);
+  if (primaryFields.length !== 1) {
+    throw new Error(
+      `DoudianPrimaryFieldInvalid: 接口 ${interfaceMeta.interfaceKey} 必须且只能配置一个主键字段，当前为 ${primaryFields.length} 个`
+    );
+  }
+  const boundedRawList = rawList.slice(0, maxPageSize);
+  const records = boundedRawList.map((item, index) => buildDoudianRecord({
     item,
     index,
     pageNum,
@@ -63,25 +85,41 @@ const getTableRecords = async (reqBody, context = {}) => {
     selectedFieldKeys,
     accountName
   }));
+  const primaryIds = new Set();
+  records.forEach((record) => {
+    if (primaryIds.has(record.primaryID)) {
+      throw new Error(
+        `DoudianPrimaryValueDuplicate: 第 ${pageNum} 页存在重复主键 ${record.primaryID}`
+      );
+    }
+    primaryIds.add(record.primaryID);
+  });
 
   const aggregateHasMore = typeof rawList.hasMore === 'boolean' ? rawList.hasMore : rawList.has_more;
   const aggregateNextPageToken = rawList.nextPageToken || rawList.next_page_token || '';
-  const pageSize = Number(rawList.pageSize || maxPageSize || rawList.length || 1000);
+  if (
+    rawList.interfaceMeta?.useLocalAggregate === true
+    && aggregateHasMore === true
+    && !aggregateNextPageToken
+  ) {
+    throw new Error('AggregatePageTokenMissing: 聚合接口仍有后续数据但未返回下一页令牌');
+  }
+  const pageSize = Number(rawList.pageSize || maxPageSize || boundedRawList.length || 1000);
   const loadedBefore = parseLoadedCountFromToken(pageToken);
   const loadedCount = Number(rawList.loadedCount || rawList.loaded_count || (
     loadedBefore === null
-      ? (pageNum - 1) * pageSize + rawList.length
-      : loadedBefore + rawList.length
+      ? (pageNum - 1) * pageSize + boundedRawList.length
+      : loadedBefore + boundedRawList.length
   ));
-  const totalCount = Number(rawList.total || loadedCount || rawList.length || 0);
+  const totalCount = Number(rawList.total || loadedCount || boundedRawList.length || 0);
   const hasMore = typeof aggregateHasMore === 'boolean'
     ? aggregateHasMore
-    : rawList.length > 0 && loadedCount < totalCount;
+    : boundedRawList.length > 0 && loadedCount < totalCount;
   const nextPageToken = typeof aggregateHasMore === 'boolean'
-    ? (hasMore ? aggregateNextPageToken : '')
+    ? (hasMore ? aggregateNextPageToken || `page_${pageNum + 1}_${loadedCount}` : '')
     : (hasMore ? `page_${pageNum + 1}_${loadedCount}` : '');
 
-  console.log(`[Doudian Records] 接口 ${interfaceMeta.interfaceKey}, 页码 ${pageNum}, 本页 ${rawList.length}, 已加载 ${loadedCount}/${totalCount}, hasMore=${hasMore}`);
+  console.log(`[Doudian Records] 接口 ${interfaceMeta.interfaceKey}, 页码 ${pageNum}, 本页 ${boundedRawList.length}, 已加载 ${loadedCount}/${totalCount}, hasMore=${hasMore}`);
 
   return {
     nextPageToken,
@@ -108,17 +146,24 @@ async function hydrateConnectorConfigWithLatestAccount(config = {}, context = {}
   const currentCookie = String(accountInfo.cookie || '');
 
   if (currentCookie.startsWith('mock_')) {
-    return config;
+    if (canUseMockCredential(currentCookie)) return config;
+    throw forbiddenError('当前运行环境禁止使用 Mock 凭证', 'MOCK_CREDENTIAL_FORBIDDEN');
   }
 
   const accounts = await getAccounts(companyId, userId);
   if (!Array.isArray(accounts) || accounts.length === 0) {
-    return config;
+    throw notFoundError('未找到当前用户可使用的抖店账号', 'ACCOUNT_NOT_FOUND');
   }
 
   const matchedAccount = resolveLatestAccount(accounts, config);
   if (!matchedAccount?.cookie) {
-    return config;
+    const configuredKey = String(accountInfo.key || accountInfo.id || '').trim();
+    throw notFoundError(
+      configuredKey
+        ? '配置中指定的账号不存在、不可用或凭证已失效'
+        : '未找到可用的抖店账号凭证',
+      configuredKey ? 'CONFIGURED_ACCOUNT_NOT_AVAILABLE' : 'ACCOUNT_CREDENTIAL_NOT_FOUND'
+    );
   }
 
   return {
@@ -155,7 +200,7 @@ function resolveLatestAccount(accounts, config = {}) {
   const byKey = configuredKey
     ? candidates.find((account) => String(account.key || account.id || '') === configuredKey)
     : null;
-  if (byKey) return byKey;
+  if (configuredKey) return byKey || null;
 
   const byShopAndName = candidates.find((account) => (
     configuredShopId &&
@@ -182,6 +227,17 @@ function resolveLatestAccount(accounts, config = {}) {
 }
 
 /**
+ * 功能描述：只在非生产环境显式开启 Mock 且凭证使用 mock_ 前缀时允许生成模拟数据。
+ * @param {unknown} cookie 原始账号凭证
+ * @return {boolean} 返回当前请求是否允许进入 Mock 分支
+ */
+function canUseMockCredential(cookie) {
+  return !isProduction()
+    && isMockDataAllowed()
+    && String(cookie || '').startsWith('mock_');
+}
+
+/**
  * 功能描述：把一条抖店接口原始记录转换为飞书 records 协议数据。
  * @param {object} options 转换上下文
  * @return {object} 返回飞书 record
@@ -196,23 +252,43 @@ function buildDoudianRecord({
   selectedFieldKeys,
   accountName
 }) {
-  const primaryField = fieldsSchema.find((field) => field.isPrimary) || fieldsSchema[0];
+  const primaryField = fieldsSchema.find((field) => field.isPrimary === true);
   const recordId = primaryField
     ? getValueByPath(item, primaryField.sourcePath || primaryField.key)
-    : pickFirstValue(item, ['id', 'ID', 'record_id', 'recordId', 'user_id', 'userId', 'order_id', 'orderId']);
-  let primaryId = String(recordId || '').substring(0, 100);
+    : undefined;
+  let primaryId = recordId === undefined || recordId === null
+    ? ''
+    : String(recordId).substring(0, 100);
   if (!primaryId || primaryId === 'undefined') {
-    primaryId = `DOUDIAN_${pageNum}_${index}`;
+    throw new Error(
+      `DoudianPrimaryValueMissing: 第 ${pageNum} 页第 ${index + 1} 条记录缺少主键字段 ${primaryField?.key || 'unknown'}`
+    );
   }
 
   const data = {};
   fieldsSchema.forEach((field) => {
-    const fieldId = resolveMappedFieldId(mappings, selectedFieldKeys, field.key, field.defaultField);
+    const fieldId = resolveMappedFieldId(
+      mappings,
+      selectedFieldKeys,
+      field.key,
+      field.defaultField,
+      field.isPrimary === true
+    );
     if (!fieldId) return;
     const rawValue = getDoudianInterfaceFieldValue(item, field, interfaceMeta);
+    if (Object.prototype.hasOwnProperty.call(data, fieldId)) {
+      throw new Error(
+        `DoudianFieldMappingDuplicate: 多个源字段映射到了目标字段 ${fieldId}`
+      );
+    }
     data[fieldId] = normalizeDoudianFieldValue(rawValue, field);
   });
   const accountNameFieldId = resolveConnectorFieldId(mappings, ACCOUNT_NAME_FIELD);
+  if (Object.prototype.hasOwnProperty.call(data, accountNameFieldId)) {
+    throw new Error(
+      `DoudianFieldMappingDuplicate: 业务字段不能映射到连接器保留字段 ${accountNameFieldId}`
+    );
+  }
   data[accountNameFieldId] = accountName;
 
   return {
@@ -292,7 +368,8 @@ function parseRecordsRequest(reqBody = {}) {
     ''
   ));
 
-  const maxPageSize = Number(firstNonEmpty(
+  const configuredMaxPageSize = readInteger('MAX_SYNC_PAGE_SIZE', 200, 1, 1000);
+  const requestedMaxPageSize = Number(firstNonEmpty(
     paramsObj.maxPageSize,
     paramsObj.max_page_size,
     paramsObj.pageSize,
@@ -301,8 +378,12 @@ function parseRecordsRequest(reqBody = {}) {
     reqBody.max_page_size,
     reqBody.pageSize,
     reqBody.page_size,
-    1000
-  )) || 1000;
+    configuredMaxPageSize
+  )) || configuredMaxPageSize;
+  const maxPageSize = Math.max(
+    1,
+    Math.min(configuredMaxPageSize, Math.floor(requestedMaxPageSize))
+  );
 
   return { config, pageToken, maxPageSize };
 }
@@ -334,19 +415,16 @@ function firstNonEmpty(...values) {
 }
 
 /**
- * 功能描述：将飞书分页 token 解析为内部页码，兼容 page_2、2 与数字 2。
+ * 功能描述：从分页 token 中尽量取出页码；取不到时回到第一页，普通接口不因 token 格式失败。
  * @param {string|number} pageToken 分页 token
- * @param {number} defaultPage 默认页码
  * @return {number} 返回内部页码
  */
-function parsePageNumFromToken(pageToken, defaultPage) {
-  if (pageToken === undefined || pageToken === null || pageToken === '') return defaultPage;
+function resolvePageNum(pageToken) {
+  if (pageToken === undefined || pageToken === null || pageToken === '') return 1;
   const token = String(pageToken);
-  if (token.startsWith('page_')) {
-    return parseInt(token.split('_')[1], 10) || defaultPage;
-  }
-  const numericToken = Number(token);
-  return Number.isFinite(numericToken) ? numericToken : defaultPage;
+  const pageMatch = token.match(/^page_(\d+)/) || token.match(/^(\d+)$/);
+  const page = Number(pageMatch?.[1] || 1);
+  return Number.isSafeInteger(page) && page > 0 ? page : 1;
 }
 
 /**
@@ -359,7 +437,14 @@ function parseLoadedCountFromToken(pageToken) {
   const parts = String(pageToken).split('_');
   if (parts.length < 3 || parts[0] !== 'page') return null;
   const loadedCount = Number(parts[2]);
-  return Number.isFinite(loadedCount) && loadedCount >= 0 ? loadedCount : null;
+  if (
+    Number.isSafeInteger(loadedCount)
+    && loadedCount >= 0
+    && loadedCount <= 100000000
+  ) {
+    return loadedCount;
+  }
+  return null;
 }
 
 /**
@@ -395,19 +480,20 @@ function normalizeSelectedFieldKeys(selectedFieldKeys) {
  * @param {string} defaultField 默认字段 ID
  * @return {string} 返回目标字段 ID，空字符串表示跳过该字段
  */
-function resolveMappedFieldId(mappings, selectedFieldKeys, sourceKey, defaultField) {
+function resolveMappedFieldId(mappings, selectedFieldKeys, sourceKey, defaultField, required = false) {
   const safeMappings = mappings && typeof mappings === 'object' ? mappings : {};
-  if (selectedFieldKeys && !selectedFieldKeys.has(sourceKey)) return '';
+  if (selectedFieldKeys && !selectedFieldKeys.has(sourceKey) && !required) return '';
 
   if (Object.prototype.hasOwnProperty.call(safeMappings, sourceKey)) {
     const mappedFieldId = safeMappings[sourceKey];
     if (typeof mappedFieldId === 'string' && mappedFieldId.trim()) {
       return mappedFieldId.trim();
     }
-    return selectedFieldKeys ? (defaultField || sourceKey) : '';
+    return required || selectedFieldKeys ? (defaultField || sourceKey) : '';
   }
 
   if (selectedFieldKeys) return defaultField || sourceKey;
+  if (required) return defaultField || sourceKey;
   if (Object.keys(safeMappings).length > 0) return '';
   return defaultField || sourceKey;
 }

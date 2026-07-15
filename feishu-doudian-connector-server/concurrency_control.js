@@ -1,17 +1,22 @@
 class ConcurrencyLimitError extends Error {
-  constructor(scope, key, timeoutMs) {
-    super(`SyncBusy: ${scope} 同步并发已满，等待 ${timeoutMs}ms 后仍未获得执行槽位，请稍后重试`);
+  constructor(scope, key, timeoutMs, reason = 'timeout') {
+    const detail = reason === 'queue_full'
+      ? '等待队列已满'
+      : `等待 ${timeoutMs}ms 后仍未获得执行槽位`;
+    super(`SyncBusy: ${scope} 同步并发已满，${detail}，请稍后重试`);
     this.name = 'ConcurrencyLimitError';
     this.code = 'SYNC_BUSY';
     this.retryable = true;
     this.scope = scope;
+    this.reason = reason;
   }
 }
 
 class Semaphore {
-  constructor(limit, scope) {
+  constructor(limit, scope, queueLimit) {
     this.limit = Math.max(1, Number(limit) || 1);
     this.scope = scope;
+    this.queueLimit = Math.max(0, Number(queueLimit) || 0);
     this.active = 0;
     this.queue = [];
   }
@@ -20,6 +25,10 @@ class Semaphore {
     if (this.active < this.limit) {
       this.active += 1;
       return Promise.resolve(this.createRelease());
+    }
+
+    if (this.queueLimit > 0 && this.queue.length >= this.queueLimit) {
+      return Promise.reject(new ConcurrencyLimitError(this.scope, key, timeoutMs, 'queue_full'));
     }
 
     return new Promise((resolve, reject) => {
@@ -58,9 +67,10 @@ class Semaphore {
 }
 
 class KeyedSemaphore {
-  constructor(limit, scope) {
+  constructor(limit, scope, queueLimit) {
     this.limit = limit;
     this.scope = scope;
+    this.queueLimit = queueLimit;
     this.semaphores = new Map();
   }
 
@@ -68,7 +78,7 @@ class KeyedSemaphore {
     const normalizedKey = String(key || 'default');
     let semaphore = this.semaphores.get(normalizedKey);
     if (!semaphore) {
-      semaphore = new Semaphore(this.limit, this.scope);
+      semaphore = new Semaphore(this.limit, this.scope, this.queueLimit);
       this.semaphores.set(normalizedKey, semaphore);
     }
 
@@ -88,14 +98,19 @@ function readPositiveInteger(name, fallback) {
 }
 
 const settings = {
-  globalLimit: readPositiveInteger('SYNC_GLOBAL_CONCURRENCY', 200),
-  companyLimit: readPositiveInteger('SYNC_COMPANY_CONCURRENCY', 60),
+  globalLimit: readPositiveInteger('SYNC_GLOBAL_CONCURRENCY', 40),
+  companyLimit: readPositiveInteger('SYNC_COMPANY_CONCURRENCY', 10),
+  accountLimit: readPositiveInteger('SYNC_ACCOUNT_CONCURRENCY', 1),
+  globalQueueLimit: readPositiveInteger('SYNC_GLOBAL_QUEUE_LIMIT', 200),
+  companyQueueLimit: readPositiveInteger('SYNC_COMPANY_QUEUE_LIMIT', 50),
+  accountQueueLimit: readPositiveInteger('SYNC_ACCOUNT_QUEUE_LIMIT', 20),
   queueTimeoutMs: readPositiveInteger('SYNC_QUEUE_TIMEOUT_MS', 1500),
   accountStartIntervalMs: readPositiveInteger('SYNC_ACCOUNT_START_INTERVAL_MS', 200)
 };
 
-const globalSemaphore = new Semaphore(settings.globalLimit, '服务实例');
-const companySemaphores = new KeyedSemaphore(settings.companyLimit, '企业');
+const globalSemaphore = new Semaphore(settings.globalLimit, '服务实例', settings.globalQueueLimit);
+const companySemaphores = new KeyedSemaphore(settings.companyLimit, '企业', settings.companyQueueLimit);
+const accountSemaphores = new KeyedSemaphore(settings.accountLimit, '账号', settings.accountQueueLimit);
 const accountNextStartAt = new Map();
 
 async function acquireSyncSlot(context = {}) {
@@ -105,6 +120,8 @@ async function acquireSyncSlot(context = {}) {
   const releases = [];
 
   try {
+    // 先获取最细粒度账号槽位，避免热点账号的等待请求提前占满企业和全局容量。
+    releases.push(await accountSemaphores.acquire(scopedAccountKey, settings.queueTimeoutMs));
     releases.push(await companySemaphores.acquire(companyId, settings.queueTimeoutMs));
     releases.push(await globalSemaphore.acquire('global', settings.queueTimeoutMs));
     await waitForAccountStartWindow(scopedAccountKey);

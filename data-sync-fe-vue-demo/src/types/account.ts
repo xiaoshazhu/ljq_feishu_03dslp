@@ -4,7 +4,6 @@ export interface Account {
   name: string;
   mode: string;
   status: 'active' | 'expired';
-  cookie?: string;
   shopId?: string;
   isActive?: boolean;
   module?: string;
@@ -18,7 +17,6 @@ export interface SharedAccount {
   name: string;
   mode?: string;
   status?: 'active' | 'expired';
-  cookie?: string;
   shopId?: string;
   module?: string;
   shareScope?: 'company' | 'private';

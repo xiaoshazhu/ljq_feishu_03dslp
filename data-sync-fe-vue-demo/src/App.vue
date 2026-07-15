@@ -222,6 +222,7 @@
                       <td>
                         <a-checkbox
                           :checked="isFieldSelected(field.key)"
+                          :disabled="field.isPrimary === true"
                           @change="handleFieldSyncToggle(field.key, $event.target.checked)"
                         />
                       </td>
@@ -233,7 +234,7 @@
                           :value="fieldMappings[field.key]"
                           :options="bitableFields"
                           :disabled="!isFieldSelected(field.key)"
-                          allow-clear
+                          :allow-clear="field.isPrimary !== true"
                           @change="handleFieldSelectChange(field.key, $event)"
                         />
                       </td>
@@ -288,6 +289,10 @@
                 <a
                     :href="bookmarkCode"
                     class=" helper-bookmark"
+                    :class="{ disabled: !hasValidCaptureSession }"
+                    :aria-disabled="!hasValidCaptureSession"
+                    @mouseenter="prepareCaptureSession()"
+                    @focus="prepareCaptureSession()"
                     @click.prevent="showDragBookmarkTip"
                 >
                   <img :src="buttonImg"  />
@@ -427,14 +432,19 @@
                     <div class="capture-panel-copy">
                       点击后将跳转官方登录页，并在登录后运行书签脚本或控制台代码进行凭证回传。
                     </div>
-                    <a-button type="primary" :disabled="isPolling" @click="handleStartSimulatedLogin">
+                  <a-button
+                    type="primary"
+                    :loading="isPreparingCaptureSession"
+                    :disabled="isPolling"
+                    @click="handleStartSimulatedLogin"
+                  >
                       点击开始网页模拟登录
                     </a-button>
                     <div class="capture-inline-status">
                       <div v-if="isPolling" class="capture-status-badge badge-waiting">
                         正在等待浏览器脚本回传 Cookie 凭据...
                       </div>
-                      <div v-else-if="capturedCookie" class="capture-status-badge badge-success">
+                      <div v-else-if="hasCapturedCredential" class="capture-status-badge badge-success">
                         凭证自动拦截成功 (已获取)
                       </div>
                       <div v-else class="capture-idle-text">（未启动拦截）</div>
@@ -469,6 +479,10 @@
                   <a
                     :href="bookmarkCode"
                     class="  helper-bookmark"
+                    :class="{ disabled: !hasValidCaptureSession }"
+                    :aria-disabled="!hasValidCaptureSession"
+                    @mouseenter="prepareCaptureSession()"
+                    @focus="prepareCaptureSession()"
                     @click.prevent="showDragBookmarkTip"
                   >
                     <img :src="buttonImg"  />
@@ -533,6 +547,7 @@ interface ModuleField {
   fieldName?: string;
   type?: 'Text' | 'Number' | 'DateTime' | 'price' | 'percentage';
   defaultField?: string;
+  isPrimary?: boolean;
 }
 
 // Ant Design Vue Select 组件的通用选项结构。
@@ -584,6 +599,14 @@ interface DoudianInterface {
   fieldsSchema?: ModuleField[];
   requestConfig?: DoudianRequestConfig;
   detailLoaded?: boolean;
+}
+
+interface CaptureSessionResponse {
+  code: number;
+  message: string;
+  token: string;
+  expiresAt: string;
+  requestId?: string;
 }
 
 // 模块 TreeSelect 节点定义：支持分组节点和可选叶子节点。
@@ -704,12 +727,18 @@ const isTestingConnection = ref(false);
 const isRefreshingInterfaces = ref(false);
 // 模块下拉框是否打开，打开时用于锁住右侧滚动容器。
 const isModuleDropdownOpen = ref(false);
-// 书签助手捕获到的 Cookie。
-const capturedCookie = ref('');
+// 书签助手是否已经把 Cookie 安全写入服务端缓冲区，前端不持有明文凭证。
+const hasCapturedCredential = ref(false);
 // 书签助手捕获到的店铺 ID。
 const capturedShopId = ref('');
 // 书签助手捕获到的店铺名称。
 const capturedShopName = ref('');
+// 当前书签使用的一次性捕获令牌，服务端只保存其 SHA-256 哈希。
+const captureToken = ref('');
+// 一次性捕获令牌的服务端过期时间。
+const captureTokenExpiresAt = ref(0);
+// 是否正在向后端创建捕获会话。
+const isPreparingCaptureSession = ref(false);
 // 当前选择的同步模块，统一使用 DOUDIAN_INTERFACE_PREFIX + interfaceKey。
 const syncModule = ref('');
 // TreeSelect 需要 undefined 才会展示 placeholder，内部仍统一用空字符串表示未选择。
@@ -747,6 +776,7 @@ const scrollContainerRef = ref<HTMLElement | null>(null);
 const accountScrollContainerRef = ref<HTMLElement | null>(null);
 // Cookie 捕获轮询定时器句柄，组件卸载或停止轮询时必须清理。
 let pollingTimer: number | null = null;
+let captureSessionRequest: Promise<boolean> | null = null;
 // 恢复飞书已保存配置时，避免模块 watcher 把字段选择重置成全选。
 let isRestoringSavedConfig = false;
 let syncModuleDetailRequestId = 0;
@@ -819,8 +849,84 @@ const sharedAccountOptions = computed(() => sharedAccounts.value.map((account: S
   value: account.id,
   label: `${account.name}${account.shareScope === 'private' ? '（仅自己可见）' : '（企业共享）'}`
 })));
+// 给拖拽书签预留 15 秒时间，临近过期时主动重新生成。
+const hasValidCaptureSession = computed(() => (
+  Boolean(captureToken.value)
+  && captureTokenExpiresAt.value - Date.now() > 15000
+));
 // 当前页面生成的书签助手代码，会随租户、用户和模块变化自动更新。
 const bookmarkCode = computed(() => buildBookmarkCode());
+
+/**
+ * 功能描述：统一解析后端 JSON 响应，并把稳定业务错误码和请求 ID 转成可读异常。
+ * @param {Response} response Fetch 原始响应
+ * @param {string} fallbackMessage 无有效错误正文时的兜底提示
+ * @return {Promise<any>} 返回解析后的 JSON 数据
+ */
+async function parseApiResponse<T = any>(response: Response, fallbackMessage: string): Promise<T> {
+  const body = await response.json().catch(() => null);
+  const businessFailed = body
+    && typeof body === 'object'
+    && typeof body.code === 'number'
+    && body.code !== 0;
+  if (!response.ok || businessFailed) {
+    const requestId = body?.requestId ? `（请求 ID：${body.requestId}）` : '';
+    throw new Error(`${body?.message || fallbackMessage}${requestId}`);
+  }
+  return body as T;
+}
+
+const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+
+/**
+ * 功能描述：根据当前构建环境拼接后端 API 地址；本地开发默认继续走同源代理。
+ * @param {string} path API 路径
+ * @return {string} 返回最终请求地址
+ */
+function apiUrl(path: string): string {
+  return API_BASE_URL && path.startsWith('/') ? `${API_BASE_URL}${path}` : path;
+}
+
+/**
+ * 功能描述：为当前用户创建短效一次性捕获会话，避免书签载荷伪造租户和用户身份。
+ * @param {boolean} force 是否忽略现有有效令牌并强制重建
+ * @return {Promise<boolean>} 返回是否已获得可用捕获令牌
+ */
+async function prepareCaptureSession(force = false): Promise<boolean> {
+  if (!force && hasValidCaptureSession.value) return true;
+  if (captureSessionRequest) return captureSessionRequest;
+
+  isPreparingCaptureSession.value = true;
+  captureSessionRequest = (async () => {
+    try {
+      const response = await fetch(apiUrl('/api/v1/connector/sources/capture-session'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenantKey: tenantKey.value || 'default',
+          userId: userId.value || 'default',
+          module: syncModule.value || ''
+        })
+      });
+      const result = await parseApiResponse<CaptureSessionResponse>(
+        response,
+        '生成凭证捕获脚本失败'
+      );
+      captureToken.value = result.token || '';
+      captureTokenExpiresAt.value = new Date(result.expiresAt).getTime();
+      return hasValidCaptureSession.value;
+    } catch (error: any) {
+      captureToken.value = '';
+      captureTokenExpiresAt.value = 0;
+      message.error(error.message || '生成凭证捕获脚本失败');
+      return false;
+    } finally {
+      isPreparingCaptureSession.value = false;
+      captureSessionRequest = null;
+    }
+  })();
+  return captureSessionRequest;
+}
 
 /**
  * 功能描述：根据同步模块标识返回可读的模块名称，用于账号列表和账号命名。
@@ -908,7 +1014,7 @@ function resetFieldMappingByModule(): void {
  * @return {string} 返回默认目标列名
  */
 function getDefaultTargetFieldName(field: ModuleField): string {
-  return String(field.fieldName || field.label || field.key).replace(/\s*\(.+\)$/, '').trim();
+  return String(field.fieldName || field.label || field.key).trim();
 }
 
 /**
@@ -927,16 +1033,31 @@ function handleTargetFieldNameBlur(field: ModuleField): void {
  */
 function validateTargetFieldNames(selectedFieldKeys: string[]): boolean {
   const usedNames = new Set<string>();
+  const usedFieldIds = new Set<string>();
   for (const sourceKey of selectedFieldKeys) {
     const field = currentModuleFields.value.find((item) => item.key === sourceKey);
     if (!field) continue;
     const targetName = String(targetFieldNames[sourceKey] || '').trim() || getDefaultTargetFieldName(field);
+    const targetFieldId = String(fieldMappings[sourceKey] || field.defaultField || sourceKey).trim();
     targetFieldNames[sourceKey] = targetName;
     if (usedNames.has(targetName)) {
       message.error(`目标列名称“${targetName}”重复，请修改后再保存。`);
       return false;
     }
+    if (!targetFieldId) {
+      message.error(`字段“${field.label || sourceKey}”缺少目标列映射。`);
+      return false;
+    }
+    if (['sys_name', 'account_name'].includes(targetFieldId)) {
+      message.error(`目标列“${targetFieldId}”由连接器用于写入同步账号，请为业务字段选择其他目标列。`);
+      return false;
+    }
+    if (usedFieldIds.has(targetFieldId)) {
+      message.error(`多个源字段映射到了同一个目标列“${targetFieldId}”，请调整后再保存。`);
+      return false;
+    }
     usedNames.add(targetName);
+    usedFieldIds.add(targetFieldId);
   }
   return true;
 }
@@ -946,9 +1067,10 @@ function validateTargetFieldNames(selectedFieldKeys: string[]): boolean {
  * @return {boolean} 返回是否为新建模式
  */
 function isCreateConnectorMode(): boolean {
-  const isNew = new URLSearchParams(window.location.search).get('isNew');
-  console.log('isNew', isNew);
-  return Boolean(isNew);
+  const isNew = String(
+    new URLSearchParams(window.location.search).get('isNew') || ''
+  ).trim().toLowerCase();
+  return ['1', 'true', 'yes'].includes(isNew);
 }
 
 /**
@@ -1155,6 +1277,20 @@ function getRequiredCustomQueryFieldAction(field: CustomQueryField): string {
 }
 
 /**
+ * 功能描述：校验当前店铺 ID 为抖店可识别的纯数字标识。
+ * @return {boolean} 返回店铺 ID 是否可用
+ */
+function validateShopIdParam(): boolean {
+  const normalizedShopId = String(shopIdParam.value || '').trim();
+  if (!/^\d+$/.test(normalizedShopId)) {
+    message.error('请输入正确的数字格式抖音店铺 ID (Shop ID)。');
+    return false;
+  }
+  shopIdParam.value = normalizedShopId;
+  return true;
+}
+
+/**
  * 功能描述：获取自定义 Query 字段展示名，避免必填提示为空。
  * @param {CustomQueryField} field 字段定义
  * @return {string} 返回展示名
@@ -1169,7 +1305,8 @@ function getCustomQueryFieldLabel(field: CustomQueryField): string {
  * @return {boolean} 返回是否同步该字段
  */
 function isFieldSelected(sourceKey: string): boolean {
-  return Boolean(fieldMappings[sourceKey]);
+  const field = currentModuleFields.value.find((item) => item.key === sourceKey);
+  return field?.isPrimary === true || Boolean(fieldMappings[sourceKey]);
 }
 
 /**
@@ -1178,7 +1315,7 @@ function isFieldSelected(sourceKey: string): boolean {
  */
 function getSelectedFieldKeys(): string[] {
   return currentModuleFields.value
-    .filter((field) => Boolean(fieldMappings[field.key]))
+    .filter((field) => field.isPrimary === true || Boolean(fieldMappings[field.key]))
     .map((field) => field.key);
 }
 
@@ -1190,7 +1327,7 @@ async function fetchDoudianInterfaces(autoSelect = false): Promise<boolean> {
   const previousInterfaces = doudianInterfaces.value;
   const requestUrl = `/api/v1/connector/doudian-interfaces?_t=${Date.now()}`;
   try {
-    const response = await fetch(requestUrl, {
+    const response = await fetch(apiUrl(requestUrl), {
       cache: 'no-store',
       headers: {
         'Cache-Control': 'no-cache',
@@ -1201,8 +1338,7 @@ async function fetchDoudianInterfaces(autoSelect = false): Promise<boolean> {
       console.warn('抖店接口目录返回 304，继续使用当前页面已有接口目录。');
       return true;
     }
-    if (!response.ok) throw new Error('获取接口目录失败');
-    const data: DoudianInterface[] = await response.json();
+    const data = await parseApiResponse<DoudianInterface[]>(response, '获取接口目录失败');
     doudianInterfaces.value = data;
     moduleTreeData.value = buildModuleTreeWithDoudianInterfaces(data);
     if (autoSelect && !syncModule.value && data[0]) {
@@ -1233,7 +1369,7 @@ async function fetchDoudianInterfaceDetail(interfaceKey: string): Promise<Doudia
 
   const request = (async () => {
     try {
-      const response = await fetch(`/api/v1/connector/doudian-interfaces/${encodeURIComponent(interfaceKey)}?_t=${Date.now()}`, {
+      const response = await fetch(apiUrl(`/api/v1/connector/doudian-interfaces/${encodeURIComponent(interfaceKey)}?_t=${Date.now()}`), {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',
@@ -1243,8 +1379,7 @@ async function fetchDoudianInterfaceDetail(interfaceKey: string): Promise<Doudia
       if (response.status === 304) {
         return existing || null;
       }
-      if (!response.ok) throw new Error('获取接口详情失败');
-      const detail: DoudianInterface = await response.json();
+      const detail = await parseApiResponse<DoudianInterface>(response, '获取接口详情失败');
       const nextDetail = { ...detail, detailLoaded: true };
       const index = doudianInterfaces.value.findIndex((item) => item.interfaceKey === interfaceKey);
       if (index >= 0) {
@@ -1342,16 +1477,14 @@ function buildModuleTreeWithDoudianInterfaces(interfaces: DoudianInterface[]): M
  */
 async function fetchAccounts(): Promise<void> {
   try {
-    const response = await fetch(`/api/v1/connector/accounts?${getCompanyQuery()}`);
-    if (!response.ok) return;
-    const data = await response.json();
+    const response = await fetch(apiUrl(`/api/v1/connector/accounts?${getCompanyQuery()}`));
+    const data = await parseApiResponse<any[]>(response, '获取账号列表失败');
     const mappedList: Account[] = data.map((item: any) => ({
       id: item.id,
       key: item.key,
       name: item.name,
       mode: item.mode,
       status: item.status,
-      cookie: item.cookie,
       shopId: item.shopId,
       isActive: item.is_active === 1,
       module: item.module,
@@ -1363,6 +1496,7 @@ async function fetchAccounts(): Promise<void> {
     if (!shopIdParam.value && activeAccount?.shopId) shopIdParam.value = activeAccount.shopId;
   } catch (error) {
     console.error('从 MySQL 数据库获取账户列表失败', error);
+    accounts.value = [];
   }
 }
 
@@ -1372,9 +1506,8 @@ async function fetchAccounts(): Promise<void> {
  */
 async function fetchSharedAccounts(): Promise<void> {
   try {
-    const response = await fetch(`/api/v1/connector/shared-accounts?${getCompanyQuery()}`);
-    if (!response.ok) throw new Error('获取共享账号失败');
-    const data = await response.json();
+    const response = await fetch(apiUrl(`/api/v1/connector/shared-accounts?${getCompanyQuery()}`));
+    const data = await parseApiResponse<SharedAccount[]>(response, '获取共享账号失败');
     sharedAccounts.value = data;
     selectedSharedAccountId.value = data[0]?.id || '';
   } catch (error) {
@@ -1400,9 +1533,8 @@ async function fetchSyncLogs(): Promise<void> {
     if (syncLogStatusFilter.value !== 'all') {
       params.set('status', syncLogStatusFilter.value);
     }
-    const response = await fetch(`/api/v1/sync/logs?${params.toString()}`);
-    if (!response.ok) throw new Error('获取同步日志失败');
-    const result: SyncLogListResponse = await response.json();
+    const response = await fetch(apiUrl(`/api/v1/sync/logs?${params.toString()}`));
+    const result = await parseApiResponse<SyncLogListResponse>(response, '获取同步日志失败');
     if (requestId !== syncLogRequestId) return;
     syncLogs.value = Array.isArray(result.list) ? result.list : [];
     syncLogTotal.value = Number(result.total || 0);
@@ -1423,13 +1555,21 @@ async function fetchSyncLogs(): Promise<void> {
  * @return {Promise<void>} 无返回值
  */
 async function checkCaptureStatus(): Promise<void> {
+  if (!hasValidCaptureSession.value && !hasCapturedCredential.value) {
+    stopCapturePolling();
+    captureToken.value = '';
+    captureTokenExpiresAt.value = 0;
+    message.warning('凭证捕获脚本已过期，请重新生成后再运行。');
+    return;
+  }
   try {
-    const response = await fetch(`/api/v1/connector/sources/capture-status?${getCompanyQuery()}`);
-    if (!response.ok) return;
-    const data = await response.json();
-    if (data.captured && data.cookie) {
+    const response = await fetch(apiUrl(`/api/v1/connector/sources/capture-status?${getCompanyQuery()}`));
+    const data = await parseApiResponse<any>(response, '读取凭证捕获状态失败');
+    if (data.captured) {
       stopCapturePolling();
-      capturedCookie.value = data.cookie;
+      hasCapturedCredential.value = true;
+      captureToken.value = '';
+      captureTokenExpiresAt.value = 0;
       capturedShopId.value = data.shopId || '';
       capturedShopName.value = data.shopName || '已拦截抖店';
       message.success(`成功拦截到抖店登录凭据！店铺名: ${data.shopName || '未命名'}`);
@@ -1439,21 +1579,28 @@ async function checkCaptureStatus(): Promise<void> {
   }
 }
 // 进入账号关联第二步时刷新共享账号，避免弹窗打开较早导致列表仍为空。
-watch(currentStep, async (newVal) => {
-  if (newVal === 2) {
+watch([currentStep, accountSourceType, isAccountModalOpen], async ([step, sourceType, modalOpen]) => {
+  if (!modalOpen || step !== 2) return;
+  if (sourceType === 'shared') {
     await fetchSharedAccounts();
+    return;
   }
+  await prepareCaptureSession();
 });
 /**
  * 功能描述：打开关联账号弹窗并清理本次捕获态。
  * @return {void} 无返回值
  */
 function openAccountModal(account?: Account): void {
+  if (account && String(account.userId || '') !== String(userId.value || 'default')) {
+    message.warning('共享账号仅创建人可以修改凭证');
+    return;
+  }
   reconnectingAccount.value = account || null;
   currentStep.value = account ? 2 : 1;
   isAccountModalOpen.value = true;
   accountSourceType.value = account ? 'self' : accountSourceType.value;
-  capturedCookie.value = '';
+  hasCapturedCredential.value = false;
   capturedShopId.value = '';
   capturedShopName.value = '';
   accountDisplayName.value = account?.name || '';
@@ -1461,14 +1608,11 @@ function openAccountModal(account?: Account): void {
   stopCapturePolling();
   isNewAccountActive.value = account ? account.isActive !== false : true;
   allowShare.value = account ? account.shareScope !== 'private' : allowShare.value;
-  fetch('/api/v1/connector/sources/capture-clear', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tenantKey: tenantKey.value || 'default',
-      userId: userId.value || 'default'
-    })
-  }).catch(() => {});
+  captureToken.value = '';
+  captureTokenExpiresAt.value = 0;
+  if (account) {
+    void prepareCaptureSession(true);
+  }
 }
 
 /**
@@ -1485,7 +1629,9 @@ function closeAccountModal(): void {
  * 功能描述：触发打开外部抖店登录页并启动凭证捕获轮询。
  * @return {void} 无返回值
  */
-function handleStartSimulatedLogin(): void {
+async function handleStartSimulatedLogin(): Promise<void> {
+  const prepared = await prepareCaptureSession();
+  if (!prepared) return;
   const targetUrl = 'https://fxg.jinritemai.com/login/common?extra=%7B%22target_url%22%3A%22https%3A%2F%2Ffxg.jinritemai.com%2Fffa%2Fmshop%2Fhomepage%2Findex%22%7D';
   window.open(targetUrl, '_blank', 'width=800,height=600,left=200,top=100');
   isPolling.value = true;
@@ -1510,35 +1656,25 @@ async function handleSaveAccountRelation(): Promise<void> {
       name: customDisplayName || selected.name,
       mode: selected.mode || '企业共享免密',
       status: selected.status || 'active',
-      cookie: selected.cookie || '',
       shopId: selected.shopId || '',
       module: selected.module || syncModule.value
     };
     try {
-      await fetch('/api/v1/connector/accounts/add', {
+      const response = await fetch(apiUrl('/api/v1/connector/accounts/active'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           key: newAccount.key,
-          name: newAccount.name,
-          mode: newAccount.mode,
-          status: newAccount.status,
-          cookie: newAccount.cookie || '',
-          shopId: newAccount.shopId || '',
-          is_active: isNewAccountActive.value ? 1 : 0,
-          module: newAccount.module || '',
           tenantKey: tenantKey.value || 'default',
-          userId: userId.value || 'default',
-          shareScope: selectedSharedAccountId.value
-            ? sharedAccounts.value.find((account: SharedAccount) => account.id === selectedSharedAccountId.value)?.shareScope || 'company'
-            : 'company'
+          userId: userId.value || 'default'
         })
       });
-      message.success('新账号已成功绑定并存盘！');
+      await parseApiResponse(response, '启用共享账号失败');
+      message.success('共享账号已设为当前同步账号！');
       await fetchAccounts();
       closeAccountModal();
-    } catch (error) {
-      message.error('写入数据库失败');
+    } catch (error: any) {
+      message.error(error.message || '启用共享账号失败');
     }
     return;
   }
@@ -1554,20 +1690,16 @@ async function handleSaveAccountRelation(): Promise<void> {
       return;
     }
 
-    let nextCookie = capturedCookie.value || pastedCookie.value || '';
+    let nextCookie = pastedCookie.value || '';
     let nextShopId = capturedShopId.value || '';
-    let nextNameFromCapture = capturedShopName.value || '';
 
-    if (!capturedCookie.value && !pastedCookie.value) {
+    if (!hasCapturedCredential.value && !pastedCookie.value) {
       try {
-        const response = await fetch(`/api/v1/connector/sources/capture-status?${getCompanyQuery()}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.captured && data.cookie) {
-            nextCookie = data.cookie;
-            nextShopId = data.shopId || '';
-            nextNameFromCapture = data.shopName || '';
-          }
+        const response = await fetch(apiUrl(`/api/v1/connector/sources/capture-status?${getCompanyQuery()}`));
+        const data = await parseApiResponse<any>(response, '读取凭证捕获状态失败');
+        if (data.captured) {
+          hasCapturedCredential.value = true;
+          nextShopId = data.shopId || '';
         }
       } catch (error) {
         console.error('最后尝试获取凭证失败', error);
@@ -1585,23 +1717,28 @@ async function handleSaveAccountRelation(): Promise<void> {
       updatePayload.module = syncModule.value;
     }
 
+    if (hasCapturedCredential.value) {
+      updatePayload.useCapturedCredential = true;
+      updatePayload.status = 'active';
+      if (nextShopId) updatePayload.shopId = nextShopId;
+    }
+
     if (nextCookie) {
       const match = nextCookie.match(/shop_id=(\d+)/) || nextCookie.match(/shop_id_str=(\d+)/);
-      const nextResolvedShopId = nextShopId || (match ? match[1] : '');
+      const nextResolvedShopId = String(
+        nextShopId || (match ? match[1] : '') || shopIdParam.value || ''
+      ).trim();
+      if (!/^\d+$/.test(nextResolvedShopId)) {
+        message.error('无法从新 Cookie 中识别店铺 ID，请先在参数设置中填写正确的数字 Shop ID。');
+        return;
+      }
       updatePayload.cookie = nextCookie;
       updatePayload.status = 'active';
-      if (nextResolvedShopId) {
-        updatePayload.shopId = nextResolvedShopId;
-      }
-      if (nextNameFromCapture && !customDisplayName) {
-        const moduleLabel = getAccountModuleLabel(syncModule.value);
-        const shopNamePrefix = buildShopNamePrefix(nextNameFromCapture, nextResolvedShopId || existingAccount.shopId || '手动录入');
-        updatePayload.name = `${shopNamePrefix} / ${moduleLabel}`;
-      }
+      updatePayload.shopId = nextResolvedShopId;
     }
 
     try {
-      await fetch('/api/v1/connector/accounts/update', {
+      const response = await fetch(apiUrl('/api/v1/connector/accounts/update'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1610,11 +1747,12 @@ async function handleSaveAccountRelation(): Promise<void> {
           userId: userId.value || 'default'
         })
       });
+      await parseApiResponse(response, '更新账号失败');
       message.success('账号信息已更新！');
       await fetchAccounts();
       closeAccountModal();
-    } catch (error) {
-      message.error('更新账号失败');
+    } catch (error: any) {
+      message.error(error.message || '更新账号失败');
     }
     return;
   }
@@ -1624,48 +1762,51 @@ async function handleSaveAccountRelation(): Promise<void> {
     return;
   }
 
-  let finalCookie = capturedCookie.value || pastedCookie.value;
+  const finalCookie = pastedCookie.value;
   let finalShopId = capturedShopId.value;
   let finalShopName = capturedShopName.value;
 
-  if (!finalCookie) {
+  if (!hasCapturedCredential.value && !finalCookie) {
     try {
-      const response = await fetch(`/api/v1/connector/sources/capture-status?${getCompanyQuery()}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.captured && data.cookie) {
-          finalCookie = data.cookie;
-          finalShopId = data.shopId || '';
-          finalShopName = data.shopName || '已拦截抖店';
-        }
+    const response = await fetch(apiUrl(`/api/v1/connector/sources/capture-status?${getCompanyQuery()}`));
+      const data = await parseApiResponse<any>(response, '读取凭证捕获状态失败');
+      if (data.captured) {
+        hasCapturedCredential.value = true;
+        finalShopId = data.shopId || '';
+        finalShopName = data.shopName || '已拦截抖店';
       }
     } catch (error) {
       console.error('最后尝试获取凭证失败', error);
     }
   }
 
-  if (!finalCookie) {
+  if (!hasCapturedCredential.value && !finalCookie) {
     message.error('请在下方登录或手动粘贴您的 Cookie 凭证！');
     return;
   }
 
   const match = finalCookie.match(/shop_id=(\d+)/) || finalCookie.match(/shop_id_str=(\d+)/);
-  const displayShopId = finalShopId || (match ? match[1] : '手动录入');
+  const displayShopId = String(
+    finalShopId || (match ? match[1] : '') || shopIdParam.value || ''
+  ).trim();
+  if (!/^\d+$/.test(displayShopId)) {
+    message.error('无法从 Cookie 中识别店铺 ID，请先在参数设置中填写正确的数字 Shop ID。');
+    return;
+  }
   const shopNamePrefix = buildShopNamePrefix(finalShopName, displayShopId);
   const moduleLabel = getAccountModuleLabel(syncModule.value);
   const newAccount: Account = {
-    key: `self_${Date.now()}`,
+    key: `self_${createConnectorConfigId()}`,
     name: customDisplayName || `${shopNamePrefix} / ${moduleLabel}`,
     mode: '模拟登录',
     status: 'active',
-    cookie: finalCookie,
     shopId: displayShopId,
     module: syncModule.value,
     shareScope: allowShare.value ? 'company' : 'private'
   };
 
   try {
-    await fetch('/api/v1/connector/accounts/add', {
+    const response = await fetch(apiUrl('/api/v1/connector/accounts/add'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1673,7 +1814,8 @@ async function handleSaveAccountRelation(): Promise<void> {
         name: newAccount.name,
         mode: newAccount.mode,
         status: newAccount.status,
-        cookie: newAccount.cookie || '',
+        cookie: finalCookie || '',
+        useCapturedCredential: hasCapturedCredential.value,
         shopId: newAccount.shopId || '',
         is_active: isNewAccountActive.value ? 1 : 0,
         module: newAccount.module || '',
@@ -1682,11 +1824,12 @@ async function handleSaveAccountRelation(): Promise<void> {
         shareScope: newAccount.shareScope || (allowShare.value ? 'company' : 'private')
       })
     });
+    await parseApiResponse(response, '写入数据库失败');
     message.success('新账号已成功绑定并存盘！');
     await fetchAccounts();
     closeAccountModal();
-  } catch (error) {
-    message.error('写入数据库失败');
+  } catch (error: any) {
+    message.error(error.message || '写入数据库失败');
   }
 }
 
@@ -1709,7 +1852,7 @@ function handleSyncLogPageChange(payload: { page: number; pageSize: number }): v
  */
 async function handleSetActiveAccount(key: string): Promise<void> {
   try {
-    const response = await fetch('/api/v1/connector/accounts/active', {
+    const response = await fetch(apiUrl('/api/v1/connector/accounts/active'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1718,12 +1861,11 @@ async function handleSetActiveAccount(key: string): Promise<void> {
         userId: userId.value || 'default'
       })
     });
-    if (response.ok) {
-      message.success('已成功切换并启用该数据源同步账号！');
-      await fetchAccounts();
-    }
-  } catch (error) {
-    message.error('切换启用账号失败');
+    await parseApiResponse(response, '切换启用账号失败');
+    message.success('已成功切换并启用该数据源同步账号！');
+    await fetchAccounts();
+  } catch (error: any) {
+    message.error(error.message || '切换启用账号失败');
   }
 }
 
@@ -1739,23 +1881,18 @@ async function handleDeleteAccount(account: Account): Promise<void> {
   }
 
   try {
-    const response = await fetch(`/api/v1/connector/accounts/${account.key}`, {
+    const response = await fetch(apiUrl(`/api/v1/connector/accounts/${account.key}`), {
       method: 'DELETE',
       headers: {
         'x-tenant-key': tenantKey.value || 'default',
         'x-user-id': userId.value || 'default'
       }
     });
-    if (response.ok) {
-      const result = await response.json().catch(() => null);
-      message.info(result?.message || '账号已解除关联');
-      await fetchAccounts();
-    } else {
-      const result = await response.json().catch(() => null);
-      message.error(result?.message || '删除账号失败');
-    }
-  } catch (error) {
-    message.error('删除账号失败');
+    const result = await parseApiResponse<any>(response, '删除账号失败');
+    message.info(result?.message || '账号已解除关联');
+    await fetchAccounts();
+  } catch (error: any) {
+    message.error(error.message || '删除账号失败');
   }
 }
 
@@ -1774,7 +1911,12 @@ function handleAutoMapFields(): void {
  */
 function handleClearFieldSelection(): void {
   Object.keys(fieldMappings).forEach((key) => delete fieldMappings[key]);
-  message.info('已清空字段选择，请至少勾选一个需要同步的字段。');
+  currentModuleFields.value
+    .filter((field) => field.isPrimary === true)
+    .forEach((field) => {
+      fieldMappings[field.key] = field.defaultField || field.key;
+    });
+  message.info('已清空可选字段，主键字段会继续保留。');
 }
 
 /**
@@ -1784,11 +1926,16 @@ function handleClearFieldSelection(): void {
  * @return {void} 无返回值
  */
 function handleFieldSyncToggle(sourceKey: string, checked: boolean): void {
+  const field = currentModuleFields.value.find((item) => item.key === sourceKey);
+  if (field?.isPrimary === true && !checked) {
+    fieldMappings[sourceKey] = field.defaultField || sourceKey;
+    message.warning('主键字段用于识别和更新记录，不能取消同步。');
+    return;
+  }
   if (!checked) {
     delete fieldMappings[sourceKey];
     return;
   }
-  const field = currentModuleFields.value.find((item) => item.key === sourceKey);
   fieldMappings[sourceKey] = field?.defaultField || sourceKey;
 }
 
@@ -1813,7 +1960,14 @@ function handleMapFieldChange(sourceKey: string, bitableFieldId: string): void {
  * @return {void} 无返回值
  */
 function handleFieldSelectChange(sourceKey: string, value: unknown): void {
-  handleMapFieldChange(sourceKey, typeof value === 'string' ? value : '');
+  const field = currentModuleFields.value.find((item) => item.key === sourceKey);
+  const mappedValue = typeof value === 'string' ? value : '';
+  if (field?.isPrimary === true && !mappedValue) {
+    fieldMappings[sourceKey] = field.defaultField || sourceKey;
+    message.warning('主键字段必须保留目标列映射。');
+    return;
+  }
+  handleMapFieldChange(sourceKey, mappedValue);
 }
 
 /**
@@ -1831,8 +1985,7 @@ function handleModuleDropdownVisibleChange(visible: boolean): void {
  */
 async function handleTestConnection(): Promise<void> {
   testConnectionResult.value = '';
-  if (!shopIdParam.value) {
-    message.error('请先填写抖音店铺 ID');
+  if (!validateShopIdParam()) {
     return;
   }
   if (!selectedDoudianInterface.value) {
@@ -1843,10 +1996,13 @@ async function handleTestConnection(): Promise<void> {
     message.error('请先关联一个抖店账号');
     return;
   }
+  if (!validateRequiredCustomQueryFields()) {
+    return;
+  }
 
   isTestingConnection.value = true;
   try {
-    const response = await fetch('/api/v1/connector/doudian/test-connection', {
+    const response = await fetch(apiUrl('/api/v1/connector/doudian/test-connection'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1855,13 +2011,11 @@ async function handleTestConnection(): Promise<void> {
         syncModule: syncModule.value,
         doudianInterface: buildSelectedDoudianInterfaceConfig(),
         shopIdParam: shopIdParam.value,
-        doudianExtraQuery: buildRuntimeDoudianExtraQuery()
+        doudianExtraQuery: buildRuntimeDoudianExtraQuery(),
+        dateRange: hasDateRangeMapping.value ? dateRange.value : 'all'
       })
     });
-    const result = await response.json();
-    if (!response.ok || result.code !== 0) {
-      throw new Error(result.message || '测试连接失败');
-    }
+    const result = await parseApiResponse<any>(response, '测试连接失败');
     const data = result.data || {};
     testConnectionResult.value = `已连通：${data.interfaceName || '抖店接口'}，本页 ${data.count || 0} 条，总数 ${data.total || 0}`;
     message.success('测试连接成功');
@@ -1882,8 +2036,7 @@ async function handleSaveAndGoNext(): Promise<void> {
     message.error('请至少关联一个账号进行数据同步！');
     return;
   }
-  if (!shopIdParam.value) {
-    message.error('请输入需要同步的抖音店铺 ID (Shop ID)！');
+  if (!validateShopIdParam()) {
     return;
   }
   if (!selectedDoudianInterface.value) {
@@ -1931,18 +2084,17 @@ async function handleSaveAndGoNext(): Promise<void> {
       id: activeAccount?.id || '',
       mode: activeAccount?.mode || '模拟登录',
       name: activeAccount?.name || '抖店模拟账号',
-      cookie: activeAccount?.cookie || pastedCookie.value,
       shopId: activeAccount?.shopId || shopIdParam.value
     }
   };
 
   try {
-    const response = await fetch('/api/v1/sync/tasks/save', {
+    const response = await fetch(apiUrl('/api/v1/sync/tasks/save'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config)
     });
-    if (!response.ok) throw new Error('后端任务保存失败');
+    await parseApiResponse(response, '后端任务保存失败');
     await bitable.saveConfigAndGoNext({ value: JSON.stringify(config) });
   } catch (error: any) {
     message.error(`任务保存失败: ${error.message}`);
@@ -2085,42 +2237,104 @@ function handleAccountScroll(): void {
  * @return {string} 返回 bookmarklet 代码
  */
 function buildBookmarkCode(): string {
-  const serverUrl = `${window.location.origin}/api/v1/connector/sources/login-capture`;
-  const companyId = encodeURIComponent(tenantKey.value || 'default');
-  const currentUserId = encodeURIComponent(userId.value || 'default');
-  const currentModule = encodeURIComponent(syncModule.value || '');
-  return `javascript:(function(){var cookie=document.cookie;var tenantKey="${companyId}";var userId="${currentUserId}";var selectedModule="${currentModule}";var shopIdMatch=cookie.match(/shop_id=(\\d+)/)||cookie.match(/shop_id_str=(\\d+)/);var shopId=shopIdMatch?shopIdMatch[1]:'';if(!shopId){var match=window.location.href.match(/shop_id=(\\d+)/);if(match)shopId=match[1]}if(!shopId){shopId=prompt("请输入您的抖音店铺 ID / Shop ID (必填):")}if(!shopId)return alert("获取店铺 ID 失败，取消上报！");var module=decodeURIComponent(selectedModule)||"";var companyId=decodeURIComponent(tenantKey);var openUserId=decodeURIComponent(userId);var payload={tenantKey:companyId,companyId:companyId,userId:openUserId,cookie:cookie,shopId:shopId,shopName:document.title||"抖店商家店铺",module:module,userAgent:navigator.userAgent};fetch("${serverUrl}",{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(function(res){return res.json()}).then(function(){alert("抖音登录凭据已成功上报，您可以返回多维表格配置页。")}).catch(function(err){alert("上报失败: "+err.message)})})();`;
+  if (!hasValidCaptureSession.value) {
+    return 'javascript:alert("捕获脚本尚未生成或已过期，请返回飞书配置页重新生成。")';
+  }
+  const relayUrl = JSON.stringify(`${window.location.origin}/capture-relay.html`);
+  const relayOrigin = JSON.stringify(window.location.origin);
+  const token = JSON.stringify(captureToken.value);
+  return `javascript:(function(){var token=${token};var relayUrl=${relayUrl};var relayOrigin=${relayOrigin};var cookie=document.cookie;if(!cookie)return alert("当前页面没有可读取的登录凭证，请确认已经登录抖店后台。");var shopIdMatch=cookie.match(/shop_id=(\\d+)/)||cookie.match(/shop_id_str=(\\d+)/);var shopId=shopIdMatch?shopIdMatch[1]:'';if(!shopId){var locationMatch=window.location.href.match(/shop_id=(\\d+)/);if(locationMatch)shopId=locationMatch[1]}if(!shopId)shopId=prompt("请输入您的抖音店铺 ID / Shop ID (必填):");if(!shopId)return alert("获取店铺 ID 失败，已取消上报。");var relay=window.open(relayUrl,"doudian_capture_relay","width=480,height=320,left=240,top=160");if(!relay)return alert("浏览器阻止了凭证中转窗口，请允许弹窗后重试。");var payload={token:token,cookie:cookie,shopId:shopId,shopName:document.title||"抖店商家店铺"};var timeout=window.setTimeout(function(){window.removeEventListener("message",onMessage);alert("安全中转页连接超时，请返回飞书配置页重新生成脚本。")},10000);function onMessage(event){if(event.origin!==relayOrigin||event.source!==relay)return;var data=event.data||{};if(data.type==="doudian-capture-relay-ready"){relay.postMessage({type:"doudian-capture-credential",payload:payload},relayOrigin);return}if(data.type==="doudian-capture-result"){window.clearTimeout(timeout);window.removeEventListener("message",onMessage);alert(data.ok?"抖店登录凭据已成功上报，请返回飞书配置页。":"上报失败: "+(data.message||"请重新生成脚本"))}}window.addEventListener("message",onMessage)})();`;
 }
 
 /**
- * 功能描述：复制书签脚本到系统剪贴板。
+ * 功能描述：在 Clipboard API 被 iframe 权限策略拦截时，降级使用传统复制方式。
+ * @param {string} text 待复制文本
+ * @return {Promise<boolean>} 返回是否已自动复制成功
+ */
+async function copyText(text: string): Promise<boolean> {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (error) {
+      console.warn('Clipboard API 被当前页面权限策略拦截，尝试降级复制。', error);
+    }
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'readonly');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    return document.execCommand('copy');
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+/**
+ * 功能描述：在自动复制被全部拦截时，展示可手动复制的已选中文本框。
+ * @param {string} text 待复制文本
+ * @return {void} 无返回值
+ */
+function showManualCopyTextarea(text: string): void {
+  document.getElementById('manual-copy-bookmark-code')?.remove();
+
+  const textarea = document.createElement('textarea');
+  textarea.id = 'manual-copy-bookmark-code';
+  textarea.value = text;
+  textarea.setAttribute('readonly', 'readonly');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '16px';
+  textarea.style.right = '16px';
+  textarea.style.bottom = '16px';
+  textarea.style.zIndex = '99999';
+  textarea.style.width = 'calc(100vw - 32px)';
+  textarea.style.height = '150px';
+  textarea.style.padding = '12px';
+  textarea.style.border = '1px solid #1677ff';
+  textarea.style.borderRadius = '6px';
+  textarea.style.background = '#fff';
+  textarea.style.color = '#1f2937';
+  textarea.style.boxShadow = '0 12px 32px rgba(15, 23, 42, 0.24)';
+  textarea.style.fontSize = '12px';
+  textarea.style.lineHeight = '18px';
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  window.setTimeout(() => {
+    textarea.remove();
+  }, 30000);
+}
+
+/**
+ * 功能描述：复制书签脚本到系统剪贴板，兼容飞书 iframe 禁用 Clipboard API 的场景。
  * @return {Promise<void>} 无返回值
  */
 async function copyBookmarkCode(): Promise<void> {
   try {
+    const prepared = await prepareCaptureSession();
+    if (!prepared) return;
 
-      const textarea = document.createElement('textarea');
-      textarea.value = bookmarkCode.value;
-      textarea.style.position = 'fixed';
-      textarea.style.left = '-9999px';
-      document.body.appendChild(textarea);
-
-      textarea.focus();
-      textarea.select();
-
-      const success = document.execCommand('copy');
-      document.body.removeChild(textarea);
-
-      if (!success) {
-        throw new Error('execCommand copy failed');
-      }
-    message.success('脚本代码已复制到剪贴板！');
+    const copied = await copyText(bookmarkCode.value);
+    if (copied) {
+      message.success('脚本代码已复制到剪贴板！');
+      return;
     }
-
-
-     catch (err) {
+    showManualCopyTextarea(bookmarkCode.value);
+    message.warning('复制权限被限制，已选中脚本代码，请按 Ctrl/Cmd + C 手动复制。');
+  } catch (err) {
     console.error(err);
-    message.error('复制失败，请手动复制。');
+    showManualCopyTextarea(bookmarkCode.value);
+    message.warning('复制权限被限制，已选中脚本代码，请按 Ctrl/Cmd + C 手动复制。');
   }
 }
 
@@ -2128,18 +2342,30 @@ async function copyBookmarkCode(): Promise<void> {
  * 功能描述：提示用户拖拽书签按钮而非直接点击运行。
  * @return {void} 无返回值
  */
-function showDragBookmarkTip(): void {
-  message.info('请将该按钮直接拖动到浏览器书签栏。');
+async function showDragBookmarkTip(): Promise<void> {
+  const prepared = await prepareCaptureSession();
+  if (prepared) {
+    message.info('安全脚本已生成，请将按钮直接拖动到浏览器书签栏。');
+  }
 }
 
 // 切换同步模块后重建字段列表和默认映射，保证字段配置区跟随模块变化。
 watch(syncModule, async () => {
   if (isRestoringSavedConfig) return;
+  captureToken.value = '';
+  captureTokenExpiresAt.value = 0;
   const requestId = ++syncModuleDetailRequestId;
   await ensureSelectedDoudianInterfaceDetail();
   if (requestId !== syncModuleDetailRequestId) return;
   resetFieldMappingByModule();
   resetCustomQueryValues();
+  if (
+    isAccountModalOpen.value
+    && currentStep.value === 2
+    && accountSourceType.value === 'self'
+  ) {
+    await prepareCaptureSession(true);
+  }
 });
 
 // 根据轮询开关创建或销毁定时器，集中管理 Cookie 捕获状态查询。
@@ -2234,7 +2460,6 @@ onMounted(async () => {
     }
     try {
       tenantKey.value = (await bitable.getTenantKey()) || 'unknown';
-      console.log( tenantKey.value)
     } catch (error) {
       tenantKey.value = 'unknown';
     }
@@ -2509,6 +2734,10 @@ onUnmounted(() => {
   justify-content: center;
   font-size: 12px;
   color: #3D3D3D;
+}
+.helper-bookmark.disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 .helper-bookmark img{
   height: 20px;

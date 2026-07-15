@@ -1,8 +1,15 @@
-let fetch = require('node-fetch');
-if (fetch && fetch.default) {
-  fetch = fetch.default;
-}
 const { logSyncError } = require('./error_logger.js');
+const {
+  assertAllowedUrl,
+  fetchTextWithTimeout,
+  fetchWithTimeout,
+  getRemainingTimeoutMs,
+  sanitizeUrl
+} = require('./http_client.js');
+const {
+  getDoudianAllowedApiOrigins,
+  getLocalAggregateBaseUrl
+} = require('./runtime_config.js');
 const {
   getDoudianInterfaceByKey
 } = require('./database.js');
@@ -36,6 +43,9 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
   let doudianInterfaceOverride = null;
   let aggregatePageToken = '';
   let dateRange = '';
+  let deadlineAt = 0;
+  let companyId = 'default';
+  let dateRangeAnchorAt = 0;
   const isDebugTestRequest = String(taskId || '').startsWith('TEST_');
 
   if (configOrDateRange && typeof configOrDateRange === 'object') {
@@ -44,9 +54,13 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     doudianInterfaceOverride = configOrDateRange.doudianInterface || null;
     aggregatePageToken = configOrDateRange.aggregatePageToken || '';
     dateRange = String(configOrDateRange.dateRange || '');
+    deadlineAt = Number(configOrDateRange.deadlineAt || 0);
+    companyId = String(configOrDateRange.companyId || configOrDateRange.tenantKey || 'default');
+    dateRangeAnchorAt = Number(configOrDateRange.dateRangeAnchorAt || 0);
   } else if (configOrDateRange !== undefined && configOrDateRange !== null) {
     dateRange = String(configOrDateRange || '');
   }
+  dateRangeAnchorAt = resolveDateRangeAnchorAt(dateRangeAnchorAt, aggregatePageToken);
 
   const ua = userAgent || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   
@@ -56,26 +70,10 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     'Accept': '*/*'
   };
 
-  // 1. 模式 B 规定：单次请求之间必须设定 1.5s - 3s 的随机休眠延迟（Delay），防止触发平台风控
+  // 单次请求前保留随机间隔，同时受飞书 records 总截止时间约束。
   const delayMs = Math.floor(Math.random() * 1500) + 1500;
   console.log(`[Mode B] 频控延迟休眠 ${delayMs} 毫秒...`);
-  await new Promise(resolve => setTimeout(resolve, delayMs));
-
-  // 2. 优先拉取工作台导航菜单 (Fetch Menu Structure)
-  console.log(`[Mode B] 优先拉取控制台菜单以解析动态路由路径...`);
-  const menuUrl = 'https://compass.jinritemai.com/compass/api/v1/menu';
-  try {
-    const menuResp = await fetch(menuUrl, { headers: { ...headers, 'Referer': 'https://compass.jinritemai.com/' }, timeout: 6000 });
-    const menuContentType = menuResp.headers.get('content-type') || '';
-    if (menuResp.status === 200 && !menuContentType.includes('text/html')) {
-      await menuResp.json();
-      console.log(`[Mode B] 菜单路由树解析成功，动态数据节点路径正常`);
-    } else {
-      console.warn(`[Mode B] 菜单预检接口未返回有效 JSON (status: ${menuResp.status})，将跳过预检`);
-    }
-  } catch (err) {
-    console.warn(`[Mode B] 菜单预检接口请求发生异常，已跳过预检: ${err.message}`);
-  }
+  await sleepWithinDeadline(delayMs, deadlineAt);
 
   let requestUrl = '';
   let requestMethod = 'GET';
@@ -90,13 +88,36 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     throw new Error(`DoudianInterfaceNotFound: 当前接口未接入或不存在 (${syncModule})`);
   }
   selectedInterfaceMeta = applyDoudianInterfaceOverride(selectedInterfaceMeta, doudianInterfaceOverride);
-  const builtRequest = buildDoudianRegisteredRequest(selectedInterfaceMeta, shopId, pageNum, maxPageSize, doudianExtraQuery, aggregatePageToken, cookie, ua, dateRange);
+  const builtRequest = buildDoudianRegisteredRequest(
+    selectedInterfaceMeta,
+    shopId,
+    pageNum,
+    maxPageSize,
+    doudianExtraQuery,
+    aggregatePageToken,
+    cookie,
+    ua,
+    dateRange,
+    dateRangeAnchorAt
+  );
+  if (selectedInterfaceMeta.useLocalAggregate) {
+    assertAllowedUrl(
+      builtRequest.requestUrl,
+      [getLocalAggregateBaseUrl()],
+      { allowHttp: true }
+    );
+  } else {
+    assertAllowedUrl(builtRequest.requestUrl, getDoudianAllowedApiOrigins());
+  }
   requestUrl = builtRequest.requestUrl;
   requestMethod = builtRequest.requestMethod;
   requestBody = builtRequest.requestBody;
   applyRequestHeaders(headers, builtRequest, requestMethod);
   if (builtRequest.requestHeaders) {
     Object.assign(headers, builtRequest.requestHeaders);
+  }
+  if (selectedInterfaceMeta.useLocalAggregate && deadlineAt > 0) {
+    headers['X-Request-Deadline'] = String(deadlineAt);
   }
 
   // console.log(`[Mode B] 真实请求 URL: ${requestUrl}, Method: ${requestMethod}`);
@@ -122,8 +143,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
 
     const fetchOptions = {
       method: requestMethod,
-      headers: headers,
-      timeout: 8000
+      headers: headers
     };
     if (requestBody) {
       fetchOptions.body = requestBody;
@@ -138,8 +158,16 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
       // }, null, 2));
     }
 
-    const response = await fetch(requestUrl, fetchOptions);
-    const responseText = await response.text();
+    const requestTimeoutMs = getRemainingTimeoutMs(
+      deadlineAt,
+      selectedInterfaceMeta.useLocalAggregate ? 15000 : 8000,
+      800
+    );
+    const { response, responseText } = await fetchTextWithTimeout(
+      requestUrl,
+      fetchOptions,
+      requestTimeoutMs
+    );
 
     if (isDebugTestRequest) {
       // console.log('[Doudian Test Response]', JSON.stringify({
@@ -159,20 +187,34 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
 
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('text/html')) {
-      throw new Error(`DoudianHTMLResponse: 抖店接口返回 HTML 页面，不是 JSON。通常是请求参数或风控参数不完整，不一定是 Cookie 过期。HTTP ${response.status}, snippet=${responseText.substring(0, 160)}`);
+      throw new Error(
+        `DoudianHTMLResponse: 抖店接口返回 HTML 页面，不是 JSON。`
+        + `通常是请求参数或风控参数不完整，不一定是 Cookie 过期。`
+        + `HTTP ${response.status}, bodyBytes=${Buffer.byteLength(responseText, 'utf8')}`
+      );
     }
 
     let resJson;
     try {
       resJson = JSON.parse(responseText);
     } catch (jsonError) {
-      throw new Error(`DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。HTTP ${response.status}, contentType=${contentType}, snippet=${responseText.substring(0, 160)}`);
+      throw new Error(
+        `DoudianNonJsonResponse: 抖店接口返回非 JSON 内容。`
+        + `HTTP ${response.status}, contentType=${contentType}, `
+        + `bodyBytes=${Buffer.byteLength(responseText, 'utf8')}`
+      );
     }
-    console.log(`[Doudian API Response] URL: ${requestUrl}`);
+    console.log(`[Doudian API Response] URL: ${sanitizeUrl(requestUrl)}`);
     
     // 校验响应内容中的未登录或受限标记
     const errCode = String(resJson.code || resJson.errorCode || '');
     const errMsg = resJson.message || resJson.msg || resJson.errorMsg || '';
+
+    if (!response.ok) {
+      throw new Error(
+        `DoudianHTTPError: 抖店接口 HTTP ${response.status} ${errMsg || response.statusText || '请求失败'}`
+      );
+    }
     
     if (errCode === '40004' || errCode === '10008' || errCode === '401' || (errMsg && (errMsg.includes("登录") || errMsg.includes("会话") || errMsg.includes("expire") || errMsg.includes("失效") || errMsg.includes("未授权")))) {
       throw new Error("CredentialsExpired: 凭证失效(Cookie过期)");
@@ -206,13 +248,26 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     const configuredTotal = selectedInterfaceMeta
       ? getFirstValueByPaths(resJson, selectedInterfaceMeta.requestConfig?.totalPaths || [])
       : undefined;
-    const totalVal = configuredTotal !== undefined ? configuredTotal : (resJson.total !== undefined ? resJson.total : (resJson.data && resJson.data.total !== undefined ? resJson.data.total : resultList.length));
-    resultList.total = Number(totalVal || 0);
+    const responseTotal = configuredTotal !== undefined
+      ? configuredTotal
+      : resJson.total !== undefined
+        ? resJson.total
+        : resJson.data && resJson.data.total !== undefined
+          ? resJson.data.total
+          : undefined;
+    const numericResponseTotal = Number(responseTotal);
+    const hasKnownTotal = responseTotal !== undefined
+      && responseTotal !== null
+      && responseTotal !== ''
+      && Number.isFinite(numericResponseTotal)
+      && numericResponseTotal >= 0;
+    resultList.total = hasKnownTotal ? numericResponseTotal : 0;
     if (selectedInterfaceMeta) {
       resultList.interfaceMeta = selectedInterfaceMeta;
       resultList.pageSize = Math.min(Number(selectedInterfaceMeta.requestConfig?.pageSize || resultList.length || 50), Number(maxPageSize || 1000));
       resultList.pageStart = Number(selectedInterfaceMeta.requestConfig?.pageStart ?? 0);
-      resultList.doudianPage = resultList.pageStart + Math.max(Number(pageNum || 1) - 1, 0);
+      const normalizedPageNum = normalizeInternalPageNum(pageNum);
+      resultList.doudianPage = resultList.pageStart + Math.max(normalizedPageNum - 1, 0);
       if (selectedInterfaceMeta.useLocalAggregate) {
         const aggregateData = resJson.data && typeof resJson.data === 'object' ? resJson.data : resJson;
         resultList.hasMore = aggregateData.hasMore === true || aggregateData.has_more === true;
@@ -220,6 +275,28 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
         resultList.loadedCount = Number(aggregateData.loadedCount || aggregateData.loaded_count || resultList.length || 0);
         resultList.pageSize = Number(aggregateData.pageSize || aggregateData.page_size || resultList.pageSize || maxPageSize);
         resultList.total = Number(aggregateData.total || resultList.total || resultList.loadedCount || 0);
+      } else {
+        const requestConfig = selectedInterfaceMeta.requestConfig || {};
+        const paginationEnabled = requestConfig.pagination !== false;
+        const loadedCount = Math.max(normalizedPageNum - 1, 0) * resultList.pageSize
+          + resultList.length;
+        const responseHasMore = getFirstValueByPaths(
+          resJson,
+          requestConfig.hasMorePaths || requestConfig.has_more_paths || []
+        );
+        const hasMore = responseHasMore !== undefined
+          ? normalizeBoolean(responseHasMore)
+          : hasKnownTotal
+            ? loadedCount < resultList.total
+            : paginationEnabled && resultList.length >= resultList.pageSize;
+        resultList.loadedCount = loadedCount;
+        resultList.hasMore = hasMore;
+        resultList.nextPageToken = hasMore
+          ? `page_${normalizedPageNum + 1}_${loadedCount}_${dateRangeAnchorAt}`
+          : '';
+        if (!hasKnownTotal) {
+          resultList.total = hasMore ? loadedCount + 1 : loadedCount;
+        }
       }
     }
 
@@ -231,16 +308,28 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     if (msg.includes("CredentialsExpired") || msg.includes("401")) {
       errorType = '凭证失效(Cookie过期)';
       msg = '抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！';
+    } else if (msg.includes("UpstreamResponseTooLarge")) {
+      errorType = '抖店接口响应过大';
     } else if (msg.includes("DoudianForbidden") || msg.includes("DoudianHTMLResponse") || msg.includes("DoudianNonJsonResponse")) {
       errorType = '抖店接口请求参数不完整';
     }
 
     // 静默写入本地错误库
-    logSyncError(taskId, '抖音电商罗盘', `店铺_${shopId}`, errorType, msg);
+    logSyncError(taskId, '抖音电商罗盘', `店铺_${shopId}`, errorType, msg, companyId);
     
     // 抛出异常供 records 同步阶段进行真实连接的处理，绝不静默降级，带上详细错误消息
     throw new Error(`${errorType}: ${msg}`);
   }
+}
+
+/**
+ * 功能描述：规范连接器内部页码；内部页码一基，抖店 0 页接口由 requestConfig.pageStart=0 表达。
+ * @param {unknown} pageNum 当前内部页码
+ * @return {number} 返回可用于分页计算的页码
+ */
+function normalizeInternalPageNum(pageNum) {
+  const numericPage = Number(pageNum);
+  return Number.isSafeInteger(numericPage) && numericPage > 0 ? numericPage : 1;
 }
 
 /**
@@ -250,7 +339,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
  * @param {number} pageNum 当前页码
  * @return {object} 返回请求 URL、方法、正文与 Content-Type
  */
-function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSize = 1000, runtimeExtraQuery = {}, aggregatePageToken = '', cookie = '', userAgent = '', dateRange = '') {
+function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSize = 1000, runtimeExtraQuery = {}, aggregatePageToken = '', cookie = '', userAgent = '', dateRange = '', dateRangeAnchorAt = Date.now()) {
   const requestConfig = interfaceMeta.requestConfig || {};
   const paginationEnabled = requestConfig.pagination !== false;
   const contentType = requestConfig.contentType || 'application/json;charset=UTF-8';
@@ -259,10 +348,15 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
   const pageSizeParam = requestConfig.pageSizeParam || 'pageSize';
   const pageStart = Number(requestConfig.pageStart ?? 0);
   const pageSize = Math.min(Number(requestConfig.pageSize || 50), Number(maxPageSize || 1000));
-  const pageValue = pageStart + Math.max(Number(pageNum || 1) - 1, 0);
+  const normalizedPageNum = normalizeInternalPageNum(pageNum);
+  const pageValue = pageStart + Math.max(normalizedPageNum - 1, 0);
   const apiHost = normalizeUrlPrefix(interfaceMeta.apiHost || 'https://fxg.jinritemai.com');
 
-  const computedDateRangeParams = buildDateRangeQueryParams(requestConfig, dateRange);
+  const computedDateRangeParams = buildDateRangeQueryParams(
+    requestConfig,
+    dateRange,
+    dateRangeAnchorAt
+  );
   const baseParams = {
     ...(requestConfig.extraQuery || {}),
     ...computedDateRangeParams,
@@ -310,6 +404,7 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
         pageSizeParam: paginationEnabled ? pageSizeParam : undefined,
         paginationEnabled,
         aggregatePageToken,
+        dateRangeAnchorAt,
         sources: requestConfig.localAggregateSources || requestConfig.aggregateSources || [],
         params: aggregateParams
       }),
@@ -324,11 +419,7 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
   const requestUrlObj = new URL(interfaceMeta.apiPath, apiHost);
 
   if (requestMethod.toUpperCase() === 'GET') {
-    Object.entries(baseParams).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        requestUrlObj.searchParams.set(key, String(value));
-      }
-    });
+    appendUrlSearchParams(requestUrlObj.searchParams, baseParams);
     return {
       requestUrl: requestUrlObj.toString(),
       requestMethod: 'GET',
@@ -351,7 +442,7 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
     requestUrl: requestUrlObj.toString(),
     requestMethod: requestMethod.toUpperCase(),
     requestBody: contentType.includes('application/x-www-form-urlencoded')
-      ? new URLSearchParams(bodyParams).toString()
+      ? buildFormUrlEncodedBody(bodyParams)
       : JSON.stringify(bodyParams),
     contentType,
     refererHost: apiHost,
@@ -359,6 +450,56 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
     referer: requestConfig.referer || '',
     includeOriginHeader: requestConfig.includeOriginHeader
   };
+}
+
+/**
+ * 功能描述：把嵌套对象展开为点分参数并写入 URLSearchParams，避免对象被编码成 [object Object]。
+ * @param {URLSearchParams} searchParams 目标查询参数
+ * @param {object} source 原始参数对象
+ * @param {string} prefix 当前点分路径
+ * @return {void} 无返回值
+ */
+function appendUrlSearchParams(searchParams, source, prefix = '') {
+  if (!source || typeof source !== 'object') return;
+  Object.entries(source).forEach(([key, value]) => {
+    const parameterName = prefix ? `${prefix}.${key}` : key;
+    if (value === undefined || value === null || value === '') return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item !== undefined && item !== null && item !== '') {
+          searchParams.append(parameterName, serializeQueryValue(item));
+        }
+      });
+      return;
+    }
+    if (typeof value === 'object') {
+      appendUrlSearchParams(searchParams, value, parameterName);
+      return;
+    }
+    searchParams.set(parameterName, String(value));
+  });
+}
+
+/**
+ * 功能描述：生成 application/x-www-form-urlencoded 请求体并正确展开嵌套参数。
+ * @param {object} source 原始请求参数
+ * @return {string} 返回表单编码正文
+ */
+function buildFormUrlEncodedBody(source) {
+  const searchParams = new URLSearchParams();
+  appendUrlSearchParams(searchParams, source);
+  return searchParams.toString();
+}
+
+/**
+ * 功能描述：把查询参数中的对象值转换为稳定 JSON，基础类型直接转字符串。
+ * @param {unknown} value 原始参数值
+ * @return {string} 返回可编码文本
+ */
+function serializeQueryValue(value) {
+  return value && typeof value === 'object'
+    ? JSON.stringify(value)
+    : String(value);
 }
 
 /**
@@ -391,6 +532,9 @@ function setValueByConfigPath(target, path, value) {
     .split('.')
     .filter(Boolean);
   if (pathSegments.length === 0) return;
+  if (pathSegments.some((key) => ['__proto__', 'prototype', 'constructor'].includes(key))) {
+    throw new Error(`DoudianParameterPathInvalid: 非法分页参数路径 (${path})`);
+  }
 
   let current = target;
   pathSegments.forEach((key, index) => {
@@ -412,17 +556,23 @@ function setValueByConfigPath(target, path, value) {
  * @return {object} 返回合并后的接口元信息
  */
 function applyDoudianInterfaceOverride(interfaceMeta, override) {
-  if (!override || typeof override !== 'object') return interfaceMeta;
-  const apiHost = normalizeNullableText(override.apiHost);
-  const apiPath = normalizeNullableText(override.apiPath);
-  if (!apiHost && !apiPath) return interfaceMeta;
+  const localAggregatePath = normalizeNullableText(interfaceMeta.localAggregatePath);
+  if (!localAggregatePath) {
+    return {
+      ...interfaceMeta,
+      useLocalAggregate: false
+    };
+  }
+  if (!localAggregatePath.startsWith('/local/') && localAggregatePath !== '/demo') {
+    throw new Error(`LocalAggregatePathInvalid: 非法本地聚合路径 (${localAggregatePath})`);
+  }
   return {
     ...interfaceMeta,
-    apiHost: apiHost || interfaceMeta.apiHost,
-    apiPath: apiPath || interfaceMeta.apiPath,
-    sourceApiHost: normalizeNullableText(override.sourceApiHost),
-    sourceApiPath: normalizeNullableText(override.sourceApiPath),
-    useLocalAggregate: override.useLocalAggregate === true
+    apiHost: getLocalAggregateBaseUrl(),
+    apiPath: localAggregatePath,
+    sourceApiHost: interfaceMeta.apiHost,
+    sourceApiPath: interfaceMeta.apiPath,
+    useLocalAggregate: true
   };
 }
 
@@ -453,7 +603,11 @@ function applyRequestHeaders(headers, builtRequest, requestMethod) {
 
   if (method === 'GET') {
     delete headers['Content-Type'];
-    delete headers['Origin'];
+    if (includeOriginHeader && refererHost) {
+      headers['Origin'] = refererHost;
+    } else {
+      delete headers['Origin'];
+    }
   } else {
     headers['Content-Type'] = builtRequest.contentType;
     if (includeOriginHeader && refererHost) {
@@ -479,7 +633,7 @@ function applyRequestHeaders(headers, builtRequest, requestMethod) {
  * @param {string} dateRange 前端保存的同步时间范围，例如 7 / 30
  * @return {object} 返回要并入请求的时间参数对象
  */
-function buildDateRangeQueryParams(requestConfig, dateRange) {
+function buildDateRangeQueryParams(requestConfig, dateRange, anchorAt = Date.now()) {
   const mapping = requestConfig?.dateRangeMapping || requestConfig?.syncTimeRangeMapping || null;
   if (String(dateRange || '').trim().toLowerCase() === 'all') {
     return {};
@@ -491,7 +645,12 @@ function buildDateRangeQueryParams(requestConfig, dateRange) {
 
   const mode = String(mapping.mode || 'natural_day');
   const format = String(mapping.format || 'datetime');
-  const now = new Date();
+  const normalizedAnchorAt = Number(anchorAt);
+  const now = new Date(
+    Number.isFinite(normalizedAnchorAt) && normalizedAnchorAt > 0
+      ? normalizedAnchorAt
+      : Date.now()
+  );
   let startAt = null;
   let endAt = null;
 
@@ -511,6 +670,33 @@ function buildDateRangeQueryParams(requestConfig, dateRange) {
     params[mapping.endTime] = formatDateRangeValue(endAt, format);
   }
   return params;
+}
+
+/**
+ * 功能描述：恢复一次分页同步首屏确定的时间锚点，避免 rolling 时间范围跨页漂移。
+ * @param {unknown} explicitAnchorAt 显式时间锚点
+ * @param {unknown} pageToken 当前分页令牌
+ * @return {number} 返回稳定的毫秒时间戳
+ */
+function resolveDateRangeAnchorAt(explicitAnchorAt, pageToken) {
+  const explicit = Number(explicitAnchorAt);
+  if (isValidDateRangeAnchor(explicit)) return explicit;
+
+  const tokenMatch = String(pageToken || '').match(/_(\d{13})$/);
+  const tokenAnchor = tokenMatch ? Number(tokenMatch[1]) : 0;
+  if (isValidDateRangeAnchor(tokenAnchor)) return tokenAnchor;
+  return Date.now();
+}
+
+/**
+ * 功能描述：限制分页时间锚点在合理范围内，拒绝损坏令牌中的异常时间。
+ * @param {number} value 待校验的毫秒时间戳
+ * @return {boolean} 返回是否有效
+ */
+function isValidDateRangeAnchor(value) {
+  return Number.isFinite(value)
+    && value >= Date.UTC(2020, 0, 1)
+    && value <= Date.now() + 5 * 60 * 1000;
 }
 
 /**
@@ -696,6 +882,17 @@ function getFirstValueByPaths(json, paths) {
 }
 
 /**
+ * 功能描述：把第三方接口常见的布尔、数字和字符串标记归一化为布尔值。
+ * @param {unknown} value 原始是否还有更多数据标记
+ * @return {boolean} 返回规范布尔值
+ */
+function normalizeBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  return ['1', 'true', 'yes', 'y'].includes(String(value || '').trim().toLowerCase());
+}
+
+/**
  * 功能描述：按点分路径读取对象值，用于响应字段路径尚未完全确认时的可配置解析。
  * @param {object} source 源对象
  * @param {string} path 点分路径，例如 data.list
@@ -787,7 +984,11 @@ async function keepAliveSession(cookie, userAgent) {
   };
 
   try {
-    const response = await fetch('https://compass.jinritemai.com/compass/api/v1/shop/basic_info', { headers, timeout: 4000 });
+    const response = await fetchWithTimeout(
+      'https://compass.jinritemai.com/compass/api/v1/shop/basic_info',
+      { headers },
+      4000
+    );
     if (response.status === 200) {
       console.log(`[心跳保活] 成功对抖音罗盘进行 Session Keep-Alive 延长凭证有效期。`);
       return true;
@@ -797,6 +998,20 @@ async function keepAliveSession(cookie, userAgent) {
     console.warn(`[心跳保活] 定时保活网络请求失败，静默退出。`);
     return false;
   }
+}
+
+/**
+ * 功能描述：在总截止时间内执行风控延迟，剩余时间不足时提前失败交给飞书重试。
+ * @param {number} delayMs 计划延迟毫秒数
+ * @param {number} deadlineAt 整条请求绝对截止时间
+ * @return {Promise<void>} 无返回值
+ */
+async function sleepWithinDeadline(delayMs, deadlineAt) {
+  const deadline = Number(deadlineAt);
+  if (Number.isFinite(deadline) && deadline > 0 && Date.now() + delayMs + 1000 >= deadline) {
+    throw new Error('SyncDeadlineExceeded: 同步请求剩余时间不足，已提前终止');
+  }
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 module.exports = { fetchRealDoudianData, keepAliveSession };

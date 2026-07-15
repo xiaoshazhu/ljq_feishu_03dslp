@@ -1,10 +1,10 @@
 const ACCOUNT_NAME_FIELD = Object.freeze({
-  key: 'account_name',
-  label: '账号名称',
-  fieldName: '账号名称',
+  key: 'sys_name',
+  label: '同步账号',
+  fieldName: '同步账号',
   type: 'Text',
   fieldType: 1,
-  defaultField: 'account_name',
+  defaultField: 'sys_name',
   description: '当前执行同步的抖店账号名称',
   isConnectorField: true
 });

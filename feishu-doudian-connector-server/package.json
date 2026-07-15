@@ -1,23 +1,33 @@
 {
   "name": "nodejs",
   "version": "1.0.0",
-  "description": "",
+  "description": "飞书多维表格与抖店数据同步连接器服务",
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "start:prod": "NODE_ENV=production node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start:staging": "ENV_FILE=.env.staging node index.js",
+    "start:prod": "ENV_FILE=.env.production NODE_ENV=production node index.js",
+    "start:prod:file": "ENV_FILE=.env.production NODE_ENV=production node index.js",
+    "credential:encrypt": "node tools/credential_cipher_cli.js encrypt",
+    "credential:decrypt": "node tools/credential_cipher_cli.js decrypt",
+    "check": "for file in *.js; do node --check \"$file\"; done",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/node": "^20.9.1",
+    "compression": "^1.8.1",
     "dotenv": "^17.4.2",
-    "express": "^4.18.2",
+    "express": "^5.2.1",
     "http-proxy-middleware": "^4.1.1",
-    "mysql2": "^3.22.5",
-    "node-fetch": "^3.3.2"
+    "mysql2": "^3.22.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.9.1"
   }
 }

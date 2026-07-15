@@ -11,6 +11,10 @@ Thumbs.db
 *.db
 *.log
 feishu-doudian-connector-server/data/connector.db
+feishu-doudian-connector-server/data/tasks.json
+feishu-doudian-connector-server/data/errors.json
+feishu-doudian-connector-server/data/captured*.json
+feishu-doudian-connector-server/data/cache/
 .local/
 .replit
 replit.nix

@@ -6,6 +6,7 @@ const {
   getInterfaceKeyFromModule
 } = require('./doudian_interface_utils.js');
 const {
+  ACCOUNT_NAME_FIELD,
   appendConnectorFields
 } = require('./connector_fields.js');
 
@@ -29,13 +30,113 @@ const getTableMeta = async (module, config = {}) => {
   if (interfaceFields.length === 0) {
     throw new Error(`DoudianFieldsSchemaMissing: 当前接口缺少 fields_schema (${interfaceMeta.interfaceKey})`);
   }
+  const reservedField = interfaceFields.find((field) => (
+    field?.key === ACCOUNT_NAME_FIELD.key ||
+    field?.defaultField === ACCOUNT_NAME_FIELD.defaultField ||
+    field?.fieldId === ACCOUNT_NAME_FIELD.defaultField
+  ));
+  if (reservedField) {
+    throw new Error(
+      `DoudianFieldSchemaInvalid: 接口 ${interfaceMeta.interfaceKey} 占用了连接器保留字段 ${ACCOUNT_NAME_FIELD.defaultField}`
+    );
+  }
   const fields = appendConnectorFields(interfaceFields);
   const selectedFields = filterModuleFieldsByConfig(fields, config);
+  const primaryFields = selectedFields.filter((field) => field.isPrimary === true);
+  if (primaryFields.length !== 1) {
+    throw new Error(
+      `DoudianPrimaryFieldInvalid: 接口 ${interfaceMeta.interfaceKey} 必须且只能配置一个主键字段，当前为 ${primaryFields.length} 个`
+    );
+  }
+  const convertedFields = ensureConnectorFieldNamesUnique(
+    selectedFields.map((field) => convertModuleFieldToBitableField(field, config))
+  );
+  assertValidConvertedFields(convertedFields, interfaceMeta.interfaceKey);
   return {
     tableName: `抖店-${interfaceMeta.interfaceName}`,
-    fields: selectedFields.map((field) => convertModuleFieldToBitableField(field, config))
+    fields: convertedFields
   };
 };
+
+/**
+ * 功能描述：当连接器公共列被旧配置命名成业务列同名时，自动改为稳定且不重复的公共列名。
+ * @param {Array<object>} fields 已转换的飞书字段
+ * @return {Array<object>} 返回字段名不冲突的表结构字段
+ */
+function ensureConnectorFieldNamesUnique(fields) {
+  const usedBusinessNames = new Set(
+    fields
+      .filter((field) => field.isConnectorField !== true)
+      .map((field) => String(field.fieldName || '').trim())
+      .filter(Boolean)
+  );
+  const usedNames = new Set(usedBusinessNames);
+
+  return fields.map((field) => {
+    const fieldName = String(field.fieldName || '').trim();
+    if (field.isConnectorField !== true) {
+      return field;
+    }
+    if (fieldName && !usedBusinessNames.has(fieldName) && !usedNames.has(fieldName)) {
+      usedNames.add(fieldName);
+      return field;
+    }
+
+    const uniqueName = resolveUniqueConnectorFieldName(usedNames);
+    usedNames.add(uniqueName);
+    return {
+      ...field,
+      fieldName: uniqueName
+    };
+  });
+}
+
+/**
+ * 功能描述：基于连接器公共列默认名生成不与现有字段冲突的列名。
+ * @param {Set<string>} usedNames 已占用字段名集合
+ * @return {string} 返回可安全用于飞书表结构的字段名
+ */
+function resolveUniqueConnectorFieldName(usedNames) {
+  const baseName = String(ACCOUNT_NAME_FIELD.fieldName || ACCOUNT_NAME_FIELD.label || '同步账号').trim();
+  if (!usedNames.has(baseName)) return baseName;
+  let index = 2;
+  while (usedNames.has(`${baseName} ${index}`)) {
+    index += 1;
+  }
+  return `${baseName} ${index}`;
+}
+
+/**
+ * 功能描述：校验飞书表结构中的字段 ID、字段名均非空且互不重复。
+ * @param {Array<object>} fields 已转换的飞书字段
+ * @param {string} interfaceKey 接口标识
+ * @return {void} 无返回值
+ */
+function assertValidConvertedFields(fields, interfaceKey) {
+  const fieldIds = new Set();
+  const fieldNames = new Set();
+  fields.forEach((field) => {
+    const fieldId = String(field.fieldId || '').trim();
+    const fieldName = String(field.fieldName || '').trim();
+    if (!fieldId || !fieldName) {
+      throw new Error(
+        `DoudianFieldSchemaInvalid: 接口 ${interfaceKey} 存在空字段 ID 或字段名`
+      );
+    }
+    if (fieldIds.has(fieldId)) {
+      throw new Error(
+        `DoudianFieldSchemaInvalid: 接口 ${interfaceKey} 存在重复字段 ID ${fieldId}`
+      );
+    }
+    if (fieldNames.has(fieldName)) {
+      throw new Error(
+        `DoudianFieldSchemaInvalid: 接口 ${interfaceKey} 存在重复字段名 ${fieldName}`
+      );
+    }
+    fieldIds.add(fieldId);
+    fieldNames.add(fieldName);
+  });
+}
 
 /**
  * 功能描述：将数据库中的字段配置转换为飞书表结构接口字段格式。
@@ -75,7 +176,7 @@ function resolveTargetFieldName(config, field) {
   if (typeof customName === 'string' && customName.trim()) {
     return customName.trim();
   }
-  return field.fieldName || String(field.label || field.key).replace(/\s*\(.+\)$/, '');
+  return field.fieldName || String(field.label || field.key).trim();
 }
 
 /**
@@ -120,7 +221,11 @@ function isLinkLikeFieldType(type) {
 function filterModuleFieldsByConfig(fields, config = {}) {
   const selectedFieldKeys = normalizeSelectedFieldKeys(config.selectedFieldKeys);
   if (selectedFieldKeys) {
-    return fields.filter((field) => field.isConnectorField || selectedFieldKeys.has(field.key));
+    return fields.filter((field) => (
+      field.isConnectorField ||
+      field.isPrimary === true ||
+      selectedFieldKeys.has(field.key)
+    ));
   }
 
   const mappings = getFieldMappings(config);
@@ -128,6 +233,7 @@ function filterModuleFieldsByConfig(fields, config = {}) {
   if (mappingKeys.length > 0) {
     return fields.filter((field) => (
       field.isConnectorField ||
+      field.isPrimary === true ||
       (Object.prototype.hasOwnProperty.call(mappings, field.key) && Boolean(mappings[field.key]))
     ));
   }

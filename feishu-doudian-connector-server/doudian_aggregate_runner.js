@@ -1,7 +1,12 @@
-let fetch = require('node-fetch');
-if (fetch && fetch.default) {
-  fetch = fetch.default;
-}
+const {
+  assertAllowedUrl,
+  fetchTextWithTimeout,
+  getRemainingTimeoutMs,
+  sanitizeUrl
+} = require('./http_client.js');
+const {
+  getDoudianAllowedApiOrigins
+} = require('./runtime_config.js');
 
 /**
  * 功能描述：执行本地聚合接口的通用分页流程。它按 sources 顺序逐个请求真实抖店接口，
@@ -29,12 +34,28 @@ async function runDoudianAggregate(req, options) {
     fixedApiPage ?? getFirstNonEmpty(body.params?.[options.pageParam || 'page'], options.pageStart, 0)
   );
   const sources = normalizeSources(options.sources);
-  const cursor = parseAggregateToken(body.aggregatePageToken, options.tokenPrefix, pageStart);
+  const cursor = parseAggregateToken(
+    body.aggregatePageToken,
+    options.tokenPrefix,
+    pageStart,
+    body.dateRangeAnchorAt
+  );
+  assertAggregateCursor(cursor, sources, pageStart, Boolean(body.aggregatePageToken));
   const list = [];
+  const maxUpstreamRequests = clampNumber(options.maxUpstreamRequestsPerRun, 1, 3, 1);
+  let upstreamRequests = 0;
 
-  while (cursor.sourceIndex < sources.length && list.length < pageSize) {
+  while (
+    cursor.sourceIndex < sources.length &&
+    list.length < pageSize &&
+    upstreamRequests < maxUpstreamRequests
+  ) {
     const source = sources[cursor.sourceIndex];
     const pageResult = await fetchDoudianAggregatePage(req, body, options, source, cursor.page, apiPageSize);
+    upstreamRequests += 1;
+    if (cursor.itemOffset > pageResult.list.length) {
+      throw new Error('AggregatePageTokenInvalid: 聚合分页令牌偏移量超过当前来源数据范围');
+    }
 
     if (pageResult.list.length === 0) {
       cursor.sourceIndex += 1;
@@ -92,6 +113,7 @@ async function fetchDoudianAggregatePage(req, body, options, source, page, pageS
   const pageParam = options.pageParam || 'page';
   const pageSizeParam = options.pageSizeParam || 'size';
   const requestUrlObj = new URL(apiPath, apiHost);
+  assertAllowedUrl(requestUrlObj, getDoudianAllowedApiOrigins());
   const requestOrigin = requestUrlObj.origin;
   const params = {
     ...(body.params || {}),
@@ -115,18 +137,13 @@ async function fetchDoudianAggregatePage(req, body, options, source, page, pageS
       'Content-Type': contentType,
       Referer: `${requestOrigin}/`,
       Origin: requestOrigin
-    },
-    timeout: options.timeout || 8000
+    }
   };
 
   if (method === 'GET') {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        requestUrlObj.searchParams.set(key, String(value));
-      }
-    });
+    appendUrlSearchParams(requestUrlObj.searchParams, params);
   } else if (contentType.includes('application/x-www-form-urlencoded')) {
-    fetchOptions.body = new URLSearchParams(params).toString();
+    fetchOptions.body = buildFormUrlEncodedBody(params);
   } else {
     fetchOptions.body = JSON.stringify(params);
   }
@@ -136,33 +153,44 @@ async function fetchDoudianAggregatePage(req, body, options, source, page, pageS
     sourceKey: source.key,
     sourceLabel: source.label,
     method,
-    url: requestUrlObj.toString(),
+    url: sanitizeUrl(requestUrlObj),
     headers: sanitizeAggregateHeaders(fetchOptions.headers || {}),
-    body: fetchOptions.body || null
+    bodyKeys: Object.keys(params)
   }));
   console.log(`[Doudian Aggregate] 聚合来源 ${source.key} 请求前延迟 ${delayMs}ms，降低连续调用风控风险`);
-  await sleep(delayMs);
+  const deadlineAt = Number(req.headers['x-request-deadline'] || 0);
+  await sleepWithinDeadline(delayMs, deadlineAt);
 
-  const response = await fetch(requestUrlObj.toString(), fetchOptions);
-  const responseText = await response.text();
+  const { response, responseText } = await fetchTextWithTimeout(
+    requestUrlObj.toString(),
+    fetchOptions,
+    getRemainingTimeoutMs(deadlineAt, options.timeout || 8000, 500)
+  );
   let resJson;
   try {
     resJson = JSON.parse(responseText);
   } catch (error) {
-    throw new Error(`DoudianAggregateNonJson: HTTP ${response.status}, snippet=${responseText.substring(0, 160)}`);
+    throw new Error(
+      `DoudianAggregateNonJson: HTTP ${response.status}, `
+      + `bodyBytes=${Buffer.byteLength(responseText, 'utf8')}`
+    );
   }
 
   const errCode = getAggregateResponseCode(resJson, options);
   const errMessage = getAggregateResponseMessage(resJson, options);
+  if (!response.ok) {
+    throw new Error(
+      `DoudianAggregateHTTPError: HTTP ${response.status} ${errMessage || response.statusText || '请求失败'}`
+    );
+  }
   if (!isSuccessfulAggregateCode(errCode, options)) {
     throw new Error(`DoudianAggregateAPIError: [code=${errCode}] ${errMessage || '接口返回错误'}; request=${JSON.stringify({
       sourceKey: source.key,
       method,
-      url: requestUrlObj.toString(),
-      body: fetchOptions.body || null
+      url: sanitizeUrl(requestUrlObj)
     })}`);
   }
- console.log(requestUrlObj.toString())
+  console.log(`[Doudian Aggregate Response] ${sanitizeUrl(requestUrlObj)}`);
   return {
     list: normalizeAggregateListItems(
       extractListByPaths(resJson, options.listPaths || []),
@@ -195,6 +223,20 @@ function sleep(ms) {
 }
 
 /**
+ * 功能描述：在同步总截止时间内执行聚合请求延迟，避免后台工作超出飞书 20 秒限制。
+ * @param {number} ms 延迟毫秒数
+ * @param {number} deadlineAt 绝对截止时间戳
+ * @return {Promise<void>} 无返回值
+ */
+function sleepWithinDeadline(ms, deadlineAt) {
+  const deadline = Number(deadlineAt);
+  if (Number.isFinite(deadline) && deadline > 0 && Date.now() + ms + 1000 >= deadline) {
+    throw new Error('SyncDeadlineExceeded: 聚合请求剩余时间不足');
+  }
+  return sleep(ms);
+}
+
+/**
  * 功能描述：脱敏聚合请求头，避免完整打印 Cookie。
  * @param {object} headers 原始请求头
  * @return {object} 返回适合日志输出的请求头
@@ -217,8 +259,9 @@ function sanitizeAggregateHeaders(headers) {
  */
 function maskSensitiveValue(value) {
   const text = String(value || '');
-  if (text.length <= 24) return text;
-  return `${text.slice(0, 12)}...${text.slice(-12)} (len=${text.length})`;
+  if (!text) return '';
+  if (text.length <= 8) return `*** (len=${text.length})`;
+  return `${text.slice(0, 4)}...${text.slice(-4)} (len=${text.length})`;
 }
 
 /**
@@ -246,17 +289,117 @@ function decorateAggregateItem(item, source, options) {
  * @param {number} pageStart 起始页码
  * @return {object} 返回游标
  */
-function parseAggregateToken(token, tokenPrefix, pageStart) {
-  if (!token) return { sourceIndex: 0, page: pageStart, itemOffset: 0, loaded: 0 };
-  const pattern = new RegExp(`^${escapeRegExp(tokenPrefix)}_(\\d+)_(\\d+)_(\\d+)_(\\d+)$`);
+function parseAggregateToken(token, tokenPrefix, pageStart, anchorAt) {
+  const normalizedAnchorAt = normalizeDateRangeAnchor(anchorAt);
+  if (!token) {
+    return {
+      sourceIndex: 0,
+      page: pageStart,
+      itemOffset: 0,
+      loaded: 0,
+      dateRangeAnchorAt: normalizedAnchorAt
+    };
+  }
+  const pattern = new RegExp(
+    `^${escapeRegExp(tokenPrefix)}_(\\d+)_(\\d+)_(\\d+)_(\\d+)(?:_(\\d{13}))?$`
+  );
   const match = String(token).match(pattern);
-  if (!match) return { sourceIndex: 0, page: pageStart, itemOffset: 0, loaded: 0 };
-  return {
+  if (!match) {
+    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌格式非法');
+  }
+  const cursor = {
     sourceIndex: Number(match[1]),
     page: Number(match[2]),
     itemOffset: Number(match[3]),
-    loaded: Number(match[4])
+    loaded: Number(match[4]),
+    dateRangeAnchorAt: normalizeDateRangeAnchor(match[5] || normalizedAnchorAt)
   };
+  if (
+    cursor.sourceIndex > 100000 ||
+    cursor.page > 1000000 ||
+    cursor.itemOffset > 1000000 ||
+    cursor.loaded > 100000000
+  ) {
+    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌超出允许范围');
+  }
+  return cursor;
+}
+
+/**
+ * 功能描述：按本次真实来源列表校验聚合游标，避免越界令牌被误判为同步完成。
+ * @param {object} cursor 已解析游标
+ * @param {Array<object>} sources 聚合来源
+ * @param {number} pageStart 来源起始页
+ * @param {boolean} hasToken 当前请求是否携带分页令牌
+ * @return {void} 无返回值
+ */
+function assertAggregateCursor(cursor, sources, pageStart, hasToken) {
+  if (!hasToken && sources.length === 0) return;
+  if (cursor.sourceIndex < 0 || cursor.sourceIndex >= sources.length) {
+    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌来源下标超出范围');
+  }
+  if (!Number.isInteger(cursor.page) || cursor.page < pageStart) {
+    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌页码非法');
+  }
+}
+
+/**
+ * 功能描述：归一化聚合同步的时间范围锚点。
+ * @param {unknown} value 原始时间锚点
+ * @return {number} 返回稳定毫秒时间戳
+ */
+function normalizeDateRangeAnchor(value) {
+  const timestamp = Number(value);
+  if (
+    Number.isFinite(timestamp)
+    && timestamp >= Date.UTC(2020, 0, 1)
+    && timestamp <= Date.now() + 5 * 60 * 1000
+  ) {
+    return timestamp;
+  }
+  return Date.now();
+}
+
+/**
+ * 功能描述：把嵌套对象展开成点分查询参数，避免请求中出现 [object Object]。
+ * @param {URLSearchParams} searchParams 目标查询参数
+ * @param {object} source 原始参数对象
+ * @param {string} prefix 当前点分路径
+ * @return {void} 无返回值
+ */
+function appendUrlSearchParams(searchParams, source, prefix = '') {
+  if (!source || typeof source !== 'object') return;
+  Object.entries(source).forEach(([key, value]) => {
+    const parameterName = prefix ? `${prefix}.${key}` : key;
+    if (value === undefined || value === null || value === '') return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item !== undefined && item !== null && item !== '') {
+          searchParams.append(
+            parameterName,
+            item && typeof item === 'object' ? JSON.stringify(item) : String(item)
+          );
+        }
+      });
+      return;
+    }
+    if (typeof value === 'object') {
+      appendUrlSearchParams(searchParams, value, parameterName);
+      return;
+    }
+    searchParams.set(parameterName, String(value));
+  });
+}
+
+/**
+ * 功能描述：构造可正确表达嵌套参数的表单编码正文。
+ * @param {object} source 原始请求参数
+ * @return {string} 返回 application/x-www-form-urlencoded 正文
+ */
+function buildFormUrlEncodedBody(source) {
+  const searchParams = new URLSearchParams();
+  appendUrlSearchParams(searchParams, source);
+  return searchParams.toString();
 }
 
 /**
@@ -266,7 +409,7 @@ function parseAggregateToken(token, tokenPrefix, pageStart) {
  * @return {string} 返回 token
  */
 function buildAggregateToken(cursor, tokenPrefix) {
-  return `${tokenPrefix}_${cursor.sourceIndex}_${cursor.page}_${cursor.itemOffset}_${cursor.loaded}`;
+  return `${tokenPrefix}_${cursor.sourceIndex}_${cursor.page}_${cursor.itemOffset}_${cursor.loaded}_${cursor.dateRangeAnchorAt}`;
 }
 
 /**
@@ -325,6 +468,9 @@ function setValueByConfigPath(target, path, value) {
     .split('.')
     .filter(Boolean);
   if (pathSegments.length === 0) return;
+  if (pathSegments.some((key) => ['__proto__', 'prototype', 'constructor'].includes(key))) {
+    throw new Error(`DoudianParameterPathInvalid: 非法聚合分页参数路径 (${path})`);
+  }
 
   let current = target;
   pathSegments.forEach((key, index) => {

@@ -4,11 +4,11 @@
  */
 
 const express = require('express');
-let fetch = require('node-fetch');
-if (fetch && fetch.default) {
-  fetch = fetch.default;
-}
 const { runDoudianAggregate } = require('./doudian_aggregate_runner.js');
+const {
+  fetchTextWithTimeout,
+  getRemainingTimeoutMs
+} = require('./http_client.js');
 
 const doudianLocalAggregateRouter = express.Router();
 
@@ -93,7 +93,9 @@ async function handleDemoAggregateRequest(req, res) {
 async function handleAccountFlowsAggregateRequest(req, res) {
   await sendAggregateResponse(res, async () => {
     const accountSources = await loadAccountFlowsAggregateSources(req);
-    console.log('[AccountFlows Aggregate Sources]', JSON.stringify(accountSources));
+    console.log('[AccountFlows Aggregate Sources]', {
+      sourceCount: accountSources.length
+    });
     return runDoudianAggregate(req, {
       tokenPrefix: 'accountflows',
       apiPath: 'https://fxg.jinritemai.com/settlement/account/queryAccountFlows?req_source=dou_dian_pc',
@@ -175,7 +177,9 @@ async function handleBrandQualificationBrandListAggregateRequest(req, res) {
 async function handlePlatformInvoiceRecordAggregateRequest(req, res) {
   await sendAggregateResponse(res, async () => {
     const subjectSources = await loadPlatformInvoiceRecordAggregateSources(req);
-    console.log('[PlatformInvoice Aggregate Sources]', JSON.stringify(subjectSources));
+    console.log('[PlatformInvoice Aggregate Sources]', {
+      sourceCount: subjectSources.length
+    });
     return runDoudianAggregate(req, {
       tokenPrefix: 'platforminvoice',
       apiPath: 'https://fxg.jinritemai.com/api/ecomfinance/platform/invoice/record/list',
@@ -282,8 +286,15 @@ async function handleDemoAggregate(body = {}) {
   const list = [];
   const total = sources.reduce((sum, source) => sum + source.total, 0);
 
-  if (cursor.sourceIndex >= sources.length) {
-    cursor = { sourceIndex: 0, offset: 0, loaded: 0 };
+  if (body.aggregatePageToken && cursor.sourceIndex >= sources.length) {
+    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌来源下标超出范围');
+  }
+  if (
+    body.aggregatePageToken
+    && cursor.sourceIndex < sources.length
+    && cursor.offset > sources[cursor.sourceIndex].total
+  ) {
+    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌偏移量超出来源数据范围');
   }
 
   while (cursor.sourceIndex < sources.length && list.length < pageSize) {
@@ -392,12 +403,22 @@ function buildDemoAggregateRecord(source, offset, body = {}) {
 function parseAggregateToken(token) {
   if (!token) return { sourceIndex: 0, offset: 0, loaded: 0 };
   const match = String(token).match(/^agg_(\d+)_(\d+)_(\d+)$/);
-  if (!match) return { sourceIndex: 0, offset: 0, loaded: 0 };
-  return {
+  if (!match) {
+    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌格式非法');
+  }
+  const cursor = {
     sourceIndex: Number(match[1]),
     offset: Number(match[2]),
     loaded: Number(match[3])
   };
+  if (
+    cursor.sourceIndex > 100000 ||
+    cursor.offset > 1000000 ||
+    cursor.loaded > 100000000
+  ) {
+    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌超出允许范围');
+  }
+  return cursor;
 }
 
 /**
@@ -478,29 +499,37 @@ async function loadPlatformInvoiceRecordAggregateSources(req) {
  */
 async function fetchEcomfinanceSubjectList(req) {
   const requestUrl = 'https://fxg.jinritemai.com/api/ecomfinance/subject/list';
-  const response = await fetch(requestUrl, {
-    method: 'GET',
-    headers: {
-      Cookie: req.headers.cookie || '',
-      'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
-      Accept: 'application/json, text/plain, */*',
-      'Content-Type': 'application/json;charset=UTF-8',
-      Referer: 'https://fxg.jinritemai.com/',
-      Origin: 'https://fxg.jinritemai.com'
+  const { response, responseText } = await fetchTextWithTimeout(
+    requestUrl,
+    {
+      method: 'GET',
+      headers: {
+        Cookie: req.headers.cookie || '',
+        'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+        Accept: 'application/json, text/plain, */*',
+        'Content-Type': 'application/json;charset=UTF-8',
+        Referer: 'https://fxg.jinritemai.com/',
+        Origin: 'https://fxg.jinritemai.com'
+      }
     },
-
-    timeout: 8000
-  });
-
-  const responseText = await response.text();
+    getRemainingTimeoutMs(req.headers['x-request-deadline'], 4000, 500)
+  );
   let resJson;
   try {
     resJson = JSON.parse(responseText);
   } catch (error) {
-    throw new Error(`SubjectListNonJson: HTTP ${response.status}, snippet=${responseText.substring(0, 160)}`);
+    throw new Error(
+      `SubjectListNonJson: HTTP ${response.status}, `
+      + `bodyBytes=${Buffer.byteLength(responseText, 'utf8')}`
+    );
   }
 
   const retCode = String(resJson.ret_code ?? resJson.BaseResp?.StatusCode ?? resJson.code ?? '');
+  if (!response.ok) {
+    throw new Error(
+      `SubjectListHTTPError: HTTP ${response.status} ${resJson.ret_message || resJson.BaseResp?.StatusMessage || resJson.message || response.statusText || '请求失败'}`
+    );
+  }
   if (retCode && !['0000', '0', '200'].includes(retCode)) {
     throw new Error(`SubjectListAPIError: [code=${retCode}] ${resJson.ret_message || resJson.BaseResp?.StatusMessage || resJson.message || '接口返回错误'}`);
   }
@@ -521,27 +550,36 @@ async function fetchEcomfinanceSubjectList(req) {
  */
 async function fetchAccountList(req) {
   const requestUrl = 'https://fxg.jinritemai.com/account/center/getAccountList?req_source=dou_dian_pc';
-  const response = await fetch(requestUrl, {
-    method: 'GET',
-    headers: {
-      Cookie: req.headers.cookie || '',
-      'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
-      Accept: 'application/json, text/plain, */*',
-      Referer: 'https://fxg.jinritemai.com/',
-      Origin: 'https://fxg.jinritemai.com'
+  const { response, responseText } = await fetchTextWithTimeout(
+    requestUrl,
+    {
+      method: 'GET',
+      headers: {
+        Cookie: req.headers.cookie || '',
+        'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+        Accept: 'application/json, text/plain, */*',
+        Referer: 'https://fxg.jinritemai.com/',
+        Origin: 'https://fxg.jinritemai.com'
+      }
     },
-    timeout: 8000
-  });
-
-  const responseText = await response.text();
+    getRemainingTimeoutMs(req.headers['x-request-deadline'], 4000, 500)
+  );
   let resJson;
   try {
     resJson = JSON.parse(responseText);
   } catch (error) {
-    throw new Error(`AccountListNonJson: HTTP ${response.status}, snippet=${responseText.substring(0, 160)}`);
+    throw new Error(
+      `AccountListNonJson: HTTP ${response.status}, `
+      + `bodyBytes=${Buffer.byteLength(responseText, 'utf8')}`
+    );
   }
 
   const errCode = String(resJson.code ?? resJson.errorCode ?? '');
+  if (!response.ok) {
+    throw new Error(
+      `AccountListHTTPError: HTTP ${response.status} ${resJson.message || resJson.msg || response.statusText || '请求失败'}`
+    );
+  }
   if (errCode && errCode !== '0' && errCode !== '200') {
     throw new Error(`AccountListAPIError: [code=${errCode}] ${resJson.message || resJson.msg || '接口返回错误'}`);
   }
