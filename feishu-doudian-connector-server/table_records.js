@@ -82,8 +82,7 @@ const getTableRecords = async (reqBody, context = {}) => {
     interfaceMeta,
     mappings,
     selectedFieldKeys,
-    accountName,
-    accountKey: config.accountInfo?.key || config.accountInfo?.id || shopId || accountName || 'default'
+    accountName
   }));
   const primaryIds = new Set();
   records.forEach((record) => {
@@ -249,12 +248,9 @@ function buildDoudianRecord({
   interfaceMeta,
   mappings,
   selectedFieldKeys,
-  accountName,
-  accountKey
+  accountName
 }) {
   const primaryId = buildConnectorPrimaryId({
-    interfaceKey: interfaceMeta.interfaceKey,
-    accountKey,
     absoluteIndex,
     fallbackIndex: index + 1
   });
@@ -319,30 +315,13 @@ function resolveConnectorFieldId(mappings, field) {
  * @return {string} 返回飞书记录主键
  */
 function buildConnectorPrimaryId({
-  interfaceKey,
-  accountKey,
   absoluteIndex,
   fallbackIndex
 }) {
-  const safeInterfaceKey = normalizePrimaryIdPart(interfaceKey || 'interface');
-  const safeAccountKey = normalizePrimaryIdPart(accountKey || 'account');
   const sequence = Number.isSafeInteger(Number(absoluteIndex)) && Number(absoluteIndex) > 0
     ? Number(absoluteIndex)
     : Number(fallbackIndex || 1);
-  return `DD_${safeInterfaceKey}_${safeAccountKey}_${String(sequence).padStart(8, '0')}`.substring(0, 100);
-}
-
-/**
- * 功能描述：清理主键片段中的特殊字符，保证飞书记录主键稳定可读。
- * @param {unknown} value 原始片段
- * @return {string} 返回可拼接的主键片段
- */
-function normalizePrimaryIdPart(value) {
-  const normalized = String(value || '')
-    .trim()
-    .replace(/[^a-zA-Z0-9_-]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return (normalized || 'default').substring(0, 32);
+  return String(sequence);
 }
 
 /**

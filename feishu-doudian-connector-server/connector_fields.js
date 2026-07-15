@@ -1,11 +1,11 @@
 const CONNECTOR_PRIMARY_FIELD = Object.freeze({
   key: 'sys_record_id',
-  label: '连接器记录ID',
-  fieldName: '连接器记录ID',
+  label: '序号',
+  fieldName: '序号',
   type: 'Text',
   fieldType: 1,
   defaultField: 'sys_record_id',
-  description: '连接器生成的同步记录主键',
+  description: '连接器生成的同步记录序号',
   isPrimary: true,
   isConnectorField: true,
   isConnectorPrimary: true
