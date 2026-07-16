@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 
+const hmrClientPort = Number(process.env.VITE_HMR_CLIENT_PORT || 0) || undefined;
+
 export default defineConfig({
   plugins: [vue()],
   base: './',
@@ -13,7 +15,8 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
-    strictPort: true
+    strictPort: true,
+    hmr: hmrClientPort ? { clientPort: hmrClientPort } : undefined
   },
   build: {
     rollupOptions: {

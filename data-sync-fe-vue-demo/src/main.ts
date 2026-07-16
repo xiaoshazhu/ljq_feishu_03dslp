@@ -2,6 +2,7 @@ import { createApp } from 'vue';
 import {
   Button,
   Checkbox,
+  Empty,
   Form,
   Input,
   InputNumber,
@@ -20,6 +21,7 @@ import './App.css';
 createApp(App)
   .use(Button)
   .use(Checkbox)
+  .use(Empty)
   .use(Form)
   .use(Input)
   .use(InputNumber)

@@ -184,7 +184,7 @@
                   <span class="section-step">4</span>
                   <span>字段设置</span>
                 </div>
-                <div class="field-toolbar">
+                <div class="field-toolbar"        v-if="currentModuleFields.length>0">
                   <span class="field-selected-count">已选择 {{ selectedFieldCount }} / {{ currentModuleFields.length }}</span>
                   <a-button
                     class="toolbar-button"
@@ -206,8 +206,17 @@
                 </div>
               </div>
               <div class="section-note">配置字段映射规则</div>
+
+
               <a-spin :spinning="isLoadingInterfaceFields" tip="正在加载字段配置...">
-                <div class="field-table-wrap">
+                <a-empty class="field-empty" description="暂无数据" v-if="currentModuleFields.length<=0">
+                  <template #image>
+                    <img :src="kongSvg" style="width: 120px; height: 120px; display: block" />
+                  </template>
+                </a-empty>
+                <div class="field-table-wrap"
+                 v-if="currentModuleFields.length>0"
+                >
                   <table class="field-map-table">
                     <colgroup>
                       <col class="field-col-sync" />
@@ -353,10 +362,11 @@
         </div>
 
         <div class="bottom-bar">
-          <a-button v-if="pageTab === 'accounts'" size="large" @click="pageTab = 'config'">返回配置</a-button>
+          <a-button v-if="pageTab === 'accounts'" class="bottom-action-button" size="large" @click="pageTab = 'config'">返回配置</a-button>
 <!--          <a-button size="large" @click="handleCancel">取消</a-button>-->
           <a-button
             v-if="pageTab === 'config'"
+            class="bottom-action-button primary"
             size="large"
             type="primary"
             :loading="isLoadingInterfaceFields || isSavingConfig"
@@ -558,6 +568,7 @@ import AccountDetailPanel from './components/AccountDetailPanel.vue';
 import CurrentAccountSummary from './components/CurrentAccountSummary.vue';
 import type { Account, SharedAccount, SyncLog, SyncLogListResponse } from './types/account';
 import { CheckSquareOutlined, ClearOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons-vue';
+import kongSvg from '@/assets/kong.svg'
 
 // 数据源字段定义：用于渲染字段映射表，也会作为保存到飞书配置中的映射来源。
 interface ModuleField {
@@ -2191,7 +2202,7 @@ function scrollToSection(sectionId: string): void {
   isScrollingByClick = true;
   if (scrollClickTimer) clearTimeout(scrollClickTimer);
   scrollClickTimer = setTimeout(() => { isScrollingByClick = false; }, 600);
-  document.getElementById(`section-${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  scrollElementIntoContainer(document.getElementById(`section-${sectionId}`), scrollContainerRef.value);
 }
 
 /**
@@ -2204,7 +2215,13 @@ function scrollToAccountSection(sectionId: string): void {
   isScrollingByClick = true;
   if (scrollClickTimer) clearTimeout(scrollClickTimer);
   scrollClickTimer = setTimeout(() => { isScrollingByClick = false; }, 600);
-  document.getElementById(`account-section-${sectionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  scrollElementIntoContainer(document.getElementById(`account-section-${sectionId}`), accountScrollContainerRef.value);
+}
+
+function scrollElementIntoContainer(element: HTMLElement | null, container: HTMLElement | null): void {
+  if (!element || !container) return;
+  const top = element.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+  container.scrollTo({ top, behavior: 'smooth' });
 }
 
 /**
@@ -2528,6 +2545,21 @@ onUnmounted(() => {
 .test-result {
   color: #389e0d;
   font-size: 13px;
+}
+
+.field-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.field-empty :deep(.ant-empty-image) {
+  height: 120px;
+  margin-bottom: 12px;
+}
+
+.field-empty :deep(.ant-empty-description) {
+  color: #b8beca;
 }
 
 .modal-title {
