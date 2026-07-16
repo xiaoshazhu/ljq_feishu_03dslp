@@ -278,8 +278,12 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
       } else {
         const requestConfig = selectedInterfaceMeta.requestConfig || {};
         const paginationEnabled = requestConfig.pagination !== false;
-        const loadedCount = Math.max(normalizedPageNum - 1, 0) * resultList.pageSize
-          + resultList.length;
+        const loadedCount = calculateLoadedCount(
+          aggregatePageToken,
+          normalizedPageNum,
+          resultList.pageSize,
+          resultList.length
+        );
         const responseHasMore = getFirstValueByPaths(
           resJson,
           requestConfig.hasMorePaths || requestConfig.has_more_paths || []
@@ -330,6 +334,14 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
 function normalizeInternalPageNum(pageNum) {
   const numericPage = Number(pageNum);
   return Number.isSafeInteger(numericPage) && numericPage > 0 ? numericPage : 1;
+}
+
+function calculateLoadedCount(pageToken, pageNum, pageSize, currentCount) {
+  const tokenLoadedCount = Number(String(pageToken || '').split('_')[2]);
+  const loadedBefore = Number.isSafeInteger(tokenLoadedCount) && tokenLoadedCount >= 0
+    ? tokenLoadedCount
+    : Math.max(pageNum - 1, 0) * pageSize;
+  return loadedBefore + currentCount;
 }
 
 /**
@@ -1014,4 +1026,4 @@ async function sleepWithinDeadline(delayMs, deadlineAt) {
   await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-module.exports = { fetchRealDoudianData, keepAliveSession };
+module.exports = { fetchRealDoudianData, keepAliveSession, calculateLoadedCount };
