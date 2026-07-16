@@ -5,6 +5,7 @@
 
 const express = require('express');
 const { runDoudianAggregate } = require('./doudian_aggregate_runner.js');
+const { decryptCredential } = require('./credential_cipher.js');
 const {
   fetchTextWithTimeout,
   getRemainingTimeoutMs
@@ -186,7 +187,7 @@ async function handlePlatformInvoiceRecordAggregateRequest(req, res) {
       method: 'GET',
       pageParam: 'page_number',
       pageSizeParam: 'page_size',
-      pageStart: 0,
+      pageStart: 1,
       defaultPageSize: 100,
       defaultApiPageSize: 100,
       maxApiPageSize: 1000,
@@ -401,22 +402,29 @@ function buildDemoAggregateRecord(source, offset, body = {}) {
  * @return {object} 返回游标
  */
 function parseAggregateToken(token) {
-  if (!token) return { sourceIndex: 0, offset: 0, loaded: 0 };
+  const defaultCursor = { sourceIndex: 0, offset: 0, loaded: 0 };
+  if (!token) return defaultCursor;
+
   const match = String(token).match(/^agg_(\d+)_(\d+)_(\d+)$/);
-  if (!match) {
-    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌格式非法');
-  }
+  if (!match) return defaultCursor;
+
   const cursor = {
     sourceIndex: Number(match[1]),
     offset: Number(match[2]),
     loaded: Number(match[3])
   };
   if (
+    !Number.isSafeInteger(cursor.sourceIndex) ||
+    !Number.isSafeInteger(cursor.offset) ||
+    !Number.isSafeInteger(cursor.loaded) ||
+    cursor.sourceIndex < 0 ||
+    cursor.offset < 0 ||
+    cursor.loaded < 0 ||
     cursor.sourceIndex > 100000 ||
     cursor.offset > 1000000 ||
     cursor.loaded > 100000000
   ) {
-    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌超出允许范围');
+    return defaultCursor;
   }
   return cursor;
 }
@@ -499,12 +507,13 @@ async function loadPlatformInvoiceRecordAggregateSources(req) {
  */
 async function fetchEcomfinanceSubjectList(req) {
   const requestUrl = 'https://fxg.jinritemai.com/api/ecomfinance/subject/list';
+  const cookie = resolveAggregateRequestCookie(req);
   const { response, responseText } = await fetchTextWithTimeout(
     requestUrl,
     {
       method: 'GET',
       headers: {
-        Cookie: req.headers.cookie || '',
+        Cookie: cookie,
         'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
         Accept: 'application/json, text/plain, */*',
         'Content-Type': 'application/json;charset=UTF-8',
@@ -550,12 +559,13 @@ async function fetchEcomfinanceSubjectList(req) {
  */
 async function fetchAccountList(req) {
   const requestUrl = 'https://fxg.jinritemai.com/account/center/getAccountList?req_source=dou_dian_pc';
+  const cookie = resolveAggregateRequestCookie(req);
   const { response, responseText } = await fetchTextWithTimeout(
     requestUrl,
     {
       method: 'GET',
       headers: {
-        Cookie: req.headers.cookie || '',
+        Cookie: cookie,
         'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
         Accept: 'application/json, text/plain, */*',
         Referer: 'https://fxg.jinritemai.com/',
@@ -692,6 +702,25 @@ function getValueByPath(source, path) {
       if (current === undefined || current === null) return undefined;
       return current[key];
     }, source);
+}
+
+/**
+ * 功能描述：读取本地聚合请求携带的 Cookie，并兼容被加密后的密文值。
+ * @param {object} req Express 请求
+ * @return {string} 返回可直接透传给抖店接口的 Cookie
+ */
+function resolveAggregateRequestCookie(req) {
+  const rawCookie = String(req?.headers?.cookie || '').trim();
+  if (!rawCookie) return '';
+  if (!rawCookie.startsWith('enc:v1:')) return rawCookie;
+  try {
+    return decryptCredential(rawCookie);
+  } catch (error) {
+    console.warn('[Doudian Aggregate] 请求头 Cookie 解密失败，继续按原值透传', {
+      message: error.message
+    });
+    return rawCookie;
+  }
 }
 
 module.exports = {

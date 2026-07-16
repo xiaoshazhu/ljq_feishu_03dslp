@@ -72,7 +72,13 @@ const getTableRecords = async (reqBody, context = {}) => {
   const boundedRawList = rawList.slice(0, maxPageSize);
   const pageSize = Number(rawList.pageSize || maxPageSize || boundedRawList.length || 1000);
   const loadedBefore = parseLoadedCountFromToken(pageToken);
-  const baseRecordOffset = loadedBefore === null ? (pageNum - 1) * pageSize : loadedBefore;
+  const rawLoadedCount = parseNonNegativeCount(rawList.loadedCount ?? rawList.loaded_count);
+  const isLocalAggregate = rawList.interfaceMeta?.useLocalAggregate === true;
+  const baseRecordOffset = isLocalAggregate && rawLoadedCount !== null
+    ? Math.max(0, rawLoadedCount - boundedRawList.length)
+    : loadedBefore === null
+      ? (pageNum - 1) * pageSize
+      : loadedBefore;
   const records = boundedRawList.map((item, index) => buildDoudianRecord({
     item,
     index,
@@ -103,11 +109,11 @@ const getTableRecords = async (reqBody, context = {}) => {
   ) {
     throw new Error('AggregatePageTokenMissing: 聚合接口仍有后续数据但未返回下一页令牌');
   }
-  const loadedCount = Number(rawList.loadedCount || rawList.loaded_count || (
+  const loadedCount = rawLoadedCount ?? Number(
     loadedBefore === null
       ? (pageNum - 1) * pageSize + boundedRawList.length
       : loadedBefore + boundedRawList.length
-  ));
+  );
   const totalCount = Number(rawList.total || loadedCount || boundedRawList.length || 0);
   const hasMore = typeof aggregateHasMore === 'boolean'
     ? aggregateHasMore
@@ -457,6 +463,19 @@ function parseLoadedCountFromToken(pageToken) {
     return loadedCount;
   }
   return null;
+}
+
+/**
+ * 功能描述：安全解析接口返回的累计加载条数。
+ * @param {unknown} value 原始累计条数
+ * @return {number|null} 返回非负安全整数，非法时返回 null
+ */
+function parseNonNegativeCount(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const count = Number(value);
+  return Number.isSafeInteger(count) && count >= 0 && count <= 100000000
+    ? count
+    : null;
 }
 
 /**

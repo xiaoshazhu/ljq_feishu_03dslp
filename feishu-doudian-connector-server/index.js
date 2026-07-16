@@ -1683,40 +1683,88 @@ async function shutdown(signal = "manual") {
 
 if (require.main === module) {
   startServer().catch((error) => {
-    console.error("[Startup] 服务启动失败:", error);
+    console.error("[Startup] 服务启动失败:", buildProcessDiagnosticLog({
+      message: error?.message || String(error),
+      stack: error?.stack
+    }));
     process.exitCode = 1;
   });
 
   ["SIGTERM", "SIGINT"].forEach((signal) => {
     process.once(signal, () => {
+      console.warn("[Process] 收到退出信号", buildProcessDiagnosticLog({ signal }));
       shutdown(signal)
         .then(() => {
+          console.warn("[Shutdown] 优雅停机完成", buildProcessDiagnosticLog({ signal }));
           process.exitCode = 0;
         })
         .catch((error) => {
-          console.error("[Shutdown] 优雅停机失败:", error);
+          console.error("[Shutdown] 优雅停机失败:", buildProcessDiagnosticLog({
+            signal,
+            message: error?.message || String(error),
+            stack: error?.stack
+          }));
           process.exitCode = 1;
         });
     });
   });
 
   ["uncaughtException", "unhandledRejection"].forEach((eventName) => {
-    process.once(eventName, (error) => {
-      console.error(`[Process] 捕获 ${eventName}，服务将安全退出`, {
+    process.on(eventName, (error) => {
+      console.error(`[Process] 捕获 ${eventName}，服务继续运行`, buildProcessDiagnosticLog({
+        eventName,
         message: error?.message || String(error),
         stack: error?.stack
-      });
-      shutdown(eventName)
-        .catch((shutdownError) => {
-          console.error("[Process] 异常退出前关闭资源失败", {
-            message: shutdownError.message
-          });
-        })
-        .finally(() => {
-          process.exitCode = 1;
-        });
+      }));
     });
   });
+
+  process.on("warning", (warning) => {
+    console.warn("[Process] 运行时告警", buildProcessDiagnosticLog({
+      name: warning?.name,
+      message: warning?.message || String(warning),
+      stack: warning?.stack
+    }));
+  });
+
+  process.on("beforeExit", (code) => {
+    console.warn("[Process] beforeExit", buildProcessDiagnosticLog({ code }));
+  });
+
+  process.on("exit", (code) => {
+    console.warn("[Process] exit", buildProcessDiagnosticLog({ code }));
+  });
+}
+
+/**
+ * 功能描述：构造进程级诊断日志，便于排查服务退出、异常和资源状态。
+ * @param {object} extra 附加信息
+ * @return {object} 返回诊断信息
+ */
+function buildProcessDiagnosticLog(extra = {}) {
+  const memory = process.memoryUsage();
+  return {
+    ...extra,
+    pid: process.pid,
+    nodeEnv: process.env.NODE_ENV || '',
+    envFile: process.env.ENV_FILE || '.env',
+    uptimeSec: Number(process.uptime().toFixed(3)),
+    memory: {
+      rssMb: bytesToMb(memory.rss),
+      heapUsedMb: bytesToMb(memory.heapUsed),
+      heapTotalMb: bytesToMb(memory.heapTotal),
+      externalMb: bytesToMb(memory.external)
+    }
+  };
+}
+
+/**
+ * 功能描述：将字节数转换为 MB，保留两位小数。
+ * @param {number} value 字节数
+ * @return {number} MB 数值
+ */
+function bytesToMb(value) {
+  return Number((Number(value || 0) / 1024 / 1024).toFixed(2));
 }
 
 module.exports = {

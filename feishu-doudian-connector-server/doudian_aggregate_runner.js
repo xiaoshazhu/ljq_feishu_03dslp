@@ -7,6 +7,7 @@ const {
 const {
   getDoudianAllowedApiOrigins
 } = require('./runtime_config.js');
+const { decryptCredential } = require('./credential_cipher.js');
 
 /**
  * 功能描述：执行本地聚合接口的通用分页流程。它按 sources 顺序逐个请求真实抖店接口，
@@ -30,9 +31,7 @@ async function runDoudianAggregate(req, options) {
   const fixedApiPage = Number.isFinite(Number(options.fixedApiPage))
     ? Number(options.fixedApiPage)
     : null;
-  const pageStart = Number(
-    fixedApiPage ?? getFirstNonEmpty(body.params?.[options.pageParam || 'page'], options.pageStart, 0)
-  );
+  const pageStart = Number(fixedApiPage ?? options.pageStart ?? 0);
   const sources = normalizeSources(options.sources);
   const cursor = parseAggregateToken(
     body.aggregatePageToken,
@@ -42,7 +41,13 @@ async function runDoudianAggregate(req, options) {
   );
   assertAggregateCursor(cursor, sources, pageStart, Boolean(body.aggregatePageToken));
   const list = [];
-  const maxUpstreamRequests = clampNumber(options.maxUpstreamRequestsPerRun, 1, 3, 1);
+  const defaultMaxUpstreamRequests = Math.max(1, Math.min(sources.length || 1, 3));
+  const maxUpstreamRequests = clampNumber(
+    options.maxUpstreamRequestsPerRun,
+    1,
+    Math.max(defaultMaxUpstreamRequests, 3),
+    defaultMaxUpstreamRequests
+  );
   let upstreamRequests = 0;
 
   while (
@@ -128,10 +133,11 @@ async function fetchDoudianAggregatePage(req, body, options, source, page, pageS
   }
 
   const contentType = options.contentType || 'application/json;charset=UTF-8';
+  const cookie = resolveAggregateRequestCookie(req);
   const fetchOptions = {
     method,
     headers: {
-      Cookie: req.headers.cookie || '',
+      Cookie: cookie,
       'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
       Accept: 'application/json, text/plain, */*',
       'Content-Type': contentType,
@@ -265,6 +271,25 @@ function maskSensitiveValue(value) {
 }
 
 /**
+ * 功能描述：读取本地聚合请求携带的 Cookie，并兼容被加密后的密文值。
+ * @param {object} req Express 请求
+ * @return {string} 返回可直接透传给抖店接口的 Cookie
+ */
+function resolveAggregateRequestCookie(req) {
+  const rawCookie = String(req?.headers?.cookie || '').trim();
+  if (!rawCookie) return '';
+  if (!rawCookie.startsWith('enc:v1:')) return rawCookie;
+  try {
+    return decryptCredential(rawCookie);
+  } catch (error) {
+    console.warn('[Doudian Aggregate] 请求头 Cookie 解密失败，继续按原值透传', {
+      message: error.message
+    });
+    return rawCookie;
+  }
+}
+
+/**
  * 功能描述：给聚合出的记录补充来源信息，或调用具体接口自定义装饰函数。
  * @param {object} item 原始记录
  * @param {object} source 当前来源配置
@@ -291,22 +316,21 @@ function decorateAggregateItem(item, source, options) {
  */
 function parseAggregateToken(token, tokenPrefix, pageStart, anchorAt) {
   const normalizedAnchorAt = normalizeDateRangeAnchor(anchorAt);
-  if (!token) {
-    return {
-      sourceIndex: 0,
-      page: pageStart,
-      itemOffset: 0,
-      loaded: 0,
-      dateRangeAnchorAt: normalizedAnchorAt
-    };
-  }
+  const defaultCursor = {
+    sourceIndex: 0,
+    page: pageStart,
+    itemOffset: 0,
+    loaded: 0,
+    dateRangeAnchorAt: normalizedAnchorAt
+  };
+  if (!token) return defaultCursor;
+
   const pattern = new RegExp(
     `^${escapeRegExp(tokenPrefix)}_(\\d+)_(\\d+)_(\\d+)_(\\d+)(?:_(\\d{13}))?$`
   );
   const match = String(token).match(pattern);
-  if (!match) {
-    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌格式非法');
-  }
+  if (!match) return defaultCursor;
+
   const cursor = {
     sourceIndex: Number(match[1]),
     page: Number(match[2]),
@@ -315,12 +339,20 @@ function parseAggregateToken(token, tokenPrefix, pageStart, anchorAt) {
     dateRangeAnchorAt: normalizeDateRangeAnchor(match[5] || normalizedAnchorAt)
   };
   if (
+    !Number.isSafeInteger(cursor.sourceIndex) ||
+    !Number.isSafeInteger(cursor.page) ||
+    !Number.isSafeInteger(cursor.itemOffset) ||
+    !Number.isSafeInteger(cursor.loaded) ||
+    cursor.sourceIndex < 0 ||
+    cursor.page < 0 ||
+    cursor.itemOffset < 0 ||
+    cursor.loaded < 0 ||
     cursor.sourceIndex > 100000 ||
     cursor.page > 1000000 ||
     cursor.itemOffset > 1000000 ||
     cursor.loaded > 100000000
   ) {
-    throw new Error('AggregatePageTokenInvalid: 聚合分页令牌超出允许范围');
+    return defaultCursor;
   }
   return cursor;
 }
