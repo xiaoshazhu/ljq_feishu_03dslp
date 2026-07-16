@@ -186,71 +186,82 @@
                 </div>
                 <div class="field-toolbar">
                   <span class="field-selected-count">已选择 {{ selectedFieldCount }} / {{ currentModuleFields.length }}</span>
-                  <a-button class="toolbar-button"  @click="handleClearFieldSelection">
+                  <a-button
+                    class="toolbar-button"
+                    :disabled="isLoadingInterfaceFields"
+                    @click="handleClearFieldSelection"
+                  >
                     <template #icon><ClearOutlined /></template>
                     清空
                   </a-button>
-                  <a-button class="toolbar-button primary" type="primary"  @click="handleAutoMapFields">
+                  <a-button
+                    class="toolbar-button primary"
+                    type="primary"
+                    :disabled="isLoadingInterfaceFields"
+                    @click="handleAutoMapFields"
+                  >
                     <template #icon><CheckSquareOutlined /></template>
                     全选映射
                   </a-button>
                 </div>
               </div>
               <div class="section-note">配置字段映射规则</div>
-              <div class="field-table-wrap">
-                <table class="field-map-table">
-                  <colgroup>
-                    <col class="field-col-sync" />
-                    <col class="field-col-source" />
-                    <col class="field-col-target" />
-                    <col class="field-col-name" />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th>是否同步</th>
-                      <th>源数据字段</th>
-                      <th>目标多维表格映射列</th>
-                      <th>目标列名称</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="field in currentModuleFields"
-                      :key="field.key"
-                      :class="{ 'field-row-disabled': !isFieldSelected(field.key) }"
-                    >
-                      <td>
-                        <a-checkbox
-                          :checked="isFieldSelected(field.key)"
-                          @change="handleFieldSyncToggle(field.key, $event.target.checked)"
-                        />
-                      </td>
-                      <td class="field-label-cell">{{ field.label }}</td>
-                      <td>
-                        <a-select
-                          class="field-target-select"
-                          placeholder="选择要写入的列"
-                          :value="fieldMappings[field.key]"
-                          :options="bitableFields"
-                          :disabled="!isFieldSelected(field.key)"
-                          :allow-clear="true"
-                          @change="handleFieldSelectChange(field.key, $event)"
-                        />
-                      </td>
-                      <td>
-                        <a-input
-                          v-model:value="targetFieldNames[field.key]"
-                          class="field-target-name-input"
-                          :placeholder="getDefaultTargetFieldName(field)"
-                          :disabled="!isFieldSelected(field.key)"
-                          :maxlength="100"
-                          @blur="handleTargetFieldNameBlur(field)"
-                        />
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <a-spin :spinning="isLoadingInterfaceFields" tip="正在加载字段配置...">
+                <div class="field-table-wrap">
+                  <table class="field-map-table">
+                    <colgroup>
+                      <col class="field-col-sync" />
+                      <col class="field-col-source" />
+                      <col class="field-col-target" />
+                      <col class="field-col-name" />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>是否同步</th>
+                        <th>源数据字段</th>
+                        <th>目标多维表格映射列</th>
+                        <th>目标列名称</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="field in currentModuleFields"
+                        :key="field.key"
+                        :class="{ 'field-row-disabled': !isFieldSelected(field.key) }"
+                      >
+                        <td>
+                          <a-checkbox
+                            :checked="isFieldSelected(field.key)"
+                            @change="handleFieldSyncToggle(field.key, $event.target.checked)"
+                          />
+                        </td>
+                        <td class="field-label-cell">{{ field.label }}</td>
+                        <td>
+                          <a-select
+                            class="field-target-select"
+                            placeholder="选择要写入的列"
+                            :value="fieldMappings[field.key]"
+                            :options="bitableFields"
+                            :disabled="!isFieldSelected(field.key)"
+                            :allow-clear="true"
+                            @change="handleFieldSelectChange(field.key, $event)"
+                          />
+                        </td>
+                        <td>
+                          <a-input
+                            v-model:value="targetFieldNames[field.key]"
+                            class="field-target-name-input"
+                            :placeholder="getDefaultTargetFieldName(field)"
+                            :disabled="!isFieldSelected(field.key)"
+                            :maxlength="100"
+                            @blur="handleTargetFieldNameBlur(field)"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </a-spin>
             </section>
 
 
@@ -344,7 +355,16 @@
         <div class="bottom-bar">
           <a-button v-if="pageTab === 'accounts'" size="large" @click="pageTab = 'config'">返回配置</a-button>
 <!--          <a-button size="large" @click="handleCancel">取消</a-button>-->
-          <a-button v-if="pageTab === 'config'" size="large" type="primary" @click="handleSaveAndGoNext">保存</a-button>
+          <a-button
+            v-if="pageTab === 'config'"
+            size="large"
+            type="primary"
+            :loading="isLoadingInterfaceFields || isSavingConfig"
+            :disabled="isLoadingInterfaceFields || isSavingConfig"
+            @click="handleSaveAndGoNext"
+          >
+            {{ isLoadingInterfaceFields ? '字段加载中' : '保存' }}
+          </a-button>
         </div>
       </div>
 
@@ -544,7 +564,7 @@ interface ModuleField {
   key: string;
   label?: string;
   fieldName?: string;
-  type?: 'Text' | 'Number' | 'DateTime' | 'price' | 'percentage';
+  type?: 'Text' | 'Number' | 'DateTime' | 'price' | 'percentage' | 'html';
   defaultField?: string;
   isPrimary?: boolean;
 }
@@ -657,7 +677,7 @@ const timeTypeOptions = [
 
 // 普通模块的相对同步时间范围选项。
 const dateRangeOptions = [
-  { value: 'all', label: '全量数据（不传时间范围参数）' },
+  { value: 'all', label: '全量数据）' },
   { value: '3', label: '回溯近 3 天数据（高频增量，推荐）' },
   { value: '7', label: '回溯近 7 天数据' },
   { value: '30', label: '回溯近 30 天数据（多页拉取）' }
@@ -724,6 +744,10 @@ const isPolling = ref(false);
 const isTestingConnection = ref(false);
 // 是否正在刷新抖店接口目录与字段配置。
 const isRefreshingInterfaces = ref(false);
+// 是否正在加载当前数据源的完整字段 Schema，请求结束前禁止保存配置。
+const isLoadingInterfaceFields = ref(false);
+// 是否正在提交连接器配置，避免用户重复点击保存。
+const isSavingConfig = ref(false);
 // 模块下拉框是否打开，打开时用于锁住右侧滚动容器。
 const isModuleDropdownOpen = ref(false);
 // 书签助手是否已经把 Cookie 安全写入服务端缓冲区，前端不持有明文凭证。
@@ -2014,6 +2038,10 @@ async function handleTestConnection(): Promise<void> {
  * @return {Promise<void>} 无返回值
  */
 async function handleSaveAndGoNext(): Promise<void> {
+  if (isLoadingInterfaceFields.value) {
+    message.warning('字段配置正在加载，请稍后再保存。');
+    return;
+  }
   if (accounts.value.length === 0) {
     message.error('请至少关联一个账号进行数据同步！');
     return;
@@ -2023,6 +2051,14 @@ async function handleSaveAndGoNext(): Promise<void> {
   }
   if (!selectedDoudianInterface.value) {
     message.error('请选择一个抖店接口！');
+    return;
+  }
+  if (
+    selectedDoudianInterface.value.detailLoaded !== true
+    || !Array.isArray(selectedDoudianInterface.value.fieldsSchema)
+    || selectedDoudianInterface.value.fieldsSchema.length === 0
+  ) {
+    message.error('当前数据源的字段配置尚未加载完成，请重新选择数据源后重试。');
     return;
   }
   if (!validateRequiredCustomQueryFields()) {
@@ -2070,6 +2106,7 @@ async function handleSaveAndGoNext(): Promise<void> {
     }
   };
 
+  isSavingConfig.value = true;
   try {
     const response = await fetch(apiUrl('/api/v1/sync/tasks/save'), {
       method: 'POST',
@@ -2080,6 +2117,8 @@ async function handleSaveAndGoNext(): Promise<void> {
     await bitable.saveConfigAndGoNext({ value: JSON.stringify(config) });
   } catch (error: any) {
     message.error(`任务保存失败: ${error.message}`);
+  } finally {
+    isSavingConfig.value = false;
   }
 }
 
@@ -2337,16 +2376,31 @@ watch(syncModule, async () => {
   captureToken.value = '';
   captureTokenExpiresAt.value = 0;
   const requestId = ++syncModuleDetailRequestId;
-  await ensureSelectedDoudianInterfaceDetail();
-  if (requestId !== syncModuleDetailRequestId) return;
-  resetFieldMappingByModule();
-  resetCustomQueryValues();
-  if (
-    isAccountModalOpen.value
-    && currentStep.value === 2
-    && accountSourceType.value === 'self'
-  ) {
-    await prepareCaptureSession(true);
+  isLoadingInterfaceFields.value = Boolean(selectedDoudianInterfaceKey.value);
+  try {
+    const detail = await ensureSelectedDoudianInterfaceDetail();
+    if (requestId !== syncModuleDetailRequestId) return;
+    if (
+      detail?.detailLoaded !== true
+      || !Array.isArray(detail.fieldsSchema)
+      || detail.fieldsSchema.length === 0
+    ) {
+      message.error('当前数据源的字段配置加载失败，请重新选择数据源后重试。');
+      return;
+    }
+    resetFieldMappingByModule();
+    resetCustomQueryValues();
+    if (
+      isAccountModalOpen.value
+      && currentStep.value === 2
+      && accountSourceType.value === 'self'
+    ) {
+      await prepareCaptureSession(true);
+    }
+  } finally {
+    if (requestId === syncModuleDetailRequestId) {
+      isLoadingInterfaceFields.value = false;
+    }
   }
 });
 

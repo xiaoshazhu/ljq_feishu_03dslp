@@ -100,7 +100,7 @@ function readPositiveInteger(name, fallback) {
 const settings = {
   globalLimit: readPositiveInteger('SYNC_GLOBAL_CONCURRENCY', 40),
   companyLimit: readPositiveInteger('SYNC_COMPANY_CONCURRENCY', 10),
-  accountLimit: readPositiveInteger('SYNC_ACCOUNT_CONCURRENCY', 2),
+  accountLimit: readPositiveInteger('SYNC_ACCOUNT_CONCURRENCY', 5),
   globalQueueLimit: readPositiveInteger('SYNC_GLOBAL_QUEUE_LIMIT', 200),
   companyQueueLimit: readPositiveInteger('SYNC_COMPANY_QUEUE_LIMIT', 50),
   accountQueueLimit: readPositiveInteger('SYNC_ACCOUNT_QUEUE_LIMIT', 20),

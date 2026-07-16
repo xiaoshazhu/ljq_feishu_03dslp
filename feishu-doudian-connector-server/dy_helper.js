@@ -309,7 +309,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     let errorType = '接口500报错';
     let msg = err.message;
 
-    if (msg.includes("CredentialsExpired") || msg.includes("401")) {
+    if (msg.includes("CredentialsExpired")) {
       errorType = '凭证失效(Cookie过期)';
       msg = '抖店 Session Cookie 已过期失效，请重新在连接器配置页面扫码/验证码登录捕获！';
     } else if (msg.includes("UpstreamResponseTooLarge")) {

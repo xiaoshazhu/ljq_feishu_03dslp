@@ -845,6 +845,18 @@ function normalizeFeishuProtocolError(error, requestId) {
       retryable: false
     };
   }
+  if (/DoudianAPIError/i.test(rawMessage)) {
+    const detail = rawMessage
+      .replace(/^.*?DoudianAPIError:\s*/i, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 500);
+    return {
+      message: `抖店接口返回错误：${detail || "未知业务错误"}`,
+      englishMessage: "The Doudian API returned a business error.",
+      retryable: true
+    };
+  }
   if (/DeadlineExceeded|SyncDeadlineExceeded|UpstreamTimeout/i.test(rawMessage)) {
     return {
       message: "同步请求超时，请稍后重试",
@@ -869,8 +881,8 @@ function normalizeFeishuProtocolError(error, requestId) {
   }
   if (/Doudian|抖店接口/i.test(rawMessage)) {
     return {
-      message: "抖店接口请求失败，请检查账号凭证和接口参数",
-      englishMessage: "The Doudian API request failed. Check the account credential and request parameters.",
+      message: "抖店接口请求失败，请检查接口参数或稍后重试",
+      englishMessage: "The Doudian API request failed. Check the request parameters or retry later.",
       retryable: true
     };
   }
@@ -1769,6 +1781,7 @@ function bytesToMb(value) {
 
 module.exports = {
   app,
+  normalizeFeishuProtocolError,
   shutdown,
   startServer
 };

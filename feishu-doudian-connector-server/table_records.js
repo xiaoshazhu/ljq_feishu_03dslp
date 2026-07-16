@@ -564,6 +564,9 @@ function normalizeDoudianFieldValue(value, field) {
   }
   const mappedValue = mapDoudianFieldValue(value, field);
   if (mappedValue !== undefined) return mappedValue;
+  if (String(field.type || '').toLowerCase() === 'html') {
+    return String(value).replace(/<[^>]*>/g, '').trim();
+  }
   if (isPercentageFieldType(field.type)) {
     return normalizePercentageFieldValue(value, field);
   }
