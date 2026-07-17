@@ -16,7 +16,10 @@ const fs = require("fs");
 
 const { getTableMeta } = require("./table_meta.js");
 const { getTableRecords } = require("./table_records.js");
-const { fetchRealDoudianData } = require("./dy_helper.js");
+const {
+  fetchRealDoudianData,
+  probeDoudianInterfaceSuccessCode
+} = require("./dy_helper.js");
 const { doudianLocalAggregateRouter } = require("./doudian_local_aggregate.js");
 const { validateRequestSignature } = require("./request_sign.js");
 const {
@@ -45,7 +48,6 @@ const {
   ConcurrencyLimitError,
   syncConcurrencySettings
 } = require("./concurrency_control.js");
-
 // 引入 MySQL 数据库操作
 const {
   initDb,
@@ -53,6 +55,7 @@ const {
   pingDb,
   saveAccount,
   updateAccountById,
+  updateAccountStatusByKey,
   getAccounts,
   getSharedAccounts,
   setActiveAccount,
@@ -79,6 +82,7 @@ const frontendDevServer = process.env.FRONTEND_DEV_SERVER || "http://127.0.0.1:5
 const frontendPublicOrigin = getFrontendPublicOrigin();
 const frontendPublicUrl = frontendPublicOrigin;
 const frontendDistPath = path.resolve(__dirname, "../data-sync-fe-vue-demo/dist");
+const accountStatusProbeInterfaceKey = "account_center_getaccountlist_49e457f4";
 const serverPort = readInteger("PORT", 3000, 1, 65535);
 const tableMetaDeadlineMs = readInteger("TABLE_META_DEADLINE_MS", 8000, 1000, 9500);
 const recordsDeadlineMs = readInteger("RECORDS_DEADLINE_MS", 18000, 5000, 19500);
@@ -1247,6 +1251,48 @@ app.get("/api/v1/connector/accounts", async (req, res) => {
     res.status(200).json(list.map(toPublicAccount));
   } catch (e) {
     sendApiError(res, req, e, "获取账号列表失败");
+  }
+});
+
+/**
+ * 功能描述：刷新当前用户可见账号的凭证状态，供配置页展示真实可用状态。
+ * @param {object} req - Express 请求
+ * @param {object} res - Express 响应
+ */
+app.post("/api/v1/connector/accounts/refresh-status", async (req, res) => {
+  try {
+    const companyId = getCompanyId(req);
+    const userId = getUserId(req);
+    const scope = String(req.body?.scope || 'active');
+    const list = await getAccounts(companyId, userId);
+    const activeAccount = list.find((account) => account.is_active === 1) || list[0];
+    const targets = scope === 'all'
+      ? list
+      : [activeAccount].filter(Boolean);
+    const refreshed = [];
+
+    for (const account of targets) {
+      let isActive = false;
+      try {
+        isActive = await probeDoudianInterfaceSuccessCode(
+          account.cookie,
+          accountStatusProbeInterfaceKey,
+          req.get('user-agent'),
+          0
+        );
+      } catch (error) {
+        isActive = false;
+      }
+      const nextStatus = isActive ? 'active' : 'expired';
+      if (account.status !== nextStatus) {
+        await updateAccountStatusByKey(account.key, nextStatus, companyId);
+      }
+      refreshed.push({ key: account.key, status: nextStatus });
+    }
+
+    res.status(200).json({ code: 0, data: refreshed });
+  } catch (e) {
+    sendApiError(res, req, e, "刷新账号状态失败");
   }
 });
 

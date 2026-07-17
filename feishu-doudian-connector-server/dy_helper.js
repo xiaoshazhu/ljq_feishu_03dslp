@@ -2,7 +2,6 @@ const { logSyncError } = require('./error_logger.js');
 const {
   assertAllowedUrl,
   fetchTextWithTimeout,
-  fetchWithTimeout,
   getRemainingTimeoutMs,
   sanitizeUrl
 } = require('./http_client.js');
@@ -342,6 +341,60 @@ function calculateLoadedCount(pageToken, pageNum, pageSize, currentCount) {
     ? tokenLoadedCount
     : Math.max(pageNum - 1, 0) * pageSize;
   return loadedBefore + currentCount;
+}
+
+/**
+ * 功能描述：使用注册表接口原始响应 code 判断 Cookie 是否有效。
+ * @param {string} cookie Cookie 凭证
+ * @param {string} interfaceKey doudian_interfaces.interface_key
+ * @param {string} userAgent 浏览器 UA
+ * @param {string|number} successCode 成功响应 code
+ * @return {Promise<boolean>} code 严格等于成功值时返回 true
+ */
+async function probeDoudianInterfaceSuccessCode(cookie, interfaceKey, userAgent, successCode = 0) {
+  if (!cookie || cookie.startsWith('mock_') || cookie.length < 30) return false;
+
+  const interfaceMeta = await getDoudianInterfaceByKey(interfaceKey);
+  if (!interfaceMeta) {
+    throw new Error(`DoudianInterfaceNotFound: 当前接口未接入或不存在 (${interfaceKey})`);
+  }
+
+  const ua = userAgent || 'Mozilla/5.0';
+  const headers = {
+    Cookie: cookie,
+    'User-Agent': ua,
+    Accept: '*/*'
+  };
+  const builtRequest = buildDoudianRegisteredRequest(
+    interfaceMeta,
+    '',
+    1,
+    1,
+    {},
+    '',
+    cookie,
+    ua,
+    'all',
+    Date.now()
+  );
+
+  assertAllowedUrl(builtRequest.requestUrl, getDoudianAllowedApiOrigins());
+  applyRequestHeaders(headers, builtRequest, builtRequest.requestMethod);
+  if (builtRequest.requestHeaders) {
+    Object.assign(headers, builtRequest.requestHeaders);
+  }
+
+  const fetchOptions = {
+    method: builtRequest.requestMethod,
+    headers
+  };
+  if (builtRequest.requestBody) {
+    fetchOptions.body = builtRequest.requestBody;
+  }
+
+  const { responseText } = await fetchTextWithTimeout(builtRequest.requestUrl, fetchOptions, 8000);
+  const resJson = JSON.parse(responseText);
+  return String(resJson?.code) === String(successCode);
 }
 
 /**
@@ -981,38 +1034,6 @@ function normalizeListItemsByConfig(list, requestConfig = {}) {
 }
 
 /**
- * 功能描述：Session 心跳保活机制 (Keep-Alive)。每 30 分钟发起一次获取店铺信息的轻量请求，激活并延长 Cookie 有效期。
- * @param {string} cookie - 加密的抖音 Cookie 凭证
- * @param {string} userAgent - 登录设备 UA 浏览器指纹
- * @return {Promise<boolean>} 返回保活请求是否成功
- */
-async function keepAliveSession(cookie, userAgent) {
-  if (!cookie || cookie.startsWith('mock_')) return false;
-
-  const headers = {
-    'Cookie': cookie,
-    'User-Agent': userAgent || 'Mozilla/5.0',
-    'Accept': 'application/json'
-  };
-
-  try {
-    const response = await fetchWithTimeout(
-      'https://compass.jinritemai.com/compass/api/v1/shop/basic_info',
-      { headers },
-      4000
-    );
-    if (response.status === 200) {
-      console.log(`[心跳保活] 成功对抖音罗盘进行 Session Keep-Alive 延长凭证有效期。`);
-      return true;
-    }
-    return false;
-  } catch (e) {
-    console.warn(`[心跳保活] 定时保活网络请求失败，静默退出。`);
-    return false;
-  }
-}
-
-/**
  * 功能描述：在总截止时间内执行风控延迟，剩余时间不足时提前失败交给飞书重试。
  * @param {number} delayMs 计划延迟毫秒数
  * @param {number} deadlineAt 整条请求绝对截止时间
@@ -1026,4 +1047,4 @@ async function sleepWithinDeadline(delayMs, deadlineAt) {
   await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
-module.exports = { fetchRealDoudianData, keepAliveSession, calculateLoadedCount };
+module.exports = { fetchRealDoudianData, probeDoudianInterfaceSuccessCode, calculateLoadedCount };

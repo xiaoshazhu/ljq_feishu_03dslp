@@ -693,6 +693,28 @@ async function updateAccountById(id, updates, companyId = 'default', userId = 'd
 }
 
 /**
+ * 功能描述：按企业与账号 key 更新账号凭证状态，状态刷新面向当前可见账号，不要求账号创建人。
+ * @param {string} key 账号 key
+ * @param {'active'|'expired'} status 新状态
+ * @param {string} companyId 企业 ID
+ * @return {Promise<void>} 无返回值
+ */
+async function updateAccountStatusByKey(key, status, companyId = 'default') {
+  const normalizedStatus = String(status || '');
+  if (!['active', 'expired'].includes(normalizedStatus)) {
+    throw validationError('账号状态非法', 'ACCOUNT_STATUS_INVALID');
+  }
+  await pool.query(
+    `UPDATE accounts
+     SET status = ?
+     WHERE company_id = ?
+       AND \`key\` = ?
+       AND is_deleted = 0`,
+    [normalizedStatus, normalizeIdentity(companyId), normalizeAccountKey(key)]
+  );
+}
+
+/**
  * 功能描述：获取所有已绑定的账号列表。
  * @param {string} companyId - 企业 ID
  * @param {string} userId - 飞书用户 ID
@@ -1768,6 +1790,7 @@ module.exports = {
   pingDb,
   saveAccount,
   updateAccountById,
+  updateAccountStatusByKey,
   getAccounts,
   getSharedAccounts,
   setActiveAccount,

@@ -1496,7 +1496,7 @@ function buildModuleTreeWithDoudianInterfaces(interfaces: DoudianInterface[]): M
   return [
     ...BASE_MODULE_TREE_DATA,
     {
-      title: '🏬 店铺接口',
+      title: '抖店模块',
       value: 'group_doudian_shop_interfaces',
       selectable: false,
       children: doudianInterfaceGroups
@@ -1530,6 +1530,20 @@ async function fetchAccounts(): Promise<void> {
   } catch (error) {
     console.error('从 MySQL 数据库获取账户列表失败', error);
     accounts.value = [];
+  }
+}
+
+async function refreshAccountStatuses(scope: 'active' | 'all' = 'active'): Promise<void> {
+  try {
+    const response = await fetch(apiUrl(`/api/v1/connector/accounts/refresh-status?${getCompanyQuery()}`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope })
+    });
+    await parseApiResponse(response, '刷新账号状态失败');
+    await fetchAccounts();
+  } catch (error) {
+    console.warn('刷新账号状态失败', error);
   }
 }
 
@@ -2434,6 +2448,7 @@ watch(isPolling, (polling) => {
 
 watch(pageTab, (tab) => {
   if (tab === 'accounts') {
+    refreshAccountStatuses('all');
     fetchSyncLogs();
   }
 });
@@ -2517,6 +2532,7 @@ onMounted(async () => {
       tenantKey.value = 'unknown';
     }
     await Promise.all([fetchAccounts(), fetchSharedAccounts()]);
+    await refreshAccountStatuses('active');
   } finally {
     isInitializing.value = false;
   }
