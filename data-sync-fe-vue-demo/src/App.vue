@@ -1,4 +1,5 @@
 <template>
+  <a-config-provider :locale="zhCN">
   <a-spin :spinning="isInitializing" tip="正在加载连接器配置...">
     <div class="connector-container">
       <div class="page-shell">
@@ -155,6 +156,15 @@
                       :placeholder="field.placeholder || `请选择 ${field.label || field.name}`"
                       :options="booleanCustomQueryOptions"
                       :value="getBooleanCustomQueryFieldValue(field.name)"
+                      @update:value="handleCustomQueryValueChange(field.name, $event)"
+                    />
+                    <a-range-picker
+                      v-else-if="!hasCustomQueryOptions(field) && isDateRangeCustomQueryField(field)"
+                      style="width: 100%"
+                      :show-time="shouldShowCustomQueryDateRangeTime(field)"
+                      :value-format="getCustomQueryDateRangeValueFormat(field)"
+                      :value="getRangeCustomQueryFieldValue(field.name)"
+                      :disabled-date="getCustomQueryDateRangeDisabledDate(field)"
                       @update:value="handleCustomQueryValueChange(field.name, $event)"
                     />
                     <a-select
@@ -555,11 +565,13 @@
       </a-modal>
     </div>
   </a-spin>
+  </a-config-provider>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { message, } from 'ant-design-vue';
+import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import { bitable } from '@lark-base-open/connector-api';
 import { bridge } from '@lark-base-open/js-sdk';
 import buttonImg from './assets/button.png';
@@ -591,17 +603,25 @@ interface CustomQueryFieldOption {
   label: string;
 }
 
-type CustomQueryFieldType = 'string' | 'integer' | 'number' | 'boolean';
+type CustomQueryFieldType = 'string' | 'integer' | 'number' | 'boolean' | 'dateRange';
+type CustomQueryFieldValue = string | number | boolean | string[];
 
 interface CustomQueryField {
   name: string;
   label?: string;
-  type?: CustomQueryFieldType | 'String' | 'Integer' | 'Number' | 'Boolean';
+  type?: CustomQueryFieldType | 'String' | 'Integer' | 'Number' | 'Boolean' | 'DateRange';
   required?: boolean;
-  defaultValue?: string | number | boolean;
+  defaultValue?: CustomQueryFieldValue;
   placeholder?: string;
   helpText?: string;
   options?: CustomQueryFieldOption[];
+  startTime?: string;
+  endTime?: string;
+  format?: 'date' | 'datetime' | 'datetime_minute' | 'timestamp_ms' | 'timestamp_s' | string;
+  maxPastDays?: number;
+  maxPastMonths?: number;
+  endPastDays?: number;
+  endPastMonths?: number;
 }
 
 interface DateRangeMappingConfig {
@@ -804,7 +824,7 @@ const payChannel = ref('');
 const timeType = ref('');
 const customStartDate = ref('');
 const customEndDate = ref('');
-const customQueryValues = reactive<Record<string, string | number | boolean>>({});
+const customQueryValues = reactive<Record<string, CustomQueryFieldValue>>({});
 // 右侧滚动容器引用，用于滚动监听和导航高亮。
 const scrollContainerRef = ref<HTMLElement | null>(null);
 const accountScrollContainerRef = ref<HTMLElement | null>(null);
@@ -1150,7 +1170,10 @@ function parseSavedConnectorConfig(
 function resetCustomQueryValues(savedValues: Record<string, unknown> = {}): void {
   Object.keys(customQueryValues).forEach((key) => delete customQueryValues[key]);
   customQueryFields.value.forEach((field) => {
-    const savedValue = savedValues[field.name];
+    const [startTimeParam, endTimeParam] = getCustomQueryDateRangeParamNames(field);
+    const savedValue = isDateRangeCustomQueryField(field) && startTimeParam && endTimeParam
+      ? (savedValues[field.name] || [savedValues[startTimeParam], savedValues[endTimeParam]])
+      : savedValues[field.name];
     if (savedValue !== undefined && savedValue !== null && savedValue !== '') {
       customQueryValues[field.name] = normalizeCustomQueryFieldValue(field, savedValue);
       return;
@@ -1171,6 +1194,14 @@ function isNumericCustomQueryField(field: CustomQueryField): boolean {
   return fieldType === 'integer' || fieldType === 'number';
 }
 
+function isDateRangeCustomQueryField(field: CustomQueryField): boolean {
+  return getCustomQueryFieldType(field) === 'dateRange';
+}
+
+function isTemporalCustomQueryField(field: CustomQueryField): boolean {
+  return isDateRangeCustomQueryField(field);
+}
+
 /**
  * 功能描述：判断自定义 Query 字段是否配置了选项。
  * @param {CustomQueryField} field 字段定义
@@ -1186,10 +1217,11 @@ function hasCustomQueryOptions(field: CustomQueryField): boolean {
  * @return {CustomQueryFieldType} 返回标准字段类型
  */
 function getCustomQueryFieldType(field: CustomQueryField): CustomQueryFieldType {
-  const type = String(field.type || 'string').toLowerCase();
+  const type = String(field.type || 'string').replace(/[-_]/g, '').toLowerCase();
   if (type === 'integer' || type === 'int') return 'integer';
   if (type === 'number' || type === 'numeric') return 'number';
   if (type === 'boolean' || type === 'bool') return 'boolean';
+  if (type === 'daterange') return 'dateRange';
   return 'string';
 }
 
@@ -1197,12 +1229,18 @@ function getCustomQueryFieldType(field: CustomQueryField): CustomQueryFieldType 
  * 功能描述：按字段类型归一化自定义 Query 字段值。
  * @param {CustomQueryField} field 字段定义
  * @param {unknown} rawValue 原始输入值
- * @return {string|number|boolean} 返回归一化后的值
+ * @return {CustomQueryFieldValue} 返回归一化后的值
  */
-function normalizeCustomQueryFieldValue(field: CustomQueryField, rawValue: unknown): string | number | boolean {
+function normalizeCustomQueryFieldValue(field: CustomQueryField, rawValue: unknown): CustomQueryFieldValue {
   const fieldType = getCustomQueryFieldType(field);
   if (fieldType === 'boolean') {
     return rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
+  }
+  if (fieldType === 'dateRange') {
+    const values = Array.isArray(rawValue)
+      ? rawValue
+      : String(rawValue).split(',').map((item) => item.trim());
+    return values.map((item) => normalizeCustomQueryDateRangeInputValue(item, field.format || 'date')).filter(Boolean);
   }
   if (fieldType === 'integer') {
     return Number.parseInt(String(rawValue), 10);
@@ -1241,17 +1279,79 @@ function getBooleanCustomQueryFieldValue(fieldName: string): string | undefined 
 function getStringCustomQueryFieldValue(fieldName: string): string | undefined {
   const value = customQueryValues[fieldName];
   if (value === undefined || value === null || value === '') return undefined;
-  return String(value);
+  return Array.isArray(value) ? undefined : String(value);
 }
 
 /**
  * 功能描述：获取自定义 Query 字段当前值，供 Select 绑定并保留 number/boolean 类型。
  * @param {string} fieldName 字段名
- * @return {string|number|boolean|undefined} 返回当前值
+ * @return {CustomQueryFieldValue|undefined} 返回当前值
  */
-function getCustomQueryFieldValue(fieldName: string): string | number | boolean | undefined {
+function getCustomQueryFieldValue(fieldName: string): CustomQueryFieldValue | undefined {
   const value = customQueryValues[fieldName];
   return value === undefined || value === null || value === '' ? undefined : value;
+}
+
+function getRangeCustomQueryFieldValue(fieldName: string): string[] | undefined {
+  const value = customQueryValues[fieldName];
+  return Array.isArray(value) && value.length > 0 ? value : undefined;
+}
+
+function getCustomQueryDateRangeParamNames(field: CustomQueryField): [string, string] {
+  return [String(field.startTime || ''), String(field.endTime || '')];
+}
+
+function getCustomQueryDateRangeDisabledDate(field: CustomQueryField): (current: unknown) => boolean {
+  return (current: unknown) => isCustomQueryDateRangeDateDisabled(field, current);
+}
+
+function shouldShowCustomQueryDateRangeTime(field: CustomQueryField): boolean {
+  return normalizeCustomQueryDateRangeFormat(field.format || 'date') !== 'date';
+}
+
+function getCustomQueryDateRangeValueFormat(field: CustomQueryField): string {
+  return shouldShowCustomQueryDateRangeTime(field)
+    ? 'YYYY-MM-DD HH:mm:ss'
+    : 'YYYY-MM-DD';
+}
+
+function isCustomQueryDateRangeDateDisabled(field: CustomQueryField, current: unknown): boolean {
+  const timestamp = Number((current as { valueOf?: () => number })?.valueOf?.());
+  if (!Number.isFinite(timestamp)) return false;
+  const dayStart = new Date(timestamp);
+  dayStart.setHours(0, 0, 0, 0);
+  const maxDate = getCustomQueryDateRangeMaxDate(field);
+  if (dayStart.getTime() > maxDate.getTime()) return true;
+  const minDate = getCustomQueryDateRangeMinDate(field);
+  return Boolean(minDate && dayStart.getTime() < minDate.getTime());
+}
+
+function getCustomQueryDateRangeMaxDate(field: CustomQueryField): Date {
+  const maxDate = new Date();
+  maxDate.setHours(0, 0, 0, 0);
+  if (Number.isFinite(Number(field.endPastDays))) {
+    maxDate.setDate(maxDate.getDate() - Number(field.endPastDays));
+    return maxDate;
+  }
+  if (Number.isFinite(Number(field.endPastMonths))) {
+    maxDate.setMonth(maxDate.getMonth() - Number(field.endPastMonths));
+  }
+  return maxDate;
+}
+
+function getCustomQueryDateRangeMinDate(field: CustomQueryField): Date | null {
+  const maxDate = getCustomQueryDateRangeMaxDate(field);
+  if (Number.isFinite(Number(field.maxPastDays))) {
+    const minDate = new Date(maxDate);
+    minDate.setDate(minDate.getDate() - Number(field.maxPastDays));
+    return minDate;
+  }
+  if (Number.isFinite(Number(field.maxPastMonths))) {
+    const minDate = new Date(maxDate);
+    minDate.setMonth(minDate.getMonth() - Number(field.maxPastMonths));
+    return minDate;
+  }
+  return null;
 }
 
 /**
@@ -1261,7 +1361,7 @@ function getCustomQueryFieldValue(fieldName: string): string | number | boolean 
  * @return {void} 无返回值
  */
 function handleCustomQueryValueChange(fieldName: string, value: unknown): void {
-  if (value === undefined || value === null || value === '') {
+  if (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)) {
     delete customQueryValues[fieldName];
     return;
   }
@@ -1275,13 +1375,95 @@ function handleCustomQueryValueChange(fieldName: string, value: unknown): void {
 
 /**
  * 功能描述：组装当前运行时需要覆盖到真实抖店请求中的 Query 参数。
- * @return {Record<string, string|number|boolean>} 返回最终附加 Query 参数
+ * @return {Record<string, CustomQueryFieldValue>} 返回最终附加 Query 参数
  */
-function buildRuntimeDoudianExtraQuery(): Record<string, string | number | boolean> {
-  return {
+function buildRuntimeDoudianExtraQuery(): Record<string, CustomQueryFieldValue> {
+  const query: Record<string, CustomQueryFieldValue> = {
     ...parseQueryText(doudianExtraQueryText.value),
     ...customQueryValues
   };
+  customQueryFields.value.forEach((field) => {
+    if (!isDateRangeCustomQueryField(field)) return;
+    const [startTimeParam, endTimeParam] = getCustomQueryDateRangeParamNames(field);
+    const value = customQueryValues[field.name];
+    delete query[field.name];
+    if (!startTimeParam || !endTimeParam || !Array.isArray(value) || value.length < 2) return;
+    query[startTimeParam] = formatCustomQueryDateRangeValue(value[0], field.format || 'date', false);
+    query[endTimeParam] = formatCustomQueryDateRangeValue(value[1], field.format || 'date', true);
+  });
+  return query;
+}
+
+function formatCustomQueryDateRangeValue(value: string, format: string, isEnd: boolean): string | number {
+  const parsed = parseCustomQueryDateRangeDate(value);
+  const date = parsed.date;
+  if (Number.isNaN(date.getTime())) return value;
+  if (!parsed.hasTime) {
+    date.setHours(isEnd ? 23 : 0, isEnd ? 59 : 0, isEnd ? 59 : 0, isEnd ? 999 : 0);
+  }
+  const normalizedFormat = normalizeCustomQueryDateRangeFormat(format);
+  if (normalizedFormat === 'timestamp' || normalizedFormat === 'timestampms') return date.getTime();
+  if (normalizedFormat === 'timestamps' || normalizedFormat === 'unix') return Math.floor(date.getTime() / 1000);
+  const dateText = `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+  if (normalizedFormat === 'datetimeminute' || normalizedFormat === 'minute') {
+    return `${dateText} ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+  }
+  if (normalizedFormat === 'datetime') {
+    return `${dateText} ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}:${padDatePart(date.getSeconds())}`;
+  }
+  return dateText;
+}
+
+function normalizeCustomQueryDateRangeInputValue(value: unknown, format: string): string {
+  if (value === undefined || value === null || value === '') return '';
+  const normalizedFormat = normalizeCustomQueryDateRangeFormat(format);
+  const text = String(value).trim();
+  const numericValue = Number(text);
+  if (Number.isFinite(numericValue) && (normalizedFormat === 'timestamp' || normalizedFormat === 'timestampms' || normalizedFormat === 'timestamps' || normalizedFormat === 'unix')) {
+    const timestampMs = normalizedFormat === 'timestamps' || normalizedFormat === 'unix'
+      ? numericValue * 1000
+      : numericValue;
+    const date = new Date(timestampMs);
+    if (!Number.isNaN(date.getTime())) {
+      return formatCustomQueryDateRangePickerValue(date, true);
+    }
+  }
+  const parsed = parseCustomQueryDateRangeDate(text);
+  if (!Number.isNaN(parsed.date.getTime())) {
+    return formatCustomQueryDateRangePickerValue(parsed.date, normalizedFormat !== 'date' && parsed.hasTime);
+  }
+  return normalizedFormat === 'date' ? text.slice(0, 10) : text.replace('T', ' ');
+}
+
+function parseCustomQueryDateRangeDate(value: string): { date: Date; hasTime: boolean } {
+  const match = String(value || '').trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (!match) return { date: new Date(Number.NaN), hasTime: false };
+  const [, year, month, day, hour, minute, second] = match;
+  return {
+    date: new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour || 0),
+      Number(minute || 0),
+      Number(second || 0)
+    ),
+    hasTime: hour !== undefined
+  };
+}
+
+function formatCustomQueryDateRangePickerValue(date: Date, withTime: boolean): string {
+  const dateText = `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}`;
+  if (!withTime) return dateText;
+  return `${dateText} ${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}:${padDatePart(date.getSeconds())}`;
+}
+
+function normalizeCustomQueryDateRangeFormat(format: string): string {
+  return String(format || 'date').replace(/[-_]/g, '').toLowerCase();
+}
+
+function padDatePart(value: number): string {
+  return String(value).padStart(2, '0');
 }
 
 /**
@@ -1292,7 +1474,7 @@ function validateRequiredCustomQueryFields(): boolean {
   const missingField = customQueryFields.value.find((field) => {
     if (field.required !== true) return false;
     const value = customQueryValues[field.name];
-    return value === undefined || value === null || value === '';
+    return value === undefined || value === null || value === '' || (Array.isArray(value) && value.length < 2);
   });
   if (!missingField) return true;
   message.error(`${getRequiredCustomQueryFieldAction(missingField)}${getCustomQueryFieldLabel(missingField)}`);
@@ -1305,7 +1487,7 @@ function validateRequiredCustomQueryFields(): boolean {
  * @return {string} 返回“请选择”或“请填写”
  */
 function getRequiredCustomQueryFieldAction(field: CustomQueryField): string {
-  return hasCustomQueryOptions(field) || getCustomQueryFieldType(field) === 'boolean'
+  return hasCustomQueryOptions(field) || getCustomQueryFieldType(field) === 'boolean' || isTemporalCustomQueryField(field)
     ? '请选择'
     : '请填写';
 }
@@ -2485,6 +2667,9 @@ onMounted(async () => {
           const remainingExtraQuery = { ...config.doudianExtraQuery };
           customQueryFields.value.forEach((field) => {
             delete remainingExtraQuery[field.name];
+            const [startTimeParam, endTimeParam] = getCustomQueryDateRangeParamNames(field);
+            if (startTimeParam) delete remainingExtraQuery[startTimeParam];
+            if (endTimeParam) delete remainingExtraQuery[endTimeParam];
           });
           doudianExtraQueryText.value = new URLSearchParams(remainingExtraQuery).toString();
         }

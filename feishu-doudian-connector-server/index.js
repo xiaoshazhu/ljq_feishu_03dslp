@@ -305,17 +305,8 @@ app.use((req, res, next) => {
   next();
 });
 
-/**
- * 功能描述：浏览器直接访问根路径时跳转到前端页面；非页面探活请求仍返回纯文本状态。
- * @param {object} req - Express 请求
- * @param {object} res - Express 响应
- */
 app.get("/", (req, res) => {
-  const accept = req.headers.accept || "";
-  if (accept.includes("text/html")) {
-    return res.redirect("/index.html");
-  }
-  res.send("飞书连接器后端服务正在平稳运行中！");
+  res.redirect("/index.html");
 });
 
 /**
@@ -445,6 +436,7 @@ app.post("/api/table_meta", async (req, res) => {
  */
 app.post("/api/records", async (req, res) => {
   const signatureValidation = validateRequestSignature(req);
+  console.log(123123)
   if (!signatureValidation.valid) {
     return sendSignatureError(res, signatureValidation.reason, req.requestId);
   }

@@ -1,7 +1,11 @@
 import { createApp } from 'vue';
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
 import {
   Button,
   Checkbox,
+  ConfigProvider,
+  DatePicker,
   Empty,
   Form,
   Input,
@@ -18,9 +22,13 @@ import 'ant-design-vue/dist/reset.css';
 import App from './App.vue';
 import './App.css';
 
+dayjs.locale('zh-cn');
+
 createApp(App)
   .use(Button)
   .use(Checkbox)
+  .use(ConfigProvider)
+  .use(DatePicker)
   .use(Empty)
   .use(Form)
   .use(Input)

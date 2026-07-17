@@ -204,6 +204,10 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
       );
     }
     console.log(`[Doudian API Response] URL: ${sanitizeUrl(requestUrl)}`);
+    console.log('[Doudian API Request Params]', {
+      method: requestMethod,
+      params: builtRequest.debugParams || parseDebugRequestBody(requestBody)
+    });
     
     // 校验响应内容中的未登录或受限标记
     const errCode = String(resJson.code || resJson.errorCode || '');
@@ -474,7 +478,8 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
         params: aggregateParams
       }),
       contentType: 'application/json;charset=UTF-8',
-      refererHost: apiHost
+      refererHost: apiHost,
+      debugParams: aggregateParams
     };
   }
 
@@ -493,7 +498,8 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
       refererHost: apiHost,
       extraHeaders: requestConfig.extraHeaders || {},
       referer: requestConfig.referer || '',
-      includeOriginHeader: requestConfig.includeOriginHeader
+      includeOriginHeader: requestConfig.includeOriginHeader,
+      debugParams: baseParams
     };
   }
 
@@ -513,7 +519,8 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
     refererHost: apiHost,
     extraHeaders: requestConfig.extraHeaders || {},
     referer: requestConfig.referer || '',
-    includeOriginHeader: requestConfig.includeOriginHeader
+    includeOriginHeader: requestConfig.includeOriginHeader,
+    debugParams: bodyParams
   };
 }
 
@@ -844,6 +851,16 @@ function sanitizeDebugHeaders(headers) {
     safeHeaders.cookie = maskSensitiveValue(String(safeHeaders.cookie));
   }
   return safeHeaders;
+}
+
+function parseDebugRequestBody(requestBody) {
+  if (!requestBody) return {};
+  const text = String(requestBody);
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    return Object.fromEntries(new URLSearchParams(text));
+  }
 }
 
 /**
