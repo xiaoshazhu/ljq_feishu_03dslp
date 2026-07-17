@@ -1526,7 +1526,7 @@ app.delete("/api/v1/connector/accounts/:key", async (req, res) => {
       );
     }
     const message = result.action === 'soft_deleted'
-      ? "该账号已逻辑删除"
+      ? "该账号已删除"
       : "账号不存在或已被移除";
     res.status(200).json({ code: 0, message, action: result.action });
   } catch (e) {
