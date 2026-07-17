@@ -275,7 +275,7 @@ function allowFrontendManagementCors(req, res, next) {
   next();
 }
 
-// 只有书签捕获端点允许来自抖店页面的跨域写入，其他敏感接口保持同源。
+// 凭证捕获端点支持用户从任意页面上报，安全边界由短效一次性 token 承担。
 app.use((req, res, next) => {
   const isCapturePath = req.path === "/api/v1/connector/sources/login-capture";
   if (!isCapturePath) {
@@ -283,24 +283,14 @@ app.use((req, res, next) => {
   }
 
   const origin = String(req.headers.origin || "");
-  const allowedOrigin = isAllowedCaptureOrigin(origin) || isCurrentRequestOrigin(req, origin);
-  if (allowedOrigin) {
+  if (origin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   }
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") {
-    return allowedOrigin
-      ? res.sendStatus(204)
-      : res.sendStatus(403);
-  }
-  if (!allowedOrigin) {
-    return sendApiError(
-      res,
-      req,
-      forbiddenError("不允许的凭证上报来源", "CAPTURE_ORIGIN_FORBIDDEN")
-    );
+    return res.sendStatus(204);
   }
   next();
 });
@@ -693,30 +683,6 @@ function parseMaybeJsonObject(value, fallback = {}) {
   } catch (error) {
     return fallback;
   }
-}
-
-/**
- * 功能描述：判断书签凭证上报请求是否来自允许的抖店页面或当前连接器同源页面。
- * @param {string} origin 请求 Origin
- * @return {boolean} 返回来源是否允许
- */
-function isAllowedCaptureOrigin(origin) {
-  if (!origin) return false;
-  return getAllowedCaptureOrigins().includes(origin);
-}
-
-/**
- * 功能描述：判断请求 Origin 是否为当前后端自身 Origin，允许捕获中转页同源提交凭证。
- * @param {object} req Express 请求
- * @param {string} origin 请求 Origin
- * @return {boolean} 返回是否为当前后端 Origin
- */
-function isCurrentRequestOrigin(req, origin) {
-  if (!origin) return false;
-  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
-  const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0].trim();
-  if (!host || !proto) return false;
-  return origin === `${proto}://${host}`;
 }
 
 /**

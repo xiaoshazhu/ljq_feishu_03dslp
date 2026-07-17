@@ -708,7 +708,7 @@ const timeTypeOptions = [
 
 // 普通模块的相对同步时间范围选项。
 const dateRangeOptions = [
-  { value: 'all', label: '全量数据）' },
+  { value: 'all', label: '全量数据' },
   { value: '3', label: '回溯近 3 天数据（高频增量，推荐）' },
   { value: '7', label: '回溯近 7 天数据' },
   { value: '30', label: '回溯近 30 天数据（多页拉取）' }
@@ -2110,12 +2110,8 @@ async function handleDeleteAccount(account: Account): Promise<void> {
   }
 
   try {
-    const response = await fetch(apiUrl(`/api/v1/connector/accounts/${account.key}`), {
-      method: 'DELETE',
-      headers: {
-        'x-tenant-key': tenantKey.value || 'default',
-        'x-user-id': userId.value || 'default'
-      }
+    const response = await fetch(apiUrl(`/api/v1/connector/accounts/${account.key}?${getCompanyQuery()}`), {
+      method: 'DELETE'
     });
     const result = await parseApiResponse<any>(response, '删除账号失败');
     message.info(result?.message || '账号已解除关联');
@@ -2474,8 +2470,11 @@ function buildBookmarkCode(): string {
   if (!hasValidCaptureSession.value) {
     return 'javascript:alert("捕获脚本尚未生成或已过期，请返回飞书配置页重新生成。")';
   }
-  const relayUrl = JSON.stringify(`${window.location.origin}/capture-relay.html`);
-  const relayOrigin = JSON.stringify(window.location.origin);
+  const relayPageUrl = API_BASE_URL
+    ? apiUrl('/capture-relay.html')
+    : `${window.location.origin}/capture-relay.html`;
+  const relayUrl = JSON.stringify(relayPageUrl);
+  const relayOrigin = JSON.stringify(new URL(relayPageUrl).origin);
   const token = JSON.stringify(captureToken.value);
   return `javascript:(function(){var token=${token};var relayUrl=${relayUrl};var relayOrigin=${relayOrigin};var cookie=document.cookie;if(!cookie)return alert("当前页面没有可读取的登录凭证，请确认已经登录抖店后台。");var shopIdMatch=cookie.match(/shop_id=(\\d+)/)||cookie.match(/shop_id_str=(\\d+)/);var shopId=shopIdMatch?shopIdMatch[1]:'';if(!shopId){var locationMatch=window.location.href.match(/shop_id=(\\d+)/);if(locationMatch)shopId=locationMatch[1]}if(!shopId)shopId=prompt("请输入您的抖音店铺 ID / Shop ID (必填):");if(!shopId)return alert("获取店铺 ID 失败，已取消上报。");var relay=window.open(relayUrl,"doudian_capture_relay","width=480,height=320,left=240,top=160");if(!relay)return alert("浏览器阻止了凭证中转窗口，请允许弹窗后重试。");var payload={token:token,cookie:cookie,shopId:shopId,shopName:document.title||"抖店商家店铺"};var timeout=window.setTimeout(function(){window.removeEventListener("message",onMessage);alert("安全中转页连接超时，请返回飞书配置页重新生成脚本。")},10000);function onMessage(event){if(event.origin!==relayOrigin||event.source!==relay)return;var data=event.data||{};if(data.type==="doudian-capture-relay-ready"){relay.postMessage({type:"doudian-capture-credential",payload:payload},relayOrigin);return}if(data.type==="doudian-capture-result"){window.clearTimeout(timeout);window.removeEventListener("message",onMessage);alert(data.ok?"抖店登录凭据已成功上报，请返回飞书配置页。":"上报失败: "+(data.message||"请重新生成脚本"))}}window.addEventListener("message",onMessage)})();`;
 }
