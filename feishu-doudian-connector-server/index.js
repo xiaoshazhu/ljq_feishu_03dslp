@@ -188,6 +188,12 @@ function getCompanyId(req) {
   );
 }
 
+function setNoStoreHeaders(res) {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+}
+
 /**
  * 功能描述：从请求中解析飞书用户 ID，用于个人私有账号和捕获缓冲隔离。
  * @param {object} req - Express 请求
@@ -361,6 +367,7 @@ app.get("/capture-relay.html", (req, res) => {
  * @param {object} res - Express 响应
  */
 app.get("/meta.json", (req, res) => {
+  setNoStoreHeaders(res);
   const host = req.headers.host;
   const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
   
@@ -373,9 +380,10 @@ app.get("/meta.json", (req, res) => {
       }
       try {
         const json = JSON.parse(data);
+        const frontendAssetVersion = String(json.version || '1').trim();
         json.extraData.dataSourceConfigUiUri = frontendPublicUrl
-          ? `${frontendPublicUrl}/index.html`
-          : `${proto}://${host}/index.html`;
+          ? `${frontendPublicUrl}/index.html?v=${encodeURIComponent(frontendAssetVersion)}`
+          : `${proto}://${host}/index.html?v=${encodeURIComponent(frontendAssetVersion)}`;
         
         res.set("Content-Type", "application/json");
         res.status(200).send(JSON.stringify(json, null, 2));
@@ -1643,10 +1651,11 @@ if (isProductionRuntime) {
     console.warn(`⚠️ 前端构建产物不存在，请先在 data-sync-fe-vue-demo 执行 npm run build: ${frontendIndexPath}`);
   }
 
-  app.use(express.static(frontendDistPath));
   app.get("/index.html", (req, res) => {
+    setNoStoreHeaders(res);
     res.sendFile(frontendIndexPath);
   });
+  app.use(express.static(frontendDistPath));
 
   // 生产环境中，刷新前端路由或直接访问页面路径时统一回落到 Vue 入口。
   app.use((req, res, next) => {
@@ -1660,6 +1669,7 @@ if (isProductionRuntime) {
       req.path !== "/readyz"
     );
     if (!shouldServeFrontend) return next();
+    setNoStoreHeaders(res);
     res.sendFile(frontendIndexPath);
   });
 } else {
