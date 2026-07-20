@@ -558,7 +558,13 @@
           <a-button v-if="currentStep === 1" @click="closeAccountModal">取消</a-button>
           <a-button v-if="currentStep === 1" type="primary" @click="currentStep = 2">下一步</a-button>
           <a-button v-if="currentStep === 2" @click="currentStep = 1" :disabled="reconnectingAccount">上一步</a-button>
-          <a-button v-if="currentStep === 2" type="primary" @click="handleSaveAccountRelation">
+          <a-button
+            v-if="currentStep === 2"
+            type="primary"
+            :loading="isSavingAccount"
+            :disabled="isSavingAccount"
+            @click="handleSaveAccountRelation"
+          >
             {{ reconnectingAccount ? '确认更新账号' : '确认关联并绑定' }}
           </a-button>
         </div>
@@ -779,6 +785,8 @@ const isRefreshingInterfaces = ref(false);
 const isLoadingInterfaceFields = ref(false);
 // 是否正在提交连接器配置，避免用户重复点击保存。
 const isSavingConfig = ref(false);
+// 是否正在提交账号绑定，避免一次性捕获凭证被重复消费。
+const isSavingAccount = ref(false);
 // 模块下拉框是否打开，打开时用于锁住右侧滚动容器。
 const isModuleDropdownOpen = ref(false);
 // 书签助手是否已经把 Cookie 安全写入服务端缓冲区，前端不持有明文凭证。
@@ -1861,8 +1869,12 @@ function closeAccountModal(): void {
 async function handleStartSimulatedLogin(): Promise<void> {
   const prepared = await prepareCaptureSession();
   if (!prepared) return;
-  const targetUrl = 'https://fxg.jinritemai.com/login/common?extra=%7B%22target_url%22%3A%22https%3A%2F%2Ffxg.jinritemai.com%2Fffa%2Fmshop%2Fhomepage%2Findex%22%7D';
-  window.open(targetUrl, '_blank', 'width=800,height=600,left=200,top=100');
+  const targetUrl = 'https://fxg.jinritemai.com/ffa/mshop/homepage/index';
+  window.open(
+      targetUrl,
+      '_blank',
+      'width=800,height=600,left=200,top=100,location=yes,toolbar=yes'
+  )
   isPolling.value = true;
   message.loading({ content: '正在轮询捕获抖音登录凭证，请在新页面中登录并运行书签脚本...', key: 'poll', duration: 0 });
 }
@@ -1872,6 +1884,9 @@ async function handleStartSimulatedLogin(): Promise<void> {
  * @return {Promise<void>} 无返回值
  */
 async function handleSaveAccountRelation(): Promise<void> {
+  if (isSavingAccount.value) return;
+  isSavingAccount.value = true;
+  try {
   const customDisplayName = accountDisplayName.value.trim();
 
   if (accountSourceType.value === 'shared') {
@@ -2059,6 +2074,9 @@ async function handleSaveAccountRelation(): Promise<void> {
     closeAccountModal();
   } catch (error: any) {
     message.error(error.message || '写入数据库失败');
+  }
+  } finally {
+    isSavingAccount.value = false;
   }
 }
 

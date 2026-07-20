@@ -21,6 +21,7 @@ const {
   probeDoudianInterfaceSuccessCode
 } = require("./dy_helper.js");
 const { doudianLocalAggregateRouter } = require("./doudian_local_aggregate.js");
+const { getFeishuTenantName } = require("./feishu_tenant.js");
 const { validateRequestSignature } = require("./request_sign.js");
 const {
   getFrontendPublicOrigin,
@@ -872,6 +873,10 @@ function toPublicAccount(account) {
   return {
     id: account.id,
     key: account.key,
+    company_id: account.company_id,
+    companyId: account.company_id,
+    company_name: account.company_name,
+    companyName: account.company_name,
     name: account.name,
     mode: account.mode,
     status: account.status,
@@ -1397,6 +1402,14 @@ app.post("/api/v1/connector/accounts/add", async (req, res) => {
   let consumedCredential = null;
   try {
     const account = { ...req.body, companyId, userId };
+    account.companyName = await getFeishuTenantName().catch((error) => {
+      console.warn("[Feishu Tenant] 获取企业名称失败", {
+        requestId: req.requestId,
+        companyId,
+        message: error.message
+      });
+      return "";
+    });
     if (req.body?.useCapturedCredential === true) {
       consumedCredential = await consumeCapturedBuffer(companyId, userId);
       if (!consumedCredential?.cookie) {
@@ -1455,6 +1468,16 @@ app.patch("/api/v1/connector/accounts/update", async (req, res) => {
   try {
     const companyId = getCompanyId(req);
     const userId = getUserId(req);
+    if (!updates.companyName && !updates.company_name) {
+      updates.companyName = await getFeishuTenantName().catch((error) => {
+        console.warn("[Feishu Tenant] 更新账号时获取企业名称失败", {
+          requestId: req.requestId,
+          companyId,
+          message: error.message
+        });
+        return "";
+      });
+    }
     if (useCapturedCredential === true) {
       consumedCredential = await consumeCapturedBuffer(companyId, userId);
       if (!consumedCredential?.cookie) {

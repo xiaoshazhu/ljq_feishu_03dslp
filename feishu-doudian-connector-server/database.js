@@ -62,6 +62,7 @@ async function initDb() {
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增主键' PRIMARY KEY,
       \`key\` VARCHAR(128) NOT NULL COMMENT '账号业务唯一标识',
       company_id VARCHAR(128) NOT NULL DEFAULT 'default' COMMENT '企业 ID，用于多租户数据隔离',
+      company_name VARCHAR(255) DEFAULT NULL COMMENT '企业名称',
       user_id VARCHAR(128) NOT NULL DEFAULT 'default' COMMENT '飞书用户 ID，私有账号仅该用户可见',
       share_scope VARCHAR(32) NOT NULL DEFAULT 'private' COMMENT '共享范围，company 企业共享，private 个人私有',
       name VARCHAR(255) COMMENT '账号展示名称',
@@ -85,6 +86,7 @@ async function initDb() {
     await ensureColumn('accounts', 'is_deleted', "TINYINT NOT NULL DEFAULT 0 COMMENT '是否已逻辑删除，1 是 0 否'");
     await ensureColumn('accounts', 'deleted_at', "TIMESTAMP NULL DEFAULT NULL COMMENT '逻辑删除时间'");
     await ensureColumn('accounts', 'deleted_by', "VARCHAR(128) DEFAULT NULL COMMENT '执行逻辑删除的飞书用户 ID'");
+    await ensureColumn('accounts', 'company_name', "VARCHAR(255) DEFAULT NULL COMMENT '企业名称'");
     await ensureMediumTextColumn('accounts', 'cookie');
     await ensureVarchar255Column('accounts', 'module', "COMMENT '账号关联的同步模块'");
 
@@ -531,6 +533,7 @@ async function saveAccount(account) {
       await connection.query(
         `UPDATE accounts
          SET share_scope = ?,
+             company_name = ?,
              name = ?,
              mode = ?,
              status = ?,
@@ -543,6 +546,7 @@ async function saveAccount(account) {
          WHERE id = ?`,
         [
           normalizedAccount.shareScope,
+          normalizedAccount.companyName,
           normalizedAccount.name,
           normalizedAccount.mode,
           normalizedAccount.status,
@@ -555,11 +559,12 @@ async function saveAccount(account) {
     } else {
       await connection.query(
         `INSERT INTO accounts (
-          \`key\`, company_id, user_id, share_scope, name, mode, status, cookie, shopId, is_active, module
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+          \`key\`, company_id, company_name, user_id, share_scope, name, mode, status, cookie, shopId, is_active, module
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
         [
           normalizedAccount.key,
           companyId,
+          normalizedAccount.companyName,
           userId,
           normalizedAccount.shareScope,
           normalizedAccount.name,
@@ -631,6 +636,8 @@ async function updateAccountById(id, updates, companyId = 'default', userId = 'd
 
     const allowedFields = new Map([
       ['name', 'name'],
+      ['companyName', 'company_name'],
+      ['company_name', 'company_name'],
       ['mode', 'mode'],
       ['status', 'status'],
       ['cookie', 'cookie'],
@@ -727,6 +734,7 @@ async function getAccounts(companyId = 'default', userId = 'default') {
     `SELECT a.id,
             a.\`key\`,
             a.company_id,
+            a.company_name,
             a.user_id,
             a.share_scope,
             a.name,
@@ -764,6 +772,7 @@ async function getSharedAccounts(companyId = 'default', userId = 'default') {
     `SELECT a.id,
             a.\`key\`,
             a.company_id,
+            a.company_name,
             a.user_id,
             a.share_scope,
             a.name,
@@ -1479,6 +1488,7 @@ function decryptAccountRow(row) {
 function normalizeAccountPayload(account = {}) {
   const key = normalizeAccountKey(account.key);
   const name = normalizeText(account.name, 255);
+  const companyName = normalizeNullableText(account.companyName || account.company_name, 255);
   if (!name) throw validationError('账号名称不能为空', 'ACCOUNT_NAME_REQUIRED');
 
   const shareScope = String(account.shareScope || account.share_scope || 'private');
@@ -1500,6 +1510,7 @@ function normalizeAccountPayload(account = {}) {
 
   return {
     key,
+    companyName,
     name,
     mode: normalizeText(account.mode || '模拟登录', 64),
     status,
@@ -1526,6 +1537,9 @@ function normalizeAccountUpdateValue(key, value) {
     }
     case 'mode':
       return normalizeText(value, 64);
+    case 'companyName':
+    case 'company_name':
+      return normalizeNullableText(value, 255);
     case 'status': {
       const status = String(value || '');
       if (!['active', 'expired'].includes(status)) {

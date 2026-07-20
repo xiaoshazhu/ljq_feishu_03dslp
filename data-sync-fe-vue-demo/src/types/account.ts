@@ -1,6 +1,8 @@
 export interface Account {
   id?: string | number;
   key: string;
+  companyId?: string;
+  companyName?: string;
   name: string;
   mode: string;
   status: 'active' | 'expired';
@@ -14,6 +16,8 @@ export interface Account {
 export interface SharedAccount {
   id: string;
   key?: string;
+  companyId?: string;
+  companyName?: string;
   name: string;
   mode?: string;
   status?: 'active' | 'expired';
