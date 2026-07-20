@@ -955,6 +955,7 @@ function apiUrl(path: string): string {
  * @return {Promise<boolean>} 返回是否已获得可用捕获令牌
  */
 async function prepareCaptureSession(force = false): Promise<boolean> {
+  if (hasCapturedCredential.value) return true;
   if (!force && hasValidCaptureSession.value) return true;
   if (captureSessionRequest) return captureSessionRequest;
 
@@ -1870,13 +1871,14 @@ async function handleStartSimulatedLogin(): Promise<void> {
   const prepared = await prepareCaptureSession();
   if (!prepared) return;
   const targetUrl = 'https://fxg.jinritemai.com/ffa/mshop/homepage/index';
-  window.open(
-      targetUrl,
-      '_blank',
-      'width=800,height=600,left=200,top=100,location=yes,toolbar=yes'
-  )
+  window.open(targetUrl, '_blank');
+
+  startCapturePolling('正在轮询捕获抖音登录凭证，请在新页面中登录并运行书签脚本...');
+}
+
+function startCapturePolling(content: string): void {
   isPolling.value = true;
-  message.loading({ content: '正在轮询捕获抖音登录凭证，请在新页面中登录并运行书签脚本...', key: 'poll', duration: 0 });
+  message.loading({ content, key: 'poll', duration: 0 });
 }
 
 /**
@@ -2494,7 +2496,7 @@ function buildBookmarkCode(): string {
   const relayUrl = JSON.stringify(relayPageUrl);
   const relayOrigin = JSON.stringify(new URL(relayPageUrl).origin);
   const token = JSON.stringify(captureToken.value);
-  return `javascript:(function(){var token=${token};var relayUrl=${relayUrl};var relayOrigin=${relayOrigin};var cookie=document.cookie;if(!cookie)return alert("当前页面没有可读取的登录凭证，请确认已经登录抖店后台。");var shopIdMatch=cookie.match(/shop_id=(\\d+)/)||cookie.match(/shop_id_str=(\\d+)/);var shopId=shopIdMatch?shopIdMatch[1]:'';if(!shopId){var locationMatch=window.location.href.match(/shop_id=(\\d+)/);if(locationMatch)shopId=locationMatch[1]}if(!shopId)shopId=prompt("请输入您的抖音店铺 ID / Shop ID (必填):");if(!shopId)return alert("获取店铺 ID 失败，已取消上报。");var relay=window.open(relayUrl,"doudian_capture_relay","width=480,height=320,left=240,top=160");if(!relay)return alert("浏览器阻止了凭证中转窗口，请允许弹窗后重试。");var payload={token:token,cookie:cookie,shopId:shopId,shopName:document.title||"抖店商家店铺"};var timeout=window.setTimeout(function(){window.removeEventListener("message",onMessage);alert("安全中转页连接超时，请返回飞书配置页重新生成脚本。")},10000);function onMessage(event){if(event.origin!==relayOrigin||event.source!==relay)return;var data=event.data||{};if(data.type==="doudian-capture-relay-ready"){relay.postMessage({type:"doudian-capture-credential",payload:payload},relayOrigin);return}if(data.type==="doudian-capture-result"){window.clearTimeout(timeout);window.removeEventListener("message",onMessage);alert(data.ok?"抖店登录凭据已成功上报，请返回飞书配置页。":"上报失败: "+(data.message||"请重新生成脚本"))}}window.addEventListener("message",onMessage)})();`;
+  return `javascript:(function(){var token=${token};var relayUrl=${relayUrl};var relayOrigin=${relayOrigin};var cookie=document.cookie;if(!cookie)return alert("当前页面没有可读取的登录凭证，请确认已经登录抖店后台。");var shopIdMatch=cookie.match(/shop_id=(\\d+)/)||cookie.match(/shop_id_str=(\\d+)/);var shopId=shopIdMatch?shopIdMatch[1]:'';if(!shopId){var locationMatch=window.location.href.match(/shop_id=(\\d+)/);if(locationMatch)shopId=locationMatch[1]}var relay=window.open(relayUrl,"doudian_capture_relay","width=480,height=320,left=240,top=160");if(!relay)return alert("浏览器阻止了凭证中转窗口，请允许弹窗后重试。");var payload={token:token,cookie:cookie,shopId:shopId,shopName:document.title||"抖店商家店铺"};var timeout=window.setTimeout(function(){window.removeEventListener("message",onMessage);alert("安全中转页连接超时，请返回飞书配置页重新生成脚本。")},10000);function onMessage(event){if(event.origin!==relayOrigin||event.source!==relay)return;var data=event.data||{};if(data.type==="doudian-capture-relay-ready"){relay.postMessage({type:"doudian-capture-credential",payload:payload},relayOrigin);return}if(data.type==="doudian-capture-result"){window.clearTimeout(timeout);window.removeEventListener("message",onMessage);alert(data.ok?"抖店登录凭据已成功上报，请返回飞书配置页。":"上报失败: "+(data.message||"请重新生成脚本"))}}window.addEventListener("message",onMessage)})();`;
 }
 
 /**
@@ -2577,6 +2579,7 @@ async function copyBookmarkCode(): Promise<void> {
 
     const copied = await copyText(bookmarkCode.value);
     if (copied) {
+      startCapturePolling('正在等待复制的脚本回传 Cookie 凭据...');
       message.success('脚本代码已复制到剪贴板！');
       return;
     }
@@ -2594,8 +2597,13 @@ async function copyBookmarkCode(): Promise<void> {
  * @return {void} 无返回值
  */
 async function showDragBookmarkTip(): Promise<void> {
+  if (hasCapturedCredential.value) {
+    message.success('已捕获到凭证，请直接确认关联并绑定。');
+    return;
+  }
   const prepared = await prepareCaptureSession();
   if (prepared) {
+    startCapturePolling('正在等待书签助手回传 Cookie 凭据...');
     message.info('安全脚本已生成，请将按钮直接拖动到浏览器书签栏。');
   }
 }

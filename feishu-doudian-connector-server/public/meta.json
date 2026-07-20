@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "1.0.7",
+  "version": "1.0.8",
   "type": "data_connector",
   "extraData": {
     "disabledPeriodicSync": false,
