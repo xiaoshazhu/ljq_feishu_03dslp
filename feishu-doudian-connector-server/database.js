@@ -198,7 +198,7 @@ async function initDb() {
   `);
 
     await pool.query(`
-    CREATE TABLE IF NOT EXISTS doudian_interfaces (
+    CREATE TABLE IF NOT EXISTS dslp_interfaces (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增主键' PRIMARY KEY,
       interface_key VARCHAR(128) NOT NULL COMMENT '接口业务唯一标识',
       platform VARCHAR(64) NOT NULL DEFAULT 'douyin' COMMENT '平台标识',
@@ -212,13 +212,13 @@ async function initDb() {
       request_config JSON COMMENT '接口请求、分页和响应解析配置',
       fields_schema JSON COMMENT '飞书通用字段配置',
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
-      UNIQUE KEY uk_doudian_interfaces_key (interface_key),
-      KEY idx_doudian_interfaces_enabled (platform, is_enabled),
-      KEY idx_doudian_interfaces_group (module_group)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='抖店后台接口注册表，控制哪些接口可被用户选择同步'
+      UNIQUE KEY uk_dslp_interfaces_key (interface_key),
+      KEY idx_dslp_interfaces_enabled (platform, is_enabled),
+      KEY idx_dslp_interfaces_group (module_group)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='电商罗盘后台接口注册表，控制哪些接口可被用户选择同步'
   `);
 
-    await ensureColumn('doudian_interfaces', 'local_aggregate_path', "VARCHAR(512) DEFAULT NULL COMMENT '本地聚合接口路径，非空时优先调用本地聚合接口' AFTER api_path");
+    await ensureColumn('dslp_interfaces', 'local_aggregate_path', "VARCHAR(512) DEFAULT NULL COMMENT '本地聚合接口路径，非空时优先调用本地聚合接口' AFTER api_path");
 
     await migrateLegacyActiveSelections();
     await migrateStoredCredentials();
@@ -285,7 +285,7 @@ async function assertCompatibleDatabaseSchema() {
     { table: 'tasks', requiredColumns: ['id', 'task_key', 'company_id'] },
     { table: 'errors', requiredColumns: ['id', 'error_key', 'company_id'] },
     { table: 'sync_logs', requiredColumns: ['id', 'log_key', 'company_id', 'status', 'started_at'] },
-    { table: 'doudian_interfaces', requiredColumns: ['id', 'interface_key', 'api_host', 'api_path', 'is_enabled'] }
+    { table: 'dslp_interfaces', requiredColumns: ['id', 'interface_key', 'api_host', 'api_path', 'is_enabled'] }
   ];
 
   for (const check of tableChecks) {
@@ -322,7 +322,7 @@ async function getDoudianInterfaces(enabledOnly = true, includeSchema = false) {
             is_enabled AS isEnabled,
             description
             ${schemaColumns}
-     FROM doudian_interfaces
+     FROM dslp_interfaces
      ${whereSql}
      ORDER BY module_group ASC, id ASC`,
     ['douyin']
@@ -348,7 +348,7 @@ async function getDoudianInterfaceByKey(interfaceKey) {
             description,
             request_config AS requestConfig,
             fields_schema AS fieldsSchema
-     FROM doudian_interfaces
+     FROM dslp_interfaces
      WHERE platform = ?
        AND interface_key = ?
        AND is_enabled = 1

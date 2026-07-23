@@ -34,7 +34,7 @@ const getTableRecords = async (reqBody, context = {}) => {
 
   const syncModule = config.syncModule || '';
   if (!isDoudianInterfaceModule(syncModule)) {
-    throw new Error(`DoudianInterfaceRequired: 当前连接器只支持 doudian_interfaces 注册表接口，请重新选择抖店接口 (${syncModule || 'empty'})`);
+    throw new Error(`DoudianInterfaceRequired: 当前连接器只支持 dslp_interfaces 注册表接口，请重新选择电商罗盘接口 (${syncModule || 'empty'})`);
   }
 
   const interfaceKey = getInterfaceKeyFromModule(syncModule);

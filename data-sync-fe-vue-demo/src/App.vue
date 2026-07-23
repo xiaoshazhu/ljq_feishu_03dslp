@@ -1668,7 +1668,7 @@ async function handleRefreshDoudianInterfaces(): Promise<void> {
  */
 function buildModuleTreeWithDoudianInterfaces(interfaces: DoudianInterface[]): ModuleTreeNode[] {
   const grouped = interfaces.reduce<Record<string, DoudianInterface[]>>((acc, item) => {
-    const groupName = item.moduleGroup || '抖店店铺接口';
+    const groupName = item.moduleGroup || '电商罗盘接口';
     if (!acc[groupName]) acc[groupName] = [];
     acc[groupName].push(item);
     return acc;
@@ -1687,7 +1687,7 @@ function buildModuleTreeWithDoudianInterfaces(interfaces: DoudianInterface[]): M
   return [
     ...BASE_MODULE_TREE_DATA,
     {
-      title: '抖店模块',
+      title: '电商罗盘模块',
       value: 'group_doudian_shop_interfaces',
       selectable: false,
       children: doudianInterfaceGroups
@@ -1866,11 +1866,12 @@ function closeAccountModal(): void {
 /**
  * 功能描述：触发打开外部抖店登录页并启动凭证捕获轮询。
  * @return {void} 无返回值
+ https://fxg.jinritemai.com/ffa/mshop/homepage/index
  */
 async function handleStartSimulatedLogin(): Promise<void> {
   const prepared = await prepareCaptureSession();
   if (!prepared) return;
-  const targetUrl = 'https://fxg.jinritemai.com/ffa/mshop/homepage/index';
+  const targetUrl = 'https://compass.jinritemai.com/login?';
   window.open(targetUrl, '_blank');
 
   startCapturePolling('正在轮询捕获抖音登录凭证，请在新页面中登录并运行书签脚本...');

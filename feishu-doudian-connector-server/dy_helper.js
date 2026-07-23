@@ -80,7 +80,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
   let selectedInterfaceMeta = null;
 
   if (!isDoudianInterfaceModule(syncModule)) {
-    throw new Error(`DoudianInterfaceRequired: 当前连接器只支持 doudian_interfaces 注册表接口 (${syncModule || 'empty'})`);
+    throw new Error(`DoudianInterfaceRequired: 当前连接器只支持 dslp_interfaces 注册表接口 (${syncModule || 'empty'})`);
   }
   selectedInterfaceMeta = await getDoudianInterfaceByKey(getInterfaceKeyFromModule(syncModule));
   if (!selectedInterfaceMeta) {

@@ -20,7 +20,7 @@ const {
  */
 const getTableMeta = async (module, config = {}) => {
   if (!isDoudianInterfaceModule(module)) {
-    throw new Error(`DoudianInterfaceRequired: 当前连接器只支持 doudian_interfaces 注册表接口，请重新选择抖店接口 (${module || 'empty'})`);
+    throw new Error(`DoudianInterfaceRequired: 当前连接器只支持 dslp_interfaces 注册表接口，请重新选择电商罗盘接口 (${module || 'empty'})`);
   }
 
   const interfaceMeta = await getDoudianInterfaceByKey(getInterfaceKeyFromModule(module));
@@ -51,7 +51,7 @@ const getTableMeta = async (module, config = {}) => {
   );
   assertValidConvertedFields(convertedFields, interfaceMeta.interfaceKey);
   return {
-    tableName: `抖店-${interfaceMeta.interfaceName}`,
+    tableName: `电商罗盘-${interfaceMeta.interfaceName}`,
     fields: convertedFields
   };
 };
