@@ -1,0 +1,4324 @@
+[
+  {
+    "interface_key": "交易_trade_refund_analyse_v2_product_rank_list",
+    "interface_name": "交易-全店退款分析-TOP退款商品列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_trade_refund_analyse_v2_reason_compose_list",
+    "interface_name": "交易-全店退款分析-退款原因构成列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_trade_refund_analyse_v2_compose_list",
+    "interface_name": "交易-全店退款分析-退款载体构成列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_trade_refund_analyse_v2_carrier_list",
+    "interface_name": "交易-全店退款分析-退款载体账号列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_trade_refund_analyse_v2_refund_direction_list",
+    "interface_name": "交易-全店退款分析-退款去向列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_trade_refund_analyse_v2_refund_direction_user_list",
+    "interface_name": "交易-全店退款分析-退款去向用户/流失搜索词列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_trade_refund_analyse_v2_rank_list",
+    "interface_name": "交易-全店退款分析-退后购买/同行低退榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_common_author_list",
+    "interface_name": "交易-全店退款分析-账号枚举（补充数据）",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_common_trade_operate_account_list_v3",
+    "interface_name": "载体/账号构成",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "extraQuery": {},
+      "pagination": true,
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_common_trade_content_account_analysis_content_list_v3",
+    "interface_name": "构成明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "交易_refund_analyse_v2_product_rank_list",
+    "interface_name": "TOP退款商品列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "交易_refund_analyse_v2_reason_compose_list",
+    "interface_name": "退款原因构成列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "交易_refund_analyse_v2_compose_list",
+    "interface_name": "退款载体构成列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "交易_refund_analyse_v2_carrier_list",
+    "interface_name": "退款载体账号列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "交易_refund_analyse_v2_refund_direction_list",
+    "interface_name": "退款去向列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "交易_refund_analyse_v2_refund_direction_user_list",
+    "interface_name": "退款去向用户/流失搜索词列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "交易_refund_analyse_v2_rank_list",
+    "interface_name": "退后购买/同行低退榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "交易_income_expense_ad_analysis_item_rank",
+    "interface_name": "投放商品/素材排行列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "交易_income_expense_ad_analysis_item_list",
+    "interface_name": "投放商品明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "交易_mall_account_transaction_account_list",
+    "interface_name": "交易-账号成交分析-账号列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_mall_account_transaction_carrier_overview_detail",
+    "interface_name": "交易-账号成交分析-账号载体明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_common_trade_income_expense_ad_analysis_item_rank",
+    "interface_name": "交易-收支投放分析-投放商品/素材排行列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_common_trade_income_expense_ad_analysis_item_list",
+    "interface_name": "交易-收支投放分析-投放商品明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "人群_business_chance_center_user_select_top_product",
+    "interface_name": "人群-用户偏好-购买商品TOP100列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "POST",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "人群_business_chance_center_user_select_cate_trade",
+    "interface_name": "人群-用户偏好-购买类目分析列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "POST",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "体验_promise_after_sale_analysis_detail_operator",
+    "interface_name": "体验-售后分析-客服处理明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "体验_promise_after_sale_analysis_comment_scale_refund_left",
+    "interface_name": "体验-售后分析-退款原因左列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "体验_promise_after_sale_analysis_comment_scale_refund_right",
+    "interface_name": "体验-售后分析-退款原因右列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "体验_promise_customer_analysis_customer_detail_list",
+    "interface_name": "体验-客服分析-客服明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "体验_promise_customer_analysis_detail_intent",
+    "interface_name": "体验-客服分析-意图明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "体验_promise_customer_analysis_custom_option_list",
+    "interface_name": "客服选项",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "体验_promise_after_sale_analysis_comment_scale_refund_left_right",
+    "interface_name": "退款原因左右",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "体验_promise_user_sound_product_list",
+    "interface_name": "体验-用户原声-商品原声明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "体验_promise_user_sound_product_category_list",
+    "interface_name": "体验-用户原声-商品类目列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "体验_promise_user_sound_comment_reason_analysis_left_right",
+    "interface_name": "评价原因左右",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "体验_promise_user_sound_comment_reason_analysis_left",
+    "interface_name": "体验-用户原声-评价原因左列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "体验_promise_user_sound_comment_reason_analysis_right",
+    "interface_name": "体验-用户原声-评价原因右列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_product_product_product_list",
+    "interface_name": "商品-商品列表-商品明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_product_chance_market_dig_cate_list",
+    "interface_name": "类目机会挖掘",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_common_market_cate_mask_config",
+    "interface_name": "类目配置",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_product_product_chance_market_dig_cate_list",
+    "interface_name": "商品-商品机会-类目机会挖掘列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_mall_product_rank_search",
+    "interface_name": "商品-商品榜单-商品榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_product_product_flow_analysis_flow_source_detail_v2",
+    "interface_name": "商品-流量分析-流量来源明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_product_product_flow_analysis_flow_conversion_product_list_v2",
+    "interface_name": "商品-流量分析-流量转化商品列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_product_product_flow_analysis_flow_loss_product_list",
+    "interface_name": "商品-流量分析-流量流失商品列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_product_flow_analysis_flow_source_detail_v2",
+    "interface_name": "流量来源",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_product_flow_analysis_flow_conversion_product_list_v2",
+    "interface_name": "流量转化商品",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品_product_flow_analysis_flow_loss_product_list",
+    "interface_name": "流量流失商品",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_channel_product_channel_product_card_list",
+    "interface_name": "商品卡列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_channel_product_channel_product_category",
+    "interface_name": "类目树",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_product_card_channel_product_channel_product_card_list",
+    "interface_name": "商品卡-商品卡列表-商品卡明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_product_card_channel_product_channel_product_category",
+    "interface_name": "商品卡-商品卡列表-类目树（补充）",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_mall_product_rank_product_card_hot_v2",
+    "interface_name": "商品卡-商品榜单-商品热销榜列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_mall_market_shop_rank",
+    "interface_name": "商品卡-商家榜单-店铺榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_mall_market_shop_benchmark_list",
+    "interface_name": "商品卡-商家榜单-店铺对标列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_mall_market_index_range_list",
+    "interface_name": "金额区间",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_product_card_shelves_analysis_enter_source_v2",
+    "interface_name": "商品卡-流量分析-流量来源明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "市场_mall_competitor_management_competitor_list_v2",
+    "interface_name": "市场-竞争对比-竞店列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_mall_competitor_analysis_channel_comparison",
+    "interface_name": "商品卡-竞店对比-渠道对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_product_card_competitor_analysis_top_product_comparision",
+    "interface_name": "商品卡-竞店对比-TOP商品对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_top_word_comparision_",
+    "interface_name": "选品/竞品/渠道/词对比",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "商品卡_product_card_competitive_product_analysis_product_list",
+    "interface_name": "商品卡-竞品对比-本店商品选品列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_competitive_product_list",
+    "interface_name": "选品/竞品/渠道/词对比",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "商品卡_channel_comparison",
+    "interface_name": "选品/竞品/渠道/词对比",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "商品卡_shelves_analysis_enter_source_v2",
+    "interface_name": "流量来源",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_competitive_product_analysis_product_list",
+    "interface_name": "本店商品列表（选品）",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_competitive_product_analysis_competitive_product_list",
+    "interface_name": "竞品列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_competitive_product_analysis_channel_comparison",
+    "interface_name": "渠道对比",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_competitive_product_analysis_top_word_comparision",
+    "interface_name": "TOP词对比",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_product_card_competitive_product_analysis_competitive_product_list",
+    "interface_name": "商品卡-竞品对比-竞品列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_product_card_competitive_product_analysis_channel_comparison",
+    "interface_name": "商品卡-竞品对比-渠道对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_product_card_competitive_product_analysis_top_word_comparision",
+    "interface_name": "商品卡-竞品对比-TOP词对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "商品卡_product_card_competitor_analysis_top_word_comparision",
+    "interface_name": "商品卡-竞店对比-TOP词对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "市场_mall_market_content_rank",
+    "interface_name": "内容榜单",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "市场_mall_market_author_rank",
+    "interface_name": "市场-达人榜单-达人榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "市场_common_competition_competition_shop_contrast",
+    "interface_name": "市场-竞争对比-竞店对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "市场_mall_search_analysis_industry_words_compass_rank_v3 或 mall_market_search_rank",
+    "interface_name": "mall_search_analysis_industry_words_compass_rank_v3 或 mall_market_search_rank",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "市场_待切 tab 抓包确认",
+    "interface_name": "市场-搜索榜单-搜索榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "搜索_mall_search_diagnosis_recommend_optimized_product_v2",
+    "interface_name": "搜索-搜索概况-商品优化推荐列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "搜索_mall_search_analysis_industry_words_compass_rank_v3",
+    "interface_name": "搜索-搜索词分析-搜索词榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "搜索_mall_dd_search_after_watch_shop_video_list",
+    "interface_name": "搜索-看后搜分析-看后搜视频列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "核心数据_common_homepage_liveroom_realtime_liveroom_list",
+    "interface_name": "核心数据-首页-实时直播间列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "直播_content_live_shop_streamer_streamer_list",
+    "interface_name": "直播-主播分析-主播列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "直播_live_host_analysis_calendar_room_list",
+    "interface_name": "直播-主播分析-开播直播间列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "直播_..._streamer_account_type",
+    "interface_name": "..._streamer_account_type",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "直播_live_live_overview_live_room_detail_v2",
+    "interface_name": "直播-直播概览及列表-直播间列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "直播_live_goods_analyse_search_plan",
+    "interface_name": "直播-直播计划-直播计划列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "直播_..._competition_comparison_self_account_list",
+    "interface_name": "我的账号列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "直播_..._competition_comparison_channel_comparison",
+    "interface_name": "来源对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "直播_..._competition_comparison_product_comparison",
+    "interface_name": "商品对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "直播_live_competition_comparison_self_account_list",
+    "interface_name": "直播-直播对比-我的账号列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "直播_live_competition_comparison_channel_comparison",
+    "interface_name": "直播-直播对比-来源对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "直播_live_competition_comparison_product_comparison",
+    "interface_name": "直播-直播对比-商品对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_video_overview_video_list",
+    "interface_name": "短视频-视频概览-短视频明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_product_rank_author_rank_account_analysis_flow_source",
+    "interface_name": "TOP带货商品/达人、流量来源",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_video_artc_video_list",
+    "interface_name": "短视频-图文分析-图文明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_video_artc_video_rank",
+    "interface_name": "短视频-图文分析-图文榜单",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_video_artc_video_flow_source",
+    "interface_name": "短视频-图文分析-流量来源分析明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_video_overview_product_rank",
+    "interface_name": "短视频-视频概览-TOP带货商品列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_video_overview_author_rank",
+    "interface_name": "短视频-视频概览-TOP带货达人列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_video_account_analysis_flow_source",
+    "interface_name": "短视频-视频概览-流量来源分析明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_video_overview_top_videos",
+    "interface_name": "短视频-视频概览-行业爆款视频榜",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_mall_market_common_rank",
+    "interface_name": "短视频-视频达人榜-达人榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "短视频_mall_search_analysis_douyin_hotspot_rank_content_luopan",
+    "interface_name": "抖音热点榜",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "营销_promotion_promotion_workbench_hot_sale_track",
+    "interface_name": "营销-大促作战室-大促店铺/商品榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "营销_mall_activity_analysis_activity_list",
+    "interface_name": "营销-活动总览-活动列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "营销_promotion_promotion_review_year_promotion_product_list",
+    "interface_name": "营销-活动总览-全年大促商品列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "营销_promotion_flash_sale_child_activity_list",
+    "interface_name": "营销-频道分析-子活动列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "营销_promotion_flash_sale_prod_performance",
+    "interface_name": "营销-频道分析-商品表现列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "营销_promotion_flash_sale_market_shop_rank",
+    "interface_name": "营销-频道分析-频道店铺榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "营销_promotion_flash_sale_more_activities",
+    "interface_name": "更多活动",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "达人_author_cooperate_data_overview_top_list",
+    "interface_name": "达人-达人概览-TOP达人/直播间/商品列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "达人_author_cooperate_user_analysis_top_list",
+    "interface_name": "达人-达人概览-潜客达人列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "达人_author_cooperate_search_analysis_top_keyword",
+    "interface_name": "达人-达人概览-搜索TOP关键词列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "达人_author_cooperate_search_analysis_top_keyword_author_list",
+    "interface_name": "达人-达人概览-关键词命中达人列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "达人_author_author_recommend_recommend_author_list",
+    "interface_name": "达人-达人推荐-精选推荐达人列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "达人_author_author_recommend_search_author_list",
+    "interface_name": "达人-达人推荐-筛选达人列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "达人_author_author_recommend_filters",
+    "interface_name": "筛选项",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_common_trade_terminal_list_v2",
+    "interface_name": "终端构成",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_mall_transaction_analysis_category_overview",
+    "interface_name": "品类构成",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_mall_transaction_analysis_product_overview",
+    "interface_name": "商品构成",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_mall_transaction_analysis_pricebin_overview",
+    "interface_name": "价格带构成",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_mall_transaction_analysis_portrait_overview",
+    "interface_name": "人群构成",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "交易_operate_account_list_v3",
+    "interface_name": "账号明细列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "extraQuery": {},
+      "pagination": true,
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "市场_mall_search_analysis_industry_words_compass_rank_v3或mall_market_search_rank",
+    "interface_name": "mall_search_analysis_industry_words_compass_rank_v3或mall_market_search_rank",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "市场_待切tab抓包确认",
+    "interface_name": "市场-搜索榜单-搜索榜单列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "直播_streamer_account_type",
+    "interface_name": "账号类型",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 0,
+      "pagination": true,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size",
+      "requiredParams": [
+        "operate_type",
+        "account_type",
+        "scene",
+        "date_type"
+      ],
+      "dateRangeMapping": {
+        "mode": "rolling",
+        "format": "datetime",
+        "endTime": "end_date",
+        "startTime": "begin_date"
+      }
+    }
+  },
+  {
+    "interface_key": "直播_competition_comparison_self_account_list",
+    "interface_name": "我的账号列表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "直播_competition_comparison_channel_comparison",
+    "interface_name": "来源对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  },
+  {
+    "interface_key": "直播_competition_comparison_product_comparison",
+    "interface_name": "商品对比明细表",
+    "platform": "douyin",
+    "request_config": {
+      "method": "GET",
+      "pageSize": 100,
+      "listPaths": [
+        "data.list",
+        "data.records",
+        "data.items",
+        "data.data",
+        "data.rank_list",
+        "list",
+        "records",
+        "items"
+      ],
+      "pageParam": "page_no",
+      "pageStart": 1,
+      "contentType": "application/json;charset=UTF-8",
+      "pageSizeParam": "page_size"
+    }
+  }
+]

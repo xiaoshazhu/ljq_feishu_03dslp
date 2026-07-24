@@ -1971,7 +1971,7 @@ async function handleSaveAccountRelation(): Promise<void> {
     }
 
     if (nextCookie) {
-      const match = nextCookie.match(/shop_id=(\d+)/) || nextCookie.match(/shop_id_str=(\d+)/);
+      const match = nextCookie.match(/shop_?id(?:_str)?=(\d+)/i);
       const nextResolvedShopId = String(
         nextShopId || (match ? match[1] : '') || shopIdParam.value || ''
       ).trim();
@@ -2032,10 +2032,13 @@ async function handleSaveAccountRelation(): Promise<void> {
     return;
   }
 
-  const match = finalCookie.match(/shop_id=(\d+)/) || finalCookie.match(/shop_id_str=(\d+)/);
-  const displayShopId = String(
+  const match = finalCookie.match(/shop_?id(?:_str)?=(\d+)/i);
+  let displayShopId = String(
     finalShopId || (match ? match[1] : '') || shopIdParam.value || ''
   ).trim();
+  if (!displayShopId && /^\d+$/.test(customDisplayName)) {
+    displayShopId = customDisplayName;
+  }
   if (!/^\d+$/.test(displayShopId)) {
     message.error('无法从 Cookie 中识别店铺 ID，请先在参数设置中填写正确的数字 Shop ID。');
     return;
@@ -2497,7 +2500,7 @@ function buildBookmarkCode(): string {
   const relayUrl = JSON.stringify(relayPageUrl);
   const relayOrigin = JSON.stringify(new URL(relayPageUrl).origin);
   const token = JSON.stringify(captureToken.value);
-  return `javascript:(function(){var token=${token};var relayUrl=${relayUrl};var relayOrigin=${relayOrigin};var cookie=document.cookie;if(!cookie)return alert("当前页面没有可读取的登录凭证，请确认已经登录抖店后台。");var shopIdMatch=cookie.match(/shop_id=(\\d+)/)||cookie.match(/shop_id_str=(\\d+)/);var shopId=shopIdMatch?shopIdMatch[1]:'';if(!shopId){var locationMatch=window.location.href.match(/shop_id=(\\d+)/);if(locationMatch)shopId=locationMatch[1]}var relay=window.open(relayUrl,"doudian_capture_relay","width=480,height=320,left=240,top=160");if(!relay)return alert("浏览器阻止了凭证中转窗口，请允许弹窗后重试。");var payload={token:token,cookie:cookie,shopId:shopId,shopName:document.title||"抖店商家店铺"};var timeout=window.setTimeout(function(){window.removeEventListener("message",onMessage);alert("安全中转页连接超时，请返回飞书配置页重新生成脚本。")},10000);function onMessage(event){if(event.origin!==relayOrigin||event.source!==relay)return;var data=event.data||{};if(data.type==="doudian-capture-relay-ready"){relay.postMessage({type:"doudian-capture-credential",payload:payload},relayOrigin);return}if(data.type==="doudian-capture-result"){window.clearTimeout(timeout);window.removeEventListener("message",onMessage);alert(data.ok?"抖店登录凭据已成功上报，请返回飞书配置页。":"上报失败: "+(data.message||"请重新生成脚本"))}}window.addEventListener("message",onMessage)})();`;
+  return `javascript:(function(){var token=${token};var relayUrl=${relayUrl};var relayOrigin=${relayOrigin};var cookie=document.cookie;if(!cookie)return alert("当前页面没有可读取的登录凭证，请确认已经登录抖店后台。");var shopId="";try{var ctxStr=localStorage.getItem("COMPASS_CONTEXT");if(ctxStr){var ctx=JSON.parse(ctxStr);if(ctx&&ctx.shop_id)shopId=String(ctx.shop_id)}}catch(e){}if(!shopId){var shopIdMatch=cookie.match(/shop_?id(?:_str)?=(\\d+)/i);shopId=shopIdMatch?shopIdMatch[1]:""}if(!shopId){var locationMatch=window.location.href.match(/shop_?id(?:_str)?=(\\d+)/i);if(locationMatch)shopId=locationMatch[1]}var relay=window.open(relayUrl,"doudian_capture_relay","width=480,height=320,left=240,top=160");if(!relay)return alert("浏览器阻止了凭证中转窗口，请允许弹窗后重试。");var payload={token:token,cookie:cookie,shopId:shopId,shopName:document.title||"抖店商家店铺"};var timeout=window.setTimeout(function(){window.removeEventListener("message",onMessage);alert("安全中转页连接超时，请返回飞书配置页重新生成脚本。")},10000);function onMessage(event){if(event.origin!==relayOrigin||event.source!==relay)return;var data=event.data||{};if(data.type==="doudian-capture-relay-ready"){relay.postMessage({type:"doudian-capture-credential",payload:payload},relayOrigin);return}if(data.type==="doudian-capture-result"){window.clearTimeout(timeout);window.removeEventListener("message",onMessage);alert(data.ok?"抖店登录凭据已成功上报，请返回飞书配置页。":"上报失败: "+(data.message||"请重新生成脚本"))}}window.addEventListener("message",onMessage)})();`;
 }
 
 /**
