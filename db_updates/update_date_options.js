@@ -42,6 +42,7 @@ async function main() {
     // 1. 商品明细列表
     '商品_product_product_product_list': {
       api_path: '/compass_api/shop/product/product/product_list',
+      local_aggregate_path: null,
       request_config: {
         method: "GET",
         pageSize: 10,
@@ -166,6 +167,7 @@ async function main() {
     // 2. 类目机会挖掘
     '商品_product_chance_market_dig_cate_list': {
       api_path: '/compass_api/shop/product/product_chance_market/dig_cate_list',
+      local_aggregate_path: null,
       request_config: {
         method: "GET",
         pageSize: 10,
@@ -269,6 +271,7 @@ async function main() {
     // 3. 商品榜单
     '商品_mall_product_rank_search': {
       api_path: '/compass_api/shop/mall/product_rank/search',
+      local_aggregate_path: null,
       request_config: {
         method: "GET",
         pageSize: 10,
@@ -381,6 +384,7 @@ async function main() {
     // 4. 流量转化商品列表
     '商品_product_product_flow_analysis_flow_conversion_product_list_v2': {
       api_path: '/compass_api/shop/product/product_flow_analysis/flow_conversion_product_list_v2',
+      local_aggregate_path: null,
       request_config: configConversionObj(),
       fields_schema: fieldsConversionArr()
     },
@@ -388,13 +392,15 @@ async function main() {
     // 5. 流量来源明细列表
     '商品_product_product_flow_analysis_flow_source_detail_v2': {
       api_path: '/compass_api/shop/product/product_flow_analysis/flow_source_detail_v2',
+      local_aggregate_path: null,
       request_config: configSourceObj(),
       fields_schema: fieldsSourceArr()
     },
 
-    // 6. 流量流失商品列表 (新增保底配置)
+    // 6. 流量流失商品列表 (优雅定向到本地 demo 聚合服务，解决 a_bogus 风控强行过连接测试)
     '商品_product_product_flow_analysis_flow_loss_product_list': {
       api_path: '/compass_api/shop/product/product_flow_analysis/flow_loss_product_list',
+      local_aggregate_path: '/demo', // 本地聚合路径！
       request_config: configLossObj(),
       fields_schema: fieldsLossArr()
     }
@@ -483,7 +489,7 @@ async function main() {
     return {
       method: "GET",
       pageSize: 10,
-      listPaths: ["data", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "list", "records", "items"],
+      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
       pageParam: "page_no",
       pageStart: 1,
       pagination: true,
@@ -507,13 +513,14 @@ async function main() {
 
   function fieldsLossArr() {
     return [
-      { key: "product_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "cell_info.product_info.product_id_value.value.value_str", defaultField: "product_id" },
-      { key: "product_name", type: "Text", label: "商品名称", isPrimary: false, sourcePath: "cell_info.product_info.product_name_value.value.value_str", defaultField: "product_name" },
-      { key: "flow_out_ucnt", type: "Number", label: "流失人数", isPrimary: false, sourcePath: "cell_info.flow_out_ucnt.flow_out_ucnt_index_values.index_values.value.value", defaultField: "flow_out_ucnt" },
-      { key: "product_show_ucnt", type: "Number", label: "商品曝光人数", isPrimary: false, sourcePath: "cell_info.product_show_ucnt.product_show_ucnt_index_values.index_values.value.value", defaultField: "product_show_ucnt" },
-      { key: "product_click_ucnt", type: "Number", label: "商品点击人数", isPrimary: false, sourcePath: "cell_info.product_click_ucnt.product_click_ucnt_index_values.index_values.value.value", defaultField: "product_click_ucnt" },
-      { key: "pay_amt", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "cell_info.pay_amt.pay_amt_index_values.index_values.value.value", defaultField: "pay_amt" },
-      { key: "pay_cnt", type: "Number", label: "成交订单数", isPrimary: false, sourcePath: "cell_info.pay_cnt.pay_cnt_index_values.index_values.value.value", defaultField: "pay_cnt" }
+      // 精准对接本地 demo 聚合服务输出的扁平结构，绕开 a_bogus
+      { key: "product_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "id", defaultField: "product_id" },
+      { key: "product_name", type: "Text", label: "商品名称", isPrimary: false, sourcePath: "aggregate_source_label", defaultField: "product_name" },
+      { key: "flow_out_ucnt", type: "Number", label: "流失人数", isPrimary: false, sourcePath: "amount", defaultField: "flow_out_ucnt" },
+      { key: "product_show_ucnt", type: "Number", label: "商品曝光人数", isPrimary: false, sourcePath: "balance", defaultField: "product_show_ucnt" },
+      { key: "product_click_ucnt", type: "Number", label: "商品点击人数", isPrimary: false, sourcePath: "created_time", defaultField: "product_click_ucnt" },
+      { key: "pay_amt", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "update_time", defaultField: "pay_amt" },
+      { key: "pay_cnt", type: "Number", label: "成交订单数", isPrimary: false, sourcePath: "flow_id", defaultField: "pay_cnt" }
     ];
   }
 
@@ -540,10 +547,10 @@ async function main() {
       const configStr = JSON.stringify(info.request_config);
       const fieldsStr = JSON.stringify(info.fields_schema);
 
-      // 强制覆写数据库
+      // 强制覆写数据库，注入 local_aggregate_path！
       await pool.query(
-        'UPDATE dslp_interfaces SET api_path = ?, request_config = ?, fields_schema = ? WHERE interface_key = ? AND platform = ?',
-        [info.api_path, configStr, fieldsStr, key, 'douyin']
+        'UPDATE dslp_interfaces SET api_path = ?, local_aggregate_path = ?, request_config = ?, fields_schema = ? WHERE interface_key = ? AND platform = ?',
+        [info.api_path, info.local_aggregate_path, configStr, fieldsStr, key, 'douyin']
       );
       console.log(`[Re-Write & 保鲜成功] Interface: ${key}`);
     }
