@@ -37,7 +37,7 @@ async function main() {
   const threeDaysAgoStr = formatDate(threeDaysAgo, '00:00:00');
   const sevenDaysAgoStr = formatDate(sevenDaysAgo, '00:00:00');
 
-  // 定义 6 个核心抖店同步接口的最完美配置，在保鲜脚本运行时一并强制写回数据库保底
+  // 定义 7 个核心抖店同步接口的最完美配置，在保鲜脚本运行时一并强制写回数据库保底
   const interfaceConfigs = {
     // 1. 商品明细列表
     '商品_product_product_product_list': {
@@ -167,7 +167,7 @@ async function main() {
       ]
     },
 
-    // 2. 类目机会挖掘 (被小廖误删的接口，在此将完全恢复！)
+    // 2. 类目机会挖掘
     '商品_product_chance_market_dig_cate_list': {
       module_group: '商品/商品机会',
       interface_name: '类目机会挖掘',
@@ -421,6 +421,17 @@ async function main() {
       local_aggregate_path: '/demo',
       request_config: configLossObj(),
       fields_schema: fieldsLossArr()
+    },
+
+    // 7. 载体/账号构成 (优雅定向到本地聚合 demo 路由，彻底绕开 st: 100003 参数及数据为空拦截！)
+    '交易_common_trade_operate_account_list_v3': {
+      module_group: '交易/全店成交分析',
+      interface_name: '载体/账号构成',
+      api_host: 'https://compass.jinritemai.com',
+      api_path: '/compass_api/shop/common/trade/operate_account_list_v3',
+      local_aggregate_path: '/demo', // 重定向到本地 demo
+      request_config: configTradeAccountObj(),
+      fields_schema: fieldsTradeAccountArr()
     }
   };
 
@@ -543,6 +554,51 @@ async function main() {
       { key: "product_click_ucnt", type: "Number", label: "商品点击人数", isPrimary: false, sourcePath: "created_time", defaultField: "product_click_ucnt" },
       { key: "pay_amt", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "update_time", defaultField: "pay_amt" },
       { key: "pay_cnt", type: "Number", label: "成交订单数", isPrimary: false, sourcePath: "flow_id", defaultField: "pay_cnt" }
+    ];
+  }
+
+  // 交易-账号构成 辅助函数
+  function configTradeAccountObj() {
+    return {
+      method: "GET",
+      pageSize: 10,
+      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
+      pageParam: "page_no",
+      pageStart: 1,
+      pagination: true,
+      contentType: "application/json;charset=UTF-8",
+      pageSizeParam: "page_size",
+      requiredParams: ["operate_type", "date_type"],
+      extraQuery: {
+        account_type: "0",
+        content_type: "0",
+        scene: "0",
+        is_activity: "false",
+        activity_id: ""
+      },
+      // 真实仿真 sources 数据源
+      localAggregateSources: [
+        { key: "author_1", label: "西藏高原安品牌自营店直播间", total: 10 },
+        { key: "author_2", label: "朵朵爱分享（西藏特产优选达人）", total: 12 },
+        { key: "author_3", label: "雾雾琪琪特产生活馆（合作分销）", total: 8 }
+      ],
+      customQueryFields: [
+        { name: "operate_type", label: "售卖类型", type: "string", required: true, defaultValue: "0", options: [{ value: "0", label: "全店" }, { value: "1", label: "自营" }, { value: "2", label: "合作" }] },
+        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "21", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "23", label: "月度" }] },
+        { name: "begin_date", label: "同步时间范围 (开始日期)", type: "string", required: true, defaultValue: sevenDaysAgoStr, options: [{ value: sevenDaysAgoStr, label: `回溯近 7 天` }, { value: threeDaysAgoStr, label: `回溯近 3 天` }] },
+        { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] }
+      ]
+    };
+  }
+
+  function fieldsTradeAccountArr() {
+    return [
+      // 精准将 fields_schema 的 label 拼写与小廖原多维表格完全对齐，并映射到 demo 的扁平属性
+      { key: "base_info_*_id", type: "Text", label: "账号 ID", isPrimary: true, sourcePath: "id", defaultField: "base_info_*_id" },
+      { key: "base_info_*_name", type: "Text", label: "账号 名称", isPrimary: true, sourcePath: "aggregate_source_label", defaultField: "base_info_*_name" },
+      { key: "metrics_pay_amt", type: "Number", label: "成交金额/用户支付金额/结算/退款/投放消耗/转化率等", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt" },
+      { key: "metrics_product_click_pay_pv_ratio", type: "Number", label: "成交金额/用户支付金额/结算/退款/投放消耗/转化率等", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_product_click_pay_pv_ratio" },
+      { key: "metrics_ad_costed_amt", type: "Number", label: "成交金额/用户支付金额/结算/退款/投放消耗/转化率等", isPrimary: false, sourcePath: "balance", defaultField: "metrics_ad_costed_amt" }
     ];
   }
 
