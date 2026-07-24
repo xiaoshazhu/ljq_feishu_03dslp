@@ -41,6 +41,9 @@ async function main() {
   const interfaceConfigs = {
     // 1. 商品明细列表
     '商品_product_product_product_list': {
+      module_group: '商品/商品列表',
+      interface_name: '商品明细列表',
+      api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/product/product/product_list',
       local_aggregate_path: null,
       request_config: {
@@ -164,8 +167,11 @@ async function main() {
       ]
     },
 
-    // 2. 类目机会挖掘
+    // 2. 类目机会挖掘 (被小廖误删的接口，在此将完全恢复！)
     '商品_product_chance_market_dig_cate_list': {
+      module_group: '商品/商品机会',
+      interface_name: '类目机会挖掘',
+      api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/product/product_chance_market/dig_cate_list',
       local_aggregate_path: null,
       request_config: {
@@ -270,6 +276,9 @@ async function main() {
 
     // 3. 商品榜单
     '商品_mall_product_rank_search': {
+      module_group: '商品/商品榜单',
+      interface_name: '商品榜单',
+      api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/mall/product_rank/search',
       local_aggregate_path: null,
       request_config: {
@@ -383,6 +392,9 @@ async function main() {
 
     // 4. 流量转化商品列表
     '商品_product_product_flow_analysis_flow_conversion_product_list_v2': {
+      module_group: '商品/流量分析',
+      interface_name: '流量转化商品列表',
+      api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/product/product_flow_analysis/flow_conversion_product_list_v2',
       local_aggregate_path: null,
       request_config: configConversionObj(),
@@ -391,14 +403,20 @@ async function main() {
 
     // 5. 流量来源明细列表
     '商品_product_product_flow_analysis_flow_source_detail_v2': {
+      module_group: '商品/流量分析',
+      interface_name: '流量来源明细列表',
+      api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/product/product_flow_analysis/flow_source_detail_v2',
       local_aggregate_path: null,
       request_config: configSourceObj(),
       fields_schema: fieldsSourceArr()
     },
 
-    // 6. 流量流失商品列表 (在 request_config 下直接指定 localAggregateSources，完美填充测试连接数据)
+    // 6. 流量流失商品列表
     '商品_product_product_flow_analysis_flow_loss_product_list': {
+      module_group: '商品/流量分析',
+      interface_name: '流量流失商品列表',
+      api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/product/product_flow_analysis/flow_loss_product_list',
       local_aggregate_path: '/demo',
       request_config: configLossObj(),
@@ -502,7 +520,6 @@ async function main() {
         is_activity: "false",
         activity_id: ""
       },
-      // 核心修正：在 request_config 下直接定义 localAggregateSources 属性，让 dy_helper 能够顺利读取！
       localAggregateSources: [
         { key: "loss_1", label: "【热销爆款】高原安葡萄糖粉固体饮料", total: 10 },
         { key: "loss_2", label: "【旅行常备】高原康速溶冲剂营养品", total: 15 },
@@ -552,15 +569,36 @@ async function main() {
       const configStr = JSON.stringify(info.request_config);
       const fieldsStr = JSON.stringify(info.fields_schema);
 
-      // 强制覆写数据库，注入 local_aggregate_path！
-      await pool.query(
-        'UPDATE dslp_interfaces SET api_path = ?, local_aggregate_path = ?, request_config = ?, fields_schema = ? WHERE interface_key = ? AND platform = ?',
-        [info.api_path, info.local_aggregate_path, configStr, fieldsStr, key, 'douyin']
-      );
-      console.log(`[Re-Write & 保鲜成功] Interface: ${key}`);
+      // 使用 ON DUPLICATE KEY UPDATE 确保不存在时自动 INSERT 插入恢复，存在时 UPDATE 更新！
+      await pool.query(`
+        INSERT INTO dslp_interfaces (
+          interface_key, platform, module_group, interface_name, api_host, api_path, local_aggregate_path, is_enabled, request_config, fields_schema
+        ) VALUES (
+          ?, 'douyin', ?, ?, ?, ?, ?, 1, ?, ?
+        ) ON DUPLICATE KEY UPDATE
+          module_group = VALUES(module_group),
+          interface_name = VALUES(interface_name),
+          api_host = VALUES(api_host),
+          api_path = VALUES(api_path),
+          local_aggregate_path = VALUES(local_aggregate_path),
+          request_config = VALUES(request_config),
+          fields_schema = VALUES(fields_schema),
+          is_enabled = 1
+      `, [
+        key,
+        info.module_group,
+        info.interface_name,
+        info.api_host,
+        info.api_path,
+        info.local_aggregate_path,
+        configStr,
+        fieldsStr
+      ]);
+      
+      console.log(`[ON DUPLICATE KEY 恢复与保鲜成功] Interface: ${key}`);
     }
   } catch (err) {
-    console.error('Error running force re-write and updates:', err);
+    console.error('Error running force recovery and updates:', err);
   } finally {
     await pool.end();
   }
