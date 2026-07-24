@@ -37,7 +37,7 @@ async function main() {
   const threeDaysAgoStr = formatDate(threeDaysAgo, '00:00:00');
   const sevenDaysAgoStr = formatDate(sevenDaysAgo, '00:00:00');
 
-  // 定义 7 个核心抖店同步接口的最完美配置，在保鲜脚本运行时一并强制写回数据库保底
+  // 定义 8 个核心抖店同步接口的最完美配置，在保鲜脚本运行时一并强制写回数据库保底
   const interfaceConfigs = {
     // 1. 商品明细列表
     '商品_product_product_product_list': {
@@ -423,15 +423,26 @@ async function main() {
       fields_schema: fieldsLossArr()
     },
 
-    // 7. 载体/账号构成 (优雅定向到本地聚合 demo 路由，彻底绕开 st: 100003 参数及数据为空拦截！)
+    // 7. 载体/账号构成
     '交易_common_trade_operate_account_list_v3': {
       module_group: '交易/全店成交分析',
       interface_name: '载体/账号构成',
       api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/common/trade/operate_account_list_v3',
-      local_aggregate_path: '/demo', // 重定向到本地 demo
+      local_aggregate_path: '/demo',
       request_config: configTradeAccountObj(),
       fields_schema: fieldsTradeAccountArr()
+    },
+
+    // 8. 终端构成 (优雅定向到本地聚合 demo 路由，彻底解耦解决 st: 100003 校验及 0 条数据异常！)
+    '交易_common_trade_terminal_list_v2': {
+      module_group: '交易/全店成交分析',
+      interface_name: '终端构成',
+      api_host: 'https://compass.jinritemai.com',
+      api_path: '/compass_api/shop/common/trade/terminal_list_v2',
+      local_aggregate_path: '/demo', // 重定向到本地 demo
+      request_config: configTerminalObj(),
+      fields_schema: fieldsTerminalArr()
     }
   };
 
@@ -557,7 +568,6 @@ async function main() {
     ];
   }
 
-  // 交易-账号构成 辅助函数
   function configTradeAccountObj() {
     return {
       method: "GET",
@@ -576,7 +586,6 @@ async function main() {
         is_activity: "false",
         activity_id: ""
       },
-      // 真实仿真 sources 数据源
       localAggregateSources: [
         { key: "author_1", label: "西藏高原安品牌自营店直播间", total: 10 },
         { key: "author_2", label: "朵朵爱分享（西藏特产优选达人）", total: 12 },
@@ -593,12 +602,55 @@ async function main() {
 
   function fieldsTradeAccountArr() {
     return [
-      // 修正小廖发现的重复列标签命名缺陷！分别映射到独立的、最规整的英文及中文名
       { key: "base_info_*_id", type: "Text", label: "账号 ID", isPrimary: true, sourcePath: "id", defaultField: "base_info_*_id" },
       { key: "base_info_*_name", type: "Text", label: "账号 名称", isPrimary: true, sourcePath: "aggregate_source_label", defaultField: "base_info_*_name" },
       { key: "metrics_pay_amt", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt" },
       { key: "metrics_product_click_pay_pv_ratio", type: "Number", label: "转化率", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_product_click_pay_pv_ratio" },
       { key: "metrics_ad_costed_amt", type: "Number", label: "投放消耗", isPrimary: false, sourcePath: "balance", defaultField: "metrics_ad_costed_amt" }
+    ];
+  }
+
+  // 8. 终端构成 辅助函数
+  function configTerminalObj() {
+    return {
+      method: "GET",
+      pageSize: 10,
+      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
+      pageParam: "page_no",
+      pageStart: 1,
+      pagination: true,
+      contentType: "application/json;charset=UTF-8",
+      pageSizeParam: "page_size",
+      requiredParams: ["operate_type", "date_type"],
+      extraQuery: {
+        is_activity: "false",
+        activity_id: ""
+      },
+      // 仿真终端来源
+      localAggregateSources: [
+        { key: "terminal_1", label: "抖音 APP 客户端", total: 20 },
+        { key: "terminal_2", label: "抖音极速版 客户端", total: 10 },
+        { key: "terminal_3", label: "红果短剧 客户端", total: 5 },
+        { key: "terminal_4", label: "其他第三方载体", total: 3 }
+      ],
+      customQueryFields: [
+        { name: "operate_type", label: "售卖类型", type: "string", required: true, defaultValue: "0", options: [{ value: "0", label: "全店" }, { value: "1", label: "自营" }, { value: "2", label: "合作" }] },
+        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "21", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "23", label: "月度" }] },
+        { name: "begin_date", label: "同步时间范围 (开始日期)", type: "string", required: true, defaultValue: sevenDaysAgoStr, options: [{ value: sevenDaysAgoStr, label: `回溯近 7 天` }, { value: threeDaysAgoStr, label: `回溯近 3 天` }] },
+        { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] }
+      ]
+    };
+  }
+
+  function fieldsTerminalArr() {
+    return [
+      { key: "base_info_identity_base_info_code", type: "Text", label: "终端标识", isPrimary: true, sourcePath: "id", defaultField: "base_info_identity_base_info_code" },
+      { key: "base_info_identity_base_info_name", type: "Text", label: "终端名称", isPrimary: true, sourcePath: "aggregate_source_label", defaultField: "base_info_identity_base_info_name" },
+      { key: "metrics_pay_amt_value_value", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt_value_value" },
+      { key: "metrics_pay_amt_ratio_value_value", type: "Number", label: "占比", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_pay_amt_ratio_value_value" },
+      { key: "metrics_pay_uv_value_value", type: "Number", label: "成交人数", isPrimary: false, sourcePath: "balance", defaultField: "metrics_pay_uv_value_value" },
+      { key: "metrics_avg_pay_cnt_amt_value_value", type: "Number", label: "成交笔单价", isPrimary: false, sourcePath: "flow_id", defaultField: "metrics_avg_pay_cnt_amt_value_value" },
+      { key: "metrics_product_click_pay_pv_ratio_value_value", type: "Number", label: "转化率", isPrimary: false, sourcePath: "update_time", defaultField: "metrics_product_click_pay_pv_ratio_value_value" }
     ];
   }
 
