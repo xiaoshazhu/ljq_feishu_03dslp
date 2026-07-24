@@ -593,12 +593,12 @@ async function main() {
 
   function fieldsTradeAccountArr() {
     return [
-      // 精准将 fields_schema 的 label 拼写与小廖原多维表格完全对齐，并映射到 demo 的扁平属性
+      // 修正小廖发现的重复列标签命名缺陷！分别映射到独立的、最规整的英文及中文名
       { key: "base_info_*_id", type: "Text", label: "账号 ID", isPrimary: true, sourcePath: "id", defaultField: "base_info_*_id" },
       { key: "base_info_*_name", type: "Text", label: "账号 名称", isPrimary: true, sourcePath: "aggregate_source_label", defaultField: "base_info_*_name" },
-      { key: "metrics_pay_amt", type: "Number", label: "成交金额/用户支付金额/结算/退款/投放消耗/转化率等", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt" },
-      { key: "metrics_product_click_pay_pv_ratio", type: "Number", label: "成交金额/用户支付金额/结算/退款/投放消耗/转化率等", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_product_click_pay_pv_ratio" },
-      { key: "metrics_ad_costed_amt", type: "Number", label: "成交金额/用户支付金额/结算/退款/投放消耗/转化率等", isPrimary: false, sourcePath: "balance", defaultField: "metrics_ad_costed_amt" }
+      { key: "metrics_pay_amt", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt" },
+      { key: "metrics_product_click_pay_pv_ratio", type: "Number", label: "转化率", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_product_click_pay_pv_ratio" },
+      { key: "metrics_ad_costed_amt", type: "Number", label: "投放消耗", isPrimary: false, sourcePath: "balance", defaultField: "metrics_ad_costed_amt" }
     ];
   }
 
