@@ -37,7 +37,7 @@ async function main() {
   const threeDaysAgoStr = formatDate(threeDaysAgo, '00:00:00');
   const sevenDaysAgoStr = formatDate(sevenDaysAgo, '00:00:00');
 
-  // 定义 5 个核心抖店同步接口的最完美配置，在保鲜脚本运行时一并强制写回数据库保底
+  // 定义 6 个核心抖店同步接口的最完美配置，在保鲜脚本运行时一并强制写回数据库保底
   const interfaceConfigs = {
     // 1. 商品明细列表
     '商品_product_product_product_list': {
@@ -368,7 +368,6 @@ async function main() {
         ]
       },
       fields_schema: [
-        // 必须与小廖原飞书多维表格里的中文列名（label）一字不差地精准对齐！
         { key: "rank", type: "Number", label: "排名", isPrimary: false, sourcePath: "cell_info.rank.index_values.value.value", defaultField: "rank" },
         { key: "product_id", type: "Text", label: "商品信息与 ID", isPrimary: false, sourcePath: "cell_info.product.product.product_id", defaultField: "product_id" },
         { key: "shop", type: "Text", label: "所属店铺", isPrimary: false, sourcePath: "cell_info.word.value.value_str", defaultField: "shop" },
@@ -391,6 +390,13 @@ async function main() {
       api_path: '/compass_api/shop/product/product_flow_analysis/flow_source_detail_v2',
       request_config: configSourceObj(),
       fields_schema: fieldsSourceArr()
+    },
+
+    // 6. 流量流失商品列表 (新增保底配置)
+    '商品_product_product_flow_analysis_flow_loss_product_list': {
+      api_path: '/compass_api/shop/product/product_flow_analysis/flow_loss_product_list',
+      request_config: configLossObj(),
+      fields_schema: fieldsLossArr()
     }
   };
 
@@ -470,6 +476,44 @@ async function main() {
       { key: "pay_amt", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "cell_info.pay_amt.pay_amt_index_values.index_values.value.value", defaultField: "pay_amt" },
       { key: "pay_cnt", type: "Number", label: "成交订单数", isPrimary: false, sourcePath: "cell_info.pay_cnt.pay_cnt_index_values.index_values.value.value", defaultField: "pay_cnt" },
       { key: "ratio", type: "Number", label: "商品点击-成交转化率", isPrimary: false, sourcePath: "cell_info.product_click_pay_converse_uv_rate.product_click_pay_converse_uv_rate_index_values.index_values.value.value", defaultField: "ratio" }
+    ];
+  }
+
+  function configLossObj() {
+    return {
+      method: "GET",
+      pageSize: 10,
+      listPaths: ["data", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "list", "records", "items"],
+      pageParam: "page_no",
+      pageStart: 1,
+      pagination: true,
+      contentType: "application/json;charset=UTF-8",
+      pageSizeParam: "page_size",
+      requiredParams: ["category_id_selected", "date_type"],
+      extraQuery: {
+        sort_field: "flow_out_ucnt",
+        is_asc: "false",
+        is_activity: "false",
+        activity_id: ""
+      },
+      customQueryFields: [
+        { name: "category_id_selected", label: "筛选类目 ID", type: "string", required: true, defaultValue: "1000000724", options: [{ value: "1000000724", label: "当前类目 (1000000724)" }] },
+        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "21", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "23", label: "月度" }] },
+        { name: "begin_date", label: "同步时间范围 (开始日期)", type: "string", required: true, defaultValue: sevenDaysAgoStr, options: [{ value: sevenDaysAgoStr, label: `回溯近 7 天` }, { value: threeDaysAgoStr, label: `回溯近 3 天` }] },
+        { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] }
+      ]
+    };
+  }
+
+  function fieldsLossArr() {
+    return [
+      { key: "product_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "cell_info.product_info.product_id_value.value.value_str", defaultField: "product_id" },
+      { key: "product_name", type: "Text", label: "商品名称", isPrimary: false, sourcePath: "cell_info.product_info.product_name_value.value.value_str", defaultField: "product_name" },
+      { key: "flow_out_ucnt", type: "Number", label: "流失人数", isPrimary: false, sourcePath: "cell_info.flow_out_ucnt.flow_out_ucnt_index_values.index_values.value.value", defaultField: "flow_out_ucnt" },
+      { key: "product_show_ucnt", type: "Number", label: "商品曝光人数", isPrimary: false, sourcePath: "cell_info.product_show_ucnt.product_show_ucnt_index_values.index_values.value.value", defaultField: "product_show_ucnt" },
+      { key: "product_click_ucnt", type: "Number", label: "商品点击人数", isPrimary: false, sourcePath: "cell_info.product_click_ucnt.product_click_ucnt_index_values.index_values.value.value", defaultField: "product_click_ucnt" },
+      { key: "pay_amt", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "cell_info.pay_amt.pay_amt_index_values.index_values.value.value", defaultField: "pay_amt" },
+      { key: "pay_cnt", type: "Number", label: "成交订单数", isPrimary: false, sourcePath: "cell_info.pay_cnt.pay_cnt_index_values.index_values.value.value", defaultField: "pay_cnt" }
     ];
   }
 
