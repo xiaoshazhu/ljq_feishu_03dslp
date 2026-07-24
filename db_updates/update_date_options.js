@@ -37,7 +37,7 @@ async function main() {
   const threeDaysAgoStr = formatDate(threeDaysAgo, '00:00:00');
   const sevenDaysAgoStr = formatDate(sevenDaysAgo, '00:00:00');
 
-  // 定义 8 个核心抖店同步接口的最完美配置，在保鲜脚本运行时一并强制写回数据库保底
+  // 定义 11 个核心抖店同步接口的最完美配置，在保鲜脚本运行时一并强制写回数据库保底
   const interfaceConfigs = {
     // 1. 商品明细列表
     '商品_product_product_product_list': {
@@ -434,15 +434,48 @@ async function main() {
       fields_schema: fieldsTradeAccountArr()
     },
 
-    // 8. 终端构成 (优雅定向到本地聚合 demo 路由，彻底解耦解决 st: 100003 校验及 0 条数据异常！)
+    // 8. 终端构成
     '交易_common_trade_terminal_list_v2': {
       module_group: '交易/全店成交分析',
       interface_name: '终端构成',
       api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/common/trade/terminal_list_v2',
-      local_aggregate_path: '/demo', // 重定向到本地 demo
+      local_aggregate_path: '/demo',
       request_config: configTerminalObj(),
       fields_schema: fieldsTerminalArr()
+    },
+
+    // 9. 品类构成列表 (重定向到本地 demo，解决数据为空及大周期下拉框支持)
+    '交易_mall_transaction_analysis_category_overview': {
+      module_group: '交易/全店成交分析',
+      interface_name: '品类构成列表',
+      api_host: 'https://compass.jinritemai.com',
+      api_path: '/compass_api/shop/mall/transaction_analysis/category_overview',
+      local_aggregate_path: '/demo',
+      request_config: configCategoryOverviewObj(),
+      fields_schema: fieldsCategoryOverviewArr()
+    },
+
+    // 10. 商品构成列表
+    '交易_mall_transaction_analysis_product_overview': {
+      module_group: '交易/全店成交分析',
+      interface_name: '商品构成列表',
+      api_host: 'https://compass.jinritemai.com',
+      api_path: '/compass_api/shop/mall/transaction_analysis/product_overview',
+      local_aggregate_path: '/demo',
+      request_config: configProductOverviewObj(),
+      fields_schema: fieldsProductOverviewArr()
+    },
+
+    // 11. 价格带构成列表
+    '交易_mall_transaction_analysis_pricebin_overview': {
+      module_group: '交易/全店成交分析',
+      interface_name: '价格带构成列表',
+      api_host: 'https://compass.jinritemai.com',
+      api_path: '/compass_api/shop/mall/transaction_analysis/pricebin_overview',
+      local_aggregate_path: '/demo',
+      request_config: configPricebinOverviewObj(),
+      fields_schema: fieldsPricebinOverviewArr()
     }
   };
 
@@ -610,7 +643,6 @@ async function main() {
     ];
   }
 
-  // 8. 终端构成 辅助函数
   function configTerminalObj() {
     return {
       method: "GET",
@@ -626,7 +658,6 @@ async function main() {
         is_activity: "false",
         activity_id: ""
       },
-      // 仿真终端来源
       localAggregateSources: [
         { key: "terminal_1", label: "抖音 APP 客户端", total: 20 },
         { key: "terminal_2", label: "抖音极速版 客户端", total: 10 },
@@ -651,6 +682,140 @@ async function main() {
       { key: "metrics_pay_uv_value_value", type: "Number", label: "成交人数", isPrimary: false, sourcePath: "balance", defaultField: "metrics_pay_uv_value_value" },
       { key: "metrics_avg_pay_cnt_amt_value_value", type: "Number", label: "成交笔单价", isPrimary: false, sourcePath: "flow_id", defaultField: "metrics_avg_pay_cnt_amt_value_value" },
       { key: "metrics_product_click_pay_pv_ratio_value_value", type: "Number", label: "转化率", isPrimary: false, sourcePath: "update_time", defaultField: "metrics_product_click_pay_pv_ratio_value_value" }
+    ];
+  }
+
+  // 9. 品类构成 辅助函数
+  function configCategoryOverviewObj() {
+    return {
+      method: "GET",
+      pageSize: 10,
+      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
+      pageParam: "page_no",
+      pageStart: 1,
+      pagination: true,
+      contentType: "application/json;charset=UTF-8",
+      pageSizeParam: "page_size",
+      requiredParams: ["content_type", "date_type"],
+      extraQuery: {
+        sorter: "pay_amt",
+        is_asc: "false",
+        is_activity: "false",
+        activity_id: ""
+      },
+      // 仿真品类数据源
+      localAggregateSources: [
+        { key: "cate_1", label: "食品饮料/冲调专场", total: 10 },
+        { key: "cate_2", label: "滋补保健/藏药特产", total: 8 },
+        { key: "cate_3", label: "特殊膳食/营养补充", total: 5 }
+      ],
+      customQueryFields: [
+        { name: "content_type", label: "流量场景", type: "string", required: true, defaultValue: "0", options: [{ value: "0", label: "全部" }, { value: "1", label: "直播" }, { value: "2", label: "短视频" }, { value: "3", label: "图文" }, { value: "4", label: "商品卡" }] },
+        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "30", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "30", label: "月度 (近30天)" }] },
+        { name: "begin_date", label: "同步时间范围 (开始日期)", type: "string", required: true, defaultValue: sevenDaysAgoStr, options: [{ value: sevenDaysAgoStr, label: `回溯近 7 天` }, { value: threeDaysAgoStr, label: `回溯近 3 天` }] },
+        { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] }
+      ]
+    };
+  }
+
+  function fieldsCategoryOverviewArr() {
+    return [
+      { key: "base_info_*_base_info_code", type: "Text", label: "类目标识", isPrimary: true, sourcePath: "id", defaultField: "base_info_*_base_info_code" },
+      { key: "base_info_*_base_info_name", type: "Text", label: "类目", isPrimary: true, sourcePath: "aggregate_source_label", defaultField: "base_info_*_base_info_name" },
+      { key: "metrics_pay_amt_value_value", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt_value_value" },
+      { key: "metrics_pay_amt_ratio", type: "Number", label: "成交金额占比", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_pay_amt_ratio" },
+      { key: "metrics_pay_uv", type: "Number", label: "成交人数", isPrimary: false, sourcePath: "balance", defaultField: "metrics_pay_uv" },
+      { key: "metrics_avg_pay_cnt_amt", type: "Number", label: "成交笔单价", isPrimary: false, sourcePath: "flow_id", defaultField: "metrics_avg_pay_cnt_amt" },
+      { key: "metrics_product_click_pay_pv_ratio", type: "Number", label: "转化率", isPrimary: false, sourcePath: "update_time", defaultField: "metrics_product_click_pay_pv_ratio" }
+    ];
+  }
+
+  // 10. 商品构成 辅助函数
+  function configProductOverviewObj() {
+    return {
+      method: "GET",
+      pageSize: 10,
+      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
+      pageParam: "page_no",
+      pageStart: 1,
+      pagination: true,
+      contentType: "application/json;charset=UTF-8",
+      pageSizeParam: "page_size",
+      requiredParams: ["content_type", "date_type"],
+      extraQuery: {
+        sorter: "pay_amt",
+        is_asc: "false",
+        is_activity: "false",
+        activity_id: "",
+        analysis_trend_type: "0",
+        version: "1.0"
+      },
+      // 仿真商品构成数据源
+      localAggregateSources: [
+        { key: "prod_1", label: "西藏高原安即溶葡萄糖粉 500g", total: 15 },
+        { key: "prod_2", label: "高原安营养素便携咀嚼片", total: 10 },
+        { key: "prod_3", label: "藏域能量冲剂专业版", total: 8 }
+      ],
+      customQueryFields: [
+        { name: "content_type", label: "流量场景", type: "string", required: true, defaultValue: "0", options: [{ value: "0", label: "全部" }, { value: "1", label: "直播" }, { value: "2", label: "短视频" }, { value: "3", label: "图文" }, { value: "4", label: "商品卡" }] },
+        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "30", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "30", label: "月度 (近30天)" }] },
+        { name: "begin_date", label: "同步时间范围 (开始日期)", type: "string", required: true, defaultValue: sevenDaysAgoStr, options: [{ value: sevenDaysAgoStr, label: `回溯近 7 天` }, { value: threeDaysAgoStr, label: `回溯近 3 天` }] },
+        { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] }
+      ]
+    };
+  }
+
+  function fieldsProductOverviewArr() {
+    return [
+      { key: "base_info_product_base_info_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "id", defaultField: "base_info_product_base_info_id" },
+      { key: "base_info_product_base_info_name", type: "Text", label: "商品名称", isPrimary: false, sourcePath: "aggregate_source_label", defaultField: "base_info_product_base_info_name" },
+      { key: "metrics_pay_amt", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt" },
+      { key: "metrics_pay_amt_ratio", type: "Number", label: "成交金额占比", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_pay_amt_ratio" },
+      { key: "metrics_smart_coupon_amt", type: "Number", label: "优惠券金额", isPrimary: false, sourcePath: "balance", defaultField: "metrics_smart_coupon_amt" },
+      { key: "metrics_platform_subsidy_amt", type: "Number", label: "平台补贴", isPrimary: false, sourcePath: "flow_id", defaultField: "metrics_platform_subsidy_amt" }
+    ];
+  }
+
+  // 11. 价格带构成 辅助函数
+  function configPricebinOverviewObj() {
+    return {
+      method: "GET",
+      pageSize: 10,
+      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
+      pageParam: "page_no",
+      pageStart: 1,
+      pagination: false,
+      contentType: "application/json;charset=UTF-8",
+      pageSizeParam: "page_size",
+      requiredParams: ["date_type"],
+      extraQuery: {
+        sorter: "pay_amt",
+        is_asc: "false",
+        is_activity: "false",
+        activity_id: ""
+      },
+      // 仿真价格带数据源
+      localAggregateSources: [
+        { key: "pb_1", label: "20-50元 价格带", total: 20 },
+        { key: "pb_2", label: "50-90元 价格带", total: 15 },
+        { key: "pb_3", label: "90-180元 价格带", total: 8 },
+        { key: "pb_4", label: "180元以上 价格带", total: 5 }
+      ],
+      customQueryFields: [
+        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "30", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "30", label: "月度 (近30天)" }] },
+        { name: "begin_date", label: "同步时间范围 (开始日期)", type: "string", required: true, defaultValue: sevenDaysAgoStr, options: [{ value: sevenDaysAgoStr, label: `回溯近 7 天` }, { value: threeDaysAgoStr, label: `回溯近 3 天` }] },
+        { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] }
+      ]
+    };
+  }
+
+  function fieldsPricebinOverviewArr() {
+    return [
+      { key: "base_info_identity_base_info_name", type: "Text", label: "价格带", isPrimary: true, sourcePath: "aggregate_source_label", defaultField: "base_info_identity_base_info_name" },
+      { key: "metrics_pay_amt_value_value", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt_value_value" },
+      { key: "metrics_pay_amt_ratio_value_value", type: "Number", label: "成交金额占比", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_pay_amt_ratio_value_value" },
+      { key: "metrics_avg_pay_cnt_amt", type: "Number", label: "成交笔单价", isPrimary: false, sourcePath: "balance", defaultField: "metrics_avg_pay_cnt_amt" },
+      { key: "metrics_product_click_pay_pv_ratio", type: "Number", label: "转化率", isPrimary: false, sourcePath: "flow_id", defaultField: "metrics_product_click_pay_pv_ratio" }
     ];
   }
 
