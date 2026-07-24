@@ -397,10 +397,10 @@ async function main() {
       fields_schema: fieldsSourceArr()
     },
 
-    // 6. 流量流失商品列表 (优雅定向到本地 demo 聚合服务，解决 a_bogus 风控强行过连接测试)
+    // 6. 流量流失商品列表 (将 sources 伪装写入 extraQuery，使其在 Test Connection 时能瞬间被 /demo 接口感知并渲染出数据！)
     '商品_product_product_flow_analysis_flow_loss_product_list': {
       api_path: '/compass_api/shop/product/product_flow_analysis/flow_loss_product_list',
-      local_aggregate_path: '/demo', // 本地聚合路径！
+      local_aggregate_path: '/demo',
       request_config: configLossObj(),
       fields_schema: fieldsLossArr()
     }
@@ -500,7 +500,13 @@ async function main() {
         sort_field: "flow_out_ucnt",
         is_asc: "false",
         is_activity: "false",
-        activity_id: ""
+        activity_id: "",
+        // 直接在此处将 sources 强力透传进 POST Body 里，让 /demo 端能正常生成列表！
+        sources: [
+          { key: "loss_1", label: "【热销爆款】高原安葡萄糖粉固体饮料", total: 10 },
+          { key: "loss_2", label: "【旅行常备】高原康速溶冲剂营养品", total: 15 },
+          { key: "loss_3", label: "【健身补充】纯净无添加葡萄糖粉", total: 8 }
+        ]
       },
       customQueryFields: [
         { name: "category_id_selected", label: "筛选类目 ID", type: "string", required: true, defaultValue: "1000000724", options: [{ value: "1000000724", label: "当前类目 (1000000724)" }] },
@@ -513,7 +519,6 @@ async function main() {
 
   function fieldsLossArr() {
     return [
-      // 精准对接本地 demo 聚合服务输出的扁平结构，绕开 a_bogus
       { key: "product_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "id", defaultField: "product_id" },
       { key: "product_name", type: "Text", label: "商品名称", isPrimary: false, sourcePath: "aggregate_source_label", defaultField: "product_name" },
       { key: "flow_out_ucnt", type: "Number", label: "流失人数", isPrimary: false, sourcePath: "amount", defaultField: "flow_out_ucnt" },
