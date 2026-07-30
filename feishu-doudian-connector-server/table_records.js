@@ -557,10 +557,33 @@ function parseOptionalTimestamp(value) {
  * @param {object} field 字段配置
  * @return {unknown} 返回清洗后的字段值
  */
+function formatRangeValue(rangeObj) {
+  if (!rangeObj || typeof rangeObj !== 'object') return '';
+  const { lower, upper } = rangeObj;
+  if (!lower && !upper) return '';
+
+  const formatItem = (item) => {
+    if (!item || item.value === undefined) return '不限';
+    const val = item.value;
+    if (item.unit === 3) {
+      return `¥${(val / 100).toFixed(0)}`;
+    }
+    if (item.unit === 4) {
+      return `${(val * 100).toFixed(0)}%`;
+    }
+    return String(val);
+  };
+
+  return `${formatItem(lower)}-${formatItem(upper)}`;
+}
+
 function normalizeDoudianFieldValue(value, field) {
   if (value === undefined || value === null) return '';
   if (Array.isArray(value)) {
     return normalizeArrayFieldValue(value, field);
+  }
+  if (typeof value === 'object' && (value.lower !== undefined || value.upper !== undefined)) {
+    return formatRangeValue(value);
   }
   const mappedValue = mapDoudianFieldValue(value, field);
   if (mappedValue !== undefined) return mappedValue;
@@ -586,7 +609,11 @@ function normalizeDoudianFieldValue(value, field) {
   if (typeof value === 'object') {
     return JSON.stringify(value);
   }
-  return String(value);
+  let strVal = String(value);
+  if (strVal.includes('<a') && strVal.includes('</a>')) {
+    strVal = strVal.replace(/<a\s+(?:[^>]*?\s+)?href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+  }
+  return strVal;
 }
 
 /**
@@ -602,6 +629,16 @@ function normalizeArrayFieldValue(values, field = {}) {
     value !== ''
   ));
   if (nonEmptyValues.length === 0) return '';
+
+  // 特殊拦截：如果是退款原因 tag 数组对象，进行拼接：冲动消费(55.42%) | 不再需要(7.70%)
+  if (nonEmptyValues.length > 0 && typeof nonEmptyValues[0] === 'object' && nonEmptyValues[0].tag_name) {
+    const valueMap = field.valueMap || {};
+    return nonEmptyValues.map(item => {
+      const name = valueMap[item.tag_name] || item.tag_name || '';
+      const desc = item.tag_desc !== undefined ? `${(Number(item.tag_desc) * 100).toFixed(2)}%` : '';
+      return desc ? `${name}(${desc})` : name;
+    }).join(' | ');
+  }
 
   const arrayMode = String(field.arrayMode || '').toLowerCase();
   if (arrayMode === 'first') {
@@ -812,7 +849,90 @@ function getDoudianInterfaceFieldValue(item, field, interfaceMeta) {
   if (field.key === 'source_list') return interfaceMeta.interfaceName || '';
   if (field.key === 'source_api') return interfaceMeta.apiPath || '';
   if (field.key === 'raw_json' || field.sourcePath === '') return item;
+
+  // 竞争对比大盘指标：自适应精确值（本店）与区间值（竞店）的智能提取合并
+  if (
+    field.sourcePath &&
+    field.sourcePath.includes('_children.children[0]')
+  ) {
+    const baseChildrenPath = field.sourcePath.split('.children[0]')[0] + '.children';
+    const children = getValueByPath(item, baseChildrenPath);
+    if (Array.isArray(children)) {
+      if (children.length >= 2) {
+        // 对手竞店：提取 children[0] 和 children[1] 的数值并合并为区间
+        const suffixPath = field.sourcePath.split('.children[0]')[1];
+        const lowerVal = getValueByPath(children[0], suffixPath.replace(/^\./, ''));
+        const upperVal = getValueByPath(children[1], suffixPath.replace(/^\./, ''));
+        const lowerStr = formatNumberWithUnit(lowerVal, field.formatType);
+        const upperStr = formatNumberWithUnit(upperVal, field.formatType);
+        if (lowerStr && upperStr) {
+          return `${lowerStr} - ${upperStr}`;
+        }
+        return lowerStr || upperStr || '';
+      } else if (children.length === 1) {
+        // 本店：直接提取 children[0] 上的精确单值
+        const suffixPath = field.sourcePath.split('.children[0]')[1];
+        const preciseVal = getValueByPath(children[0], suffixPath.replace(/^\./, ''));
+        return formatNumberWithUnit(preciseVal, field.formatType);
+      }
+    }
+  }
+
+  if (field.formatRule === 'merge_range') {
+    const isSelf = getValueByPath(item, 'cell_info.is_self.value.value') === 1;
+    
+    if (isSelf) {
+      const preciseVal = getValueByPath(item, field.sourcePath);
+      if (preciseVal !== undefined && preciseVal !== null && preciseVal !== '') {
+        return formatNumberWithUnit(preciseVal, field.formatType);
+      }
+    }
+    
+    const lowerVal = getValueByPath(item, field.lowerPath);
+    const upperVal = getValueByPath(item, field.upperPath);
+    
+    if (
+      (lowerVal !== undefined && lowerVal !== null && lowerVal !== '') ||
+      (upperVal !== undefined && upperVal !== null && upperVal !== '')
+    ) {
+      const lowerStr = formatNumberWithUnit(lowerVal, field.formatType);
+      const upperStr = formatNumberWithUnit(upperVal, field.formatType);
+      if (lowerStr && upperStr) {
+        return `${lowerStr} - ${upperStr}`;
+      }
+      return lowerStr || upperStr || '';
+    }
+  }
+
   return getValueByPath(item, field.sourcePath || field.key);
+}
+
+function formatNumberWithUnit(num, formatType) {
+  if (num === undefined || num === null || isNaN(num) || num === '') return '';
+  let n = Number(num);
+  
+  if (formatType === 'price') {
+    n = n / 100;
+  } else if (formatType === 'percentage') {
+    n = n * 100;
+  }
+  
+  if (formatType === 'percentage') {
+    const valStr = Number(n.toFixed(2));
+    return valStr + '%';
+  }
+  
+  if (n >= 100000000) {
+    const val = n / 100000000;
+    const valStr = Number(val.toFixed(2));
+    return (formatType === 'price' ? '¥' : '') + valStr + '亿';
+  }
+  if (n >= 10000) {
+    const val = n / 10000;
+    const formattedVal = Number(val.toFixed(2)).toLocaleString('en-US');
+    return (formatType === 'price' ? '¥' : '') + formattedVal + '万';
+  }
+  return (formatType === 'price' ? '¥' : '') + n.toLocaleString('en-US');
 }
 
 /**
@@ -823,6 +943,19 @@ function getDoudianInterfaceFieldValue(item, field, interfaceMeta) {
  */
 function getValueByPath(source, path) {
   if (!source || !path) return undefined;
+
+  // 新增：支持用英文逗号逗开的多路径候选提取
+  if (String(path).includes(',')) {
+    const candidatePaths = String(path).split(',');
+    for (const cand of candidatePaths) {
+      const val = getValueByPath(source, cand.trim());
+      if (val !== undefined && val !== null && val !== '') {
+        return val;
+      }
+    }
+    return undefined;
+  }
+
   const pathSegments = String(path)
     .replace(/\[\]/g, '.*')
     .replace(/\[\*\]/g, '.*')

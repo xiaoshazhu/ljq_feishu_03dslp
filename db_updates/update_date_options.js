@@ -13,7 +13,7 @@ function formatDate(date, timeSuffix = '00:00:00') {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d} ${timeSuffix}`;
+  return `${y}/${m}/${d} ${timeSuffix}`;
 }
 
 async function main() {
@@ -380,13 +380,14 @@ async function main() {
         ]
       },
       fields_schema: [
+        { key: "product_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "cell_info.product.product.product_id", defaultField: "product_id" },
         { key: "rank", type: "Number", label: "排名", isPrimary: false, sourcePath: "cell_info.rank.index_values.value.value", defaultField: "rank" },
-        { key: "product_id", type: "Text", label: "商品信息与 ID", isPrimary: false, sourcePath: "cell_info.product.product.product_id", defaultField: "product_id" },
-        { key: "shop", type: "Text", label: "所属店铺", isPrimary: false, sourcePath: "cell_info.word.value.value_str", defaultField: "shop" },
+        { key: "product_name", type: "Text", label: "商品", isPrimary: false, sourcePath: "cell_info.product.product.product_name", defaultField: "product_name" },
+        { key: "shop", type: "Text", label: "店铺名称", isPrimary: false, sourcePath: "cell_info.word.value.value_str", defaultField: "shop" },
         { key: "pay_amt", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "cell_info.pay_amt.index_values.extra_value.lower.value", defaultField: "pay_amt" },
-        { key: "pay_cnt", type: "Number", label: "成交订单数", isPrimary: false, sourcePath: "cell_info.rank.index_values.last_period_change.value", defaultField: "pay_cnt" },
-        { key: "field", type: "Text", label: "价格带", isPrimary: false, sourcePath: "cell_info.product.product.detail_h5_url", defaultField: "field" },
-        { key: "field_1", type: "Text", label: "品牌等。", isPrimary: false, sourcePath: "cell_info.product.product.product_name", defaultField: "field_1" }
+        { key: "click_ucnt", type: "Number", label: "点击次数", isPrimary: false, sourcePath: "cell_info.click_ucnt.index_values.value.value", defaultField: "click_ucnt" },
+        { key: "pay_cnt", type: "Number", label: "成交件数", isPrimary: false, sourcePath: "cell_info.pay_cnt.index_values.value.value", defaultField: "pay_cnt" },
+        { key: "click_pay_ratio", type: "Number", label: "点击成交转化率", isPrimary: false, sourcePath: "cell_info.click_pay_ratio.index_values.value.value", defaultField: "click_pay_ratio" }
       ]
     },
 
@@ -418,7 +419,7 @@ async function main() {
       interface_name: '流量流失商品列表',
       api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/product/product_flow_analysis/flow_loss_product_list',
-      local_aggregate_path: '/demo',
+      local_aggregate_path: null,
       request_config: configLossObj(),
       fields_schema: fieldsLossArr()
     },
@@ -429,7 +430,7 @@ async function main() {
       interface_name: '载体/账号构成',
       api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/common/trade/operate_account_list_v3',
-      local_aggregate_path: '/demo',
+      local_aggregate_path: null,
       request_config: configTradeAccountObj(),
       fields_schema: fieldsTradeAccountArr()
     },
@@ -440,7 +441,7 @@ async function main() {
       interface_name: '终端构成',
       api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/common/trade/terminal_list_v2',
-      local_aggregate_path: '/demo',
+      local_aggregate_path: null,
       request_config: configTerminalObj(),
       fields_schema: fieldsTerminalArr()
     },
@@ -451,7 +452,7 @@ async function main() {
       interface_name: '品类构成列表',
       api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/mall/transaction_analysis/category_overview',
-      local_aggregate_path: '/demo',
+      local_aggregate_path: null,
       request_config: configCategoryOverviewObj(),
       fields_schema: fieldsCategoryOverviewArr()
     },
@@ -462,7 +463,7 @@ async function main() {
       interface_name: '商品构成列表',
       api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/mall/transaction_analysis/product_overview',
-      local_aggregate_path: '/demo',
+      local_aggregate_path: null,
       request_config: configProductOverviewObj(),
       fields_schema: fieldsProductOverviewArr()
     },
@@ -473,7 +474,7 @@ async function main() {
       interface_name: '价格带构成列表',
       api_host: 'https://compass.jinritemai.com',
       api_path: '/compass_api/shop/mall/transaction_analysis/pricebin_overview',
-      local_aggregate_path: '/demo',
+      local_aggregate_path: null,
       request_config: configPricebinOverviewObj(),
       fields_schema: fieldsPricebinOverviewArr()
     }
@@ -509,13 +510,13 @@ async function main() {
   function fieldsConversionArr() {
     return [
       { key: "product_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "cell_info.product_info.product_id.value.value_str", defaultField: "product_id" },
-      { key: "product_name", type: "Text", label: "商品名称", isPrimary: false, sourcePath: "cell_info.product_info.product_name.value.value_str", defaultField: "product_name" },
+      { key: "product_name", type: "Text", label: "商品", isPrimary: false, sourcePath: "cell_info.product_info.product_name.value.value_str", defaultField: "product_name" },
       { key: "product_show_ucnt", type: "Number", label: "商品曝光人数", isPrimary: false, sourcePath: "cell_info.product_show_ucnt.product_show_ucnt_index_values.index_values.value.value", defaultField: "product_show_ucnt" },
       { key: "product_click_ucnt", type: "Number", label: "商品点击人数", isPrimary: false, sourcePath: "cell_info.product_click_ucnt.product_click_ucnt_index_values.index_values.value.value", defaultField: "product_click_ucnt" },
-      { key: "pay_ucnt", type: "Number", label: "成交人数", isPrimary: false, sourcePath: "cell_info.pay_ucnt.pay_ucnt_index_values.index_values.value.value", defaultField: "pay_ucnt" },
-      { key: "pay_amt", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "cell_info.pay_amt.pay_amt_index_values.index_values.value.value", defaultField: "pay_amt" },
-      { key: "pay_cnt", type: "Number", label: "成交订单数", isPrimary: false, sourcePath: "cell_info.pay_cnt.pay_cnt_index_values.index_values.value.value", defaultField: "pay_cnt" },
-      { key: "click_pay_ratio", type: "Number", label: "点击-成交率", isPrimary: false, sourcePath: "cell_info.product_click_pay_converse_uv_rate.product_click_pay_converse_uv_rate_index_values.index_values.value.value", defaultField: "click_pay_ratio" }
+      { key: "pay_ucnt", type: "Number", label: "商品成交人数", isPrimary: false, sourcePath: "cell_info.pay_ucnt.pay_ucnt_index_values.index_values.value.value", defaultField: "pay_ucnt" },
+      { key: "product_show_click_converse_uv_rate", type: "Number", label: "曝光点击率", isPrimary: false, sourcePath: "cell_info.product_show_click_converse_uv_rate.product_show_click_converse_uv_rate_index_values.index_values.value.value", defaultField: "product_show_click_converse_uv_rate" },
+      { key: "click_pay_ratio", type: "Number", label: "点击支付率", isPrimary: false, sourcePath: "cell_info.product_click_pay_converse_uv_rate.product_click_pay_converse_uv_rate_index_values.index_values.value.value", defaultField: "click_pay_ratio" },
+      { key: "product_show_pay_converse_uv_rate", type: "Number", label: "曝光支付率", isPrimary: false, sourcePath: "cell_info.product_show_pay_converse_uv_rate.product_show_pay_converse_uv_rate_index_values.index_values.value.value", defaultField: "product_show_pay_converse_uv_rate" }
     ];
   }
 
@@ -562,42 +563,43 @@ async function main() {
     return {
       method: "GET",
       pageSize: 10,
-      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
+      listPaths: ["data", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "list", "records", "items"],
       pageParam: "page_no",
       pageStart: 1,
       pagination: true,
       contentType: "application/json;charset=UTF-8",
       pageSizeParam: "page_size",
-      requiredParams: ["category_id_selected", "date_type"],
+      requiredParams: ["date_type"],
       extraQuery: {
         sort_field: "flow_out_ucnt",
         is_asc: "false",
         is_activity: "false",
-        activity_id: ""
+        activity_id: "",
+        content_type: "1"
       },
-      localAggregateSources: [
-        { key: "loss_1", label: "【热销爆款】高原安葡萄糖粉固体饮料", total: 10 },
-        { key: "loss_2", label: "【旅行常备】高原康速溶冲剂营养品", total: 15 },
-        { key: "loss_3", label: "【健身补充】纯净无添加葡萄糖粉", total: 8 }
-      ],
       customQueryFields: [
-        { name: "category_id_selected", label: "筛选类目 ID", type: "string", required: true, defaultValue: "1000000724", options: [{ value: "1000000724", label: "当前类目 (1000000724)" }] },
+        { name: "category_id_selected", label: "筛选类目 ID", type: "string", required: false, defaultValue: "" },
         { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "21", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "23", label: "月度" }] },
         { name: "begin_date", label: "同步时间范围 (开始日期)", type: "string", required: true, defaultValue: sevenDaysAgoStr, options: [{ value: sevenDaysAgoStr, label: `回溯近 7 天` }, { value: threeDaysAgoStr, label: `回溯近 3 天` }] },
-        { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] }
+        { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] },
+        { name: "_lid", label: "风控 _lid (从罗盘网页抓包)", type: "string", required: false, defaultValue: "" },
+        { name: "verifyFp", label: "风控 verifyFp (从罗盘网页抓包)", type: "string", required: false, defaultValue: "" },
+        { name: "fp", label: "风控 fp (从罗盘网页抓包)", type: "string", required: false, defaultValue: "" },
+        { name: "msToken", label: "风控 msToken (从罗盘网页抓包)", type: "string", required: false, defaultValue: "" },
+        { name: "a_bogus", label: "风控 a_bogus (从罗盘网页抓包)", type: "string", required: false, defaultValue: "" }
       ]
     };
   }
 
   function fieldsLossArr() {
     return [
-      { key: "product_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "id", defaultField: "product_id" },
-      { key: "product_name", type: "Text", label: "商品名称", isPrimary: false, sourcePath: "aggregate_source_label", defaultField: "product_name" },
-      { key: "flow_out_ucnt", type: "Number", label: "流失人数", isPrimary: false, sourcePath: "amount", defaultField: "flow_out_ucnt" },
-      { key: "product_show_ucnt", type: "Number", label: "商品曝光人数", isPrimary: false, sourcePath: "balance", defaultField: "product_show_ucnt" },
-      { key: "product_click_ucnt", type: "Number", label: "商品点击人数", isPrimary: false, sourcePath: "created_time", defaultField: "product_click_ucnt" },
-      { key: "pay_amt", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "update_time", defaultField: "pay_amt" },
-      { key: "pay_cnt", type: "Number", label: "成交订单数", isPrimary: false, sourcePath: "flow_id", defaultField: "pay_cnt" }
+      { key: "product_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "cell_info.product.product.product_id", defaultField: "product_id" },
+      { key: "product_name", type: "Text", label: "商品名称", isPrimary: false, sourcePath: "cell_info.product.product.product_name", defaultField: "product_name" },
+      { key: "flow_out_ucnt", type: "Number", label: "流失人数", isPrimary: false, sourcePath: "cell_info.flow_out_ucnt.flow_out_ucnt_index_values.index_values.value.value", defaultField: "flow_out_ucnt" },
+      { key: "product_show_ucnt", type: "Number", label: "商品曝光人数", isPrimary: false, sourcePath: "cell_info.product_show_ucnt.product_show_ucnt_index_values.index_values.value.value", defaultField: "product_show_ucnt" },
+      { key: "product_click_ucnt", type: "Number", label: "商品点击人数", isPrimary: false, sourcePath: "cell_info.product_click_ucnt.product_click_ucnt_index_values.index_values.value.value", defaultField: "product_click_ucnt" },
+      { key: "pay_amt", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "cell_info.pay_amt.pay_amt_index_values.index_values.value.value", defaultField: "pay_amt" },
+      { key: "pay_cnt", type: "Number", label: "成交订单数", isPrimary: false, sourcePath: "cell_info.pay_cnt.pay_cnt_index_values.index_values.value.value", defaultField: "pay_cnt" }
     ];
   }
 
@@ -605,9 +607,9 @@ async function main() {
     return {
       method: "GET",
       pageSize: 10,
-      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
+      listPaths: ["data", "list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
       pageParam: "page_no",
-      pageStart: 1,
+      pageStart: 0,
       pagination: true,
       contentType: "application/json;charset=UTF-8",
       pageSizeParam: "page_size",
@@ -675,13 +677,13 @@ async function main() {
 
   function fieldsTerminalArr() {
     return [
-      { key: "base_info_identity_base_info_code", type: "Text", label: "终端标识", isPrimary: true, sourcePath: "id", defaultField: "base_info_identity_base_info_code" },
-      { key: "base_info_identity_base_info_name", type: "Text", label: "终端名称", isPrimary: true, sourcePath: "aggregate_source_label", defaultField: "base_info_identity_base_info_name" },
-      { key: "metrics_pay_amt_value_value", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt_value_value" },
-      { key: "metrics_pay_amt_ratio_value_value", type: "Number", label: "占比", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_pay_amt_ratio_value_value" },
-      { key: "metrics_pay_uv_value_value", type: "Number", label: "成交人数", isPrimary: false, sourcePath: "balance", defaultField: "metrics_pay_uv_value_value" },
-      { key: "metrics_avg_pay_cnt_amt_value_value", type: "Number", label: "成交笔单价", isPrimary: false, sourcePath: "flow_id", defaultField: "metrics_avg_pay_cnt_amt_value_value" },
-      { key: "metrics_product_click_pay_pv_ratio_value_value", type: "Number", label: "转化率", isPrimary: false, sourcePath: "update_time", defaultField: "metrics_product_click_pay_pv_ratio_value_value" }
+      { key: "base_info_identity_base_info_code", type: "Text", label: "终端标识", isPrimary: true, sourcePath: "cell_info.terminal_code.value.value_str", defaultField: "base_info_identity_base_info_code" },
+      { key: "base_info_identity_base_info_name", type: "Text", label: "终端名称", isPrimary: true, sourcePath: "cell_info.terminal_name.value.value_str", defaultField: "base_info_identity_base_info_name" },
+      { key: "metrics_pay_amt_value_value", type: "Number", label: "用户支付金额", isPrimary: false, sourcePath: "cell_info.income_amt.index_values.value.value", defaultField: "metrics_pay_amt_value_value" },
+      { key: "metrics_pay_amt_ratio_value_value", type: "Number", label: "占比", isPrimary: false, sourcePath: "cell_info.income_amt.index_values.out_period_ratio.value", defaultField: "metrics_pay_amt_ratio_value_value" },
+      { key: "metrics_pay_uv_value_value", type: "Number", label: "成交人数", isPrimary: false, sourcePath: "cell_info.pay_ucnt.index_values.value.value", defaultField: "metrics_pay_uv_value_value" },
+      { key: "metrics_avg_pay_cnt_amt_value_value", type: "Number", label: "成交笔单价", isPrimary: false, sourcePath: "cell_info.avg_pay_cnt_amt.index_values.value.value", defaultField: "metrics_avg_pay_cnt_amt_value_value" },
+      { key: "metrics_product_click_pay_pv_ratio_value_value", type: "Number", label: "转化率", isPrimary: false, sourcePath: "cell_info.product_click_pay_pv_ratio.index_values.value.value", defaultField: "metrics_product_click_pay_pv_ratio_value_value" }
     ];
   }
 
@@ -690,7 +692,7 @@ async function main() {
     return {
       method: "GET",
       pageSize: 10,
-      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
+      listPaths: ["data", "list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
       pageParam: "page_no",
       pageStart: 1,
       pagination: true,
@@ -711,7 +713,7 @@ async function main() {
       ],
       customQueryFields: [
         { name: "content_type", label: "流量场景", type: "string", required: true, defaultValue: "0", options: [{ value: "0", label: "全部" }, { value: "1", label: "直播" }, { value: "2", label: "短视频" }, { value: "3", label: "图文" }, { value: "4", label: "商品卡" }] },
-        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "30", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "30", label: "月度 (近30天)" }] },
+        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "21", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "30", label: "月度 (近30天)" }] },
         { name: "begin_date", label: "同步时间范围 (开始日期)", type: "string", required: true, defaultValue: sevenDaysAgoStr, options: [{ value: sevenDaysAgoStr, label: `回溯近 7 天` }, { value: threeDaysAgoStr, label: `回溯近 3 天` }] },
         { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] }
       ]
@@ -720,13 +722,13 @@ async function main() {
 
   function fieldsCategoryOverviewArr() {
     return [
-      { key: "base_info_*_base_info_code", type: "Text", label: "类目标识", isPrimary: true, sourcePath: "id", defaultField: "base_info_*_base_info_code" },
-      { key: "base_info_*_base_info_name", type: "Text", label: "类目", isPrimary: true, sourcePath: "aggregate_source_label", defaultField: "base_info_*_base_info_name" },
-      { key: "metrics_pay_amt_value_value", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt_value_value" },
-      { key: "metrics_pay_amt_ratio", type: "Number", label: "成交金额占比", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_pay_amt_ratio" },
-      { key: "metrics_pay_uv", type: "Number", label: "成交人数", isPrimary: false, sourcePath: "balance", defaultField: "metrics_pay_uv" },
-      { key: "metrics_avg_pay_cnt_amt", type: "Number", label: "成交笔单价", isPrimary: false, sourcePath: "flow_id", defaultField: "metrics_avg_pay_cnt_amt" },
-      { key: "metrics_product_click_pay_pv_ratio", type: "Number", label: "转化率", isPrimary: false, sourcePath: "update_time", defaultField: "metrics_product_click_pay_pv_ratio" }
+      { key: "base_info_*_base_info_code", type: "Text", label: "类目标识", isPrimary: true, sourcePath: "base_info.identity_base_info.code", defaultField: "base_info_*_base_info_code" },
+      { key: "base_info_*_base_info_name", type: "Text", label: "类目", isPrimary: true, sourcePath: "base_info.identity_base_info.name", defaultField: "base_info_*_base_info_name" },
+      { key: "metrics_pay_amt_value_value", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "metrics.pay_amt.value.value", defaultField: "metrics_pay_amt_value_value" },
+      { key: "metrics_pay_amt_ratio", type: "Number", label: "成交金额占比", isPrimary: false, sourcePath: "metrics.pay_amt_ratio.value.value", defaultField: "metrics_pay_amt_ratio" },
+      { key: "metrics_pay_uv", type: "Number", label: "成交人数", isPrimary: false, sourcePath: "metrics.pay_ucnt.value.value", defaultField: "metrics_pay_uv" },
+      { key: "metrics_avg_pay_cnt_amt", type: "Number", label: "成交笔单价", isPrimary: false, sourcePath: "metrics.avg_pay_cnt_amt.value.value", defaultField: "metrics_avg_pay_cnt_amt" },
+      { key: "metrics_product_click_pay_pv_ratio", type: "Number", label: "转化率", isPrimary: false, sourcePath: "metrics.product_click_pay_pv_ratio.value.value", defaultField: "metrics_product_click_pay_pv_ratio" }
     ];
   }
 
@@ -735,7 +737,7 @@ async function main() {
     return {
       method: "GET",
       pageSize: 10,
-      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
+      listPaths: ["data", "list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
       pageParam: "page_no",
       pageStart: 1,
       pagination: true,
@@ -758,7 +760,7 @@ async function main() {
       ],
       customQueryFields: [
         { name: "content_type", label: "流量场景", type: "string", required: true, defaultValue: "0", options: [{ value: "0", label: "全部" }, { value: "1", label: "直播" }, { value: "2", label: "短视频" }, { value: "3", label: "图文" }, { value: "4", label: "商品卡" }] },
-        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "30", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "30", label: "月度 (近30天)" }] },
+        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "21", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "30", label: "月度 (近30天)" }] },
         { name: "begin_date", label: "同步时间范围 (开始日期)", type: "string", required: true, defaultValue: sevenDaysAgoStr, options: [{ value: sevenDaysAgoStr, label: `回溯近 7 天` }, { value: threeDaysAgoStr, label: `回溯近 3 天` }] },
         { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] }
       ]
@@ -767,12 +769,12 @@ async function main() {
 
   function fieldsProductOverviewArr() {
     return [
-      { key: "base_info_product_base_info_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "id", defaultField: "base_info_product_base_info_id" },
-      { key: "base_info_product_base_info_name", type: "Text", label: "商品名称", isPrimary: false, sourcePath: "aggregate_source_label", defaultField: "base_info_product_base_info_name" },
-      { key: "metrics_pay_amt", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt" },
-      { key: "metrics_pay_amt_ratio", type: "Number", label: "成交金额占比", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_pay_amt_ratio" },
-      { key: "metrics_smart_coupon_amt", type: "Number", label: "优惠券金额", isPrimary: false, sourcePath: "balance", defaultField: "metrics_smart_coupon_amt" },
-      { key: "metrics_platform_subsidy_amt", type: "Number", label: "平台补贴", isPrimary: false, sourcePath: "flow_id", defaultField: "metrics_platform_subsidy_amt" }
+      { key: "base_info_product_base_info_id", type: "Text", label: "商品 ID", isPrimary: true, sourcePath: "base_info.product_base_info.id", defaultField: "base_info_product_base_info_id" },
+      { key: "base_info_product_base_info_name", type: "Text", label: "商品名称", isPrimary: false, sourcePath: "base_info.product_base_info.name", defaultField: "base_info_product_base_info_name" },
+      { key: "metrics_pay_amt", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "metrics.pay_amt.value.value", defaultField: "metrics_pay_amt" },
+      { key: "metrics_pay_amt_ratio", type: "Number", label: "成交金额占比", isPrimary: false, sourcePath: "metrics.pay_amt_ratio.value.value", defaultField: "metrics_pay_amt_ratio" },
+      { key: "metrics_smart_coupon_amt", type: "Number", label: "优惠券金额", isPrimary: false, sourcePath: "metrics.pay_qc_plat_coupon_amt.value.value", defaultField: "metrics_smart_coupon_amt" },
+      { key: "metrics_platform_subsidy_amt", type: "Number", label: "平台补贴", isPrimary: false, sourcePath: "metrics.pay_plat_cost_amt.value.value", defaultField: "metrics_platform_subsidy_amt" }
     ];
   }
 
@@ -781,13 +783,13 @@ async function main() {
     return {
       method: "GET",
       pageSize: 10,
-      listPaths: ["list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
+      listPaths: ["data", "list", "data.list", "data.records", "data.items", "data.data", "data.rank_list", "records", "items"],
       pageParam: "page_no",
       pageStart: 1,
       pagination: false,
       contentType: "application/json;charset=UTF-8",
       pageSizeParam: "page_size",
-      requiredParams: ["date_type"],
+      requiredParams: ["date_type", "begin_date", "end_date"],
       extraQuery: {
         sorter: "pay_amt",
         is_asc: "false",
@@ -802,7 +804,7 @@ async function main() {
         { key: "pb_4", label: "180元以上 价格带", total: 5 }
       ],
       customQueryFields: [
-        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "30", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "30", label: "月度 (近30天)" }] },
+        { name: "date_type", label: "分析维度", type: "string", required: true, defaultValue: "21", options: [{ value: "21", label: "日度" }, { value: "22", label: "周度" }, { value: "30", label: "月度 (近30天)" }] },
         { name: "begin_date", label: "同步时间范围 (开始日期)", type: "string", required: true, defaultValue: sevenDaysAgoStr, options: [{ value: sevenDaysAgoStr, label: `回溯近 7 天` }, { value: threeDaysAgoStr, label: `回溯近 3 天` }] },
         { name: "end_date", label: "结束日期", type: "string", required: true, defaultValue: yesterdayStr, options: [{ value: yesterdayStr, label: `截止昨日` }] }
       ]
@@ -811,11 +813,11 @@ async function main() {
 
   function fieldsPricebinOverviewArr() {
     return [
-      { key: "base_info_identity_base_info_name", type: "Text", label: "价格带", isPrimary: true, sourcePath: "aggregate_source_label", defaultField: "base_info_identity_base_info_name" },
-      { key: "metrics_pay_amt_value_value", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "amount", defaultField: "metrics_pay_amt_value_value" },
-      { key: "metrics_pay_amt_ratio_value_value", type: "Number", label: "成交金额占比", isPrimary: false, sourcePath: "created_time", defaultField: "metrics_pay_amt_ratio_value_value" },
-      { key: "metrics_avg_pay_cnt_amt", type: "Number", label: "成交笔单价", isPrimary: false, sourcePath: "balance", defaultField: "metrics_avg_pay_cnt_amt" },
-      { key: "metrics_product_click_pay_pv_ratio", type: "Number", label: "转化率", isPrimary: false, sourcePath: "flow_id", defaultField: "metrics_product_click_pay_pv_ratio" }
+      { key: "base_info_identity_base_info_name", type: "Text", label: "价格带", isPrimary: true, sourcePath: "base_info.identity_base_info.name", defaultField: "base_info_identity_base_info_name" },
+      { key: "metrics_pay_amt_value_value", type: "Number", label: "成交金额", isPrimary: false, sourcePath: "metrics.pay_amt.value.value", defaultField: "metrics_pay_amt_value_value" },
+      { key: "metrics_pay_amt_ratio_value_value", type: "Number", label: "成交金额占比", isPrimary: false, sourcePath: "metrics.pay_amt_ratio.value.value", defaultField: "metrics_pay_amt_ratio_value_value" },
+      { key: "metrics_avg_pay_cnt_amt", type: "Number", label: "成交笔单价", isPrimary: false, sourcePath: "metrics.avg_pay_cnt_amt.value.value", defaultField: "metrics_avg_pay_cnt_amt" },
+      { key: "metrics_product_click_pay_pv_ratio", type: "Number", label: "转化率", isPrimary: false, sourcePath: "metrics.product_click_pay_pv_ratio.value.value", defaultField: "metrics_product_click_pay_pv_ratio" }
     ];
   }
 
@@ -867,7 +869,7 @@ async function main() {
         configStr,
         fieldsStr
       ]);
-      
+
       console.log(`[ON DUPLICATE KEY 恢复与保鲜成功] Interface: ${key}`);
     }
   } catch (err) {

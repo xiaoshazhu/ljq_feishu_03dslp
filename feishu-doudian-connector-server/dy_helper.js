@@ -53,6 +53,7 @@ async function fetchRealDoudianData(cookie, shopId, syncModule, configOrDateRang
     doudianInterfaceOverride = configOrDateRange.doudianInterface || null;
     aggregatePageToken = configOrDateRange.aggregatePageToken || '';
     dateRange = String(configOrDateRange.dateRange || '');
+    console.log(`[DEBUG] fetchRealDoudianData got dateRange: "${dateRange}" for syncModule: "${syncModule}"`);
     deadlineAt = Number(configOrDateRange.deadlineAt || 0);
     companyId = String(configOrDateRange.companyId || configOrDateRange.tenantKey || 'default');
     dateRangeAnchorAt = Number(configOrDateRange.dateRangeAnchorAt || 0);
@@ -426,11 +427,39 @@ function buildDoudianRegisteredRequest(interfaceMeta, shopId, pageNum, maxPageSi
     dateRange,
     dateRangeAnchorAt
   );
+  if (computedDateRangeParams.date_type && (computedDateRangeParams.date_type === '23' || computedDateRangeParams.date_type === '22')) {
+    if (
+      !interfaceMeta.apiPath.includes('refund_analyse_v2')
+      && !interfaceMeta.apiPath.includes('/author/cooperate/')
+    ) {
+      computedDateRangeParams.date_type = '21';
+    }
+  }
+  if (interfaceMeta.apiPath.includes('/author/cooperate/')) {
+    // 达人概览数据由于抖店计算延迟有T+2延迟（最晚数据为前天），因此自动将时间窗口往前挪动1天
+    if (computedDateRangeParams.begin_date) {
+      const bDate = new Date(computedDateRangeParams.begin_date.replace(/-/g, '/'));
+      bDate.setDate(bDate.getDate() - 1);
+      computedDateRangeParams.begin_date = formatDateRangeValue(bDate, requestConfig.dateRangeMapping.format);
+    }
+    if (computedDateRangeParams.end_date) {
+      const eDate = new Date(computedDateRangeParams.end_date.replace(/-/g, '/'));
+      eDate.setDate(eDate.getDate() - 1);
+      computedDateRangeParams.end_date = formatDateRangeValue(eDate, requestConfig.dateRangeMapping.format);
+    }
+  }
   const baseParams = {
     ...(requestConfig.extraQuery || {}),
     ...computedDateRangeParams,
     ...(runtimeExtraQuery || {})
   };
+  if (interfaceMeta.apiPath.includes('refund_analyse_v2/compose_list')) {
+    if (baseParams.content_type === '3') {
+      baseParams.dimension = '1';
+    } else if (baseParams.content_type === '2') {
+      baseParams.dimension = '0';
+    }
+  }
   if (paginationEnabled && requestMethod.toUpperCase() === 'GET') {
     baseParams[pageParam] = pageValue;
     baseParams[pageSizeParam] = pageSize;
@@ -710,7 +739,12 @@ function buildDateRangeQueryParams(requestConfig, dateRange, anchorAt = Date.now
   if (String(dateRange || '').trim().toLowerCase() === 'all') {
     return {};
   }
-  const days = Number(dateRange || 0);
+  let daysStr = String(dateRange || '').trim();
+  const match = daysStr.match(/(\d+)\s*天/);
+  if (match) {
+    daysStr = match[1];
+  }
+  const days = Number(daysStr || 0);
   if (!mapping || !Number.isFinite(days) || days <= 0) {
     return {};
   }
@@ -723,15 +757,16 @@ function buildDateRangeQueryParams(requestConfig, dateRange, anchorAt = Date.now
       ? normalizedAnchorAt
       : Date.now()
   );
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   let startAt = null;
   let endAt = null;
 
   if (mode === 'rolling') {
-    endAt = now;
-    startAt = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    endAt = yesterday;
+    startAt = new Date(yesterday.getTime() - days * 24 * 60 * 60 * 1000);
   } else {
-    endAt = endOfDay(now);
-    startAt = startOfDay(addDays(now, -(days - 1)));
+    endAt = endOfDay(yesterday);
+    startAt = startOfDay(addDays(yesterday, -(days - 1)));
   }
 
   const params = {};
@@ -740,6 +775,15 @@ function buildDateRangeQueryParams(requestConfig, dateRange, anchorAt = Date.now
   }
   if (mapping.endTime) {
     params[mapping.endTime] = formatDateRangeValue(endAt, format);
+  }
+  if (format === 'slash_datetime_zero') {
+    if (days === 30) {
+      params.date_type = '23';
+    } else if (days === 7) {
+      params.date_type = '22';
+    } else if (days === 1) {
+      params.date_type = '21';
+    }
   }
   return params;
 }
@@ -786,6 +830,8 @@ function formatDateRangeValue(value, format) {
     case 'timestamp_s':
     case 'unix':
       return Math.floor(value.getTime() / 1000);
+    case 'slash_datetime_zero':
+      return `${value.getFullYear()}/${padDatePart(value.getMonth() + 1)}/${padDatePart(value.getDate())} 00:00:00`;
     case 'date':
       return `${value.getFullYear()}-${padDatePart(value.getMonth() + 1)}-${padDatePart(value.getDate())}`;
     case 'datetime':

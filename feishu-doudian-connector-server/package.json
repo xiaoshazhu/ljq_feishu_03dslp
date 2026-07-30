@@ -5,7 +5,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node -r ./patch.js index.js",
     "start:staging": "ENV_FILE=.env.staging node index.js",
     "start:prod": "ENV_FILE=.env.production NODE_ENV=production node index.js",
     "start:prod:file": "ENV_FILE=.env.production NODE_ENV=production node index.js",
@@ -25,7 +25,8 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "http-proxy-middleware": "^4.1.1",
-    "mysql2": "^3.22.5"
+    "mysql2": "^3.22.5",
+    "puppeteer-core": "^25.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.9.1"

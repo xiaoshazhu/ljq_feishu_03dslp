@@ -74,6 +74,11 @@ doudianLocalAggregateRouter.post('/local/api/ecomfinance/platform/invoice/record
 doudianLocalAggregateRouter.post('/local/api/business_product/strategy/query_product_page_v2', handleQueryProductStrategyV2);
 
 /**
+ * 购买类目分析列表 本地聚合接口
+ */
+doudianLocalAggregateRouter.post('/local/commop/business_chance_center/user_select/cate_trade', handleCateTradeAggregateRequest);
+
+/**
  * 功能描述：处理本地聚合 demo 请求。
  * @param {object} req Express 请求
  * @param {object} res Express 响应
@@ -721,6 +726,141 @@ function resolveAggregateRequestCookie(req) {
     });
     return rawCookie;
   }
+}
+
+/**
+ * 功能描述：处理购买类目分析的本地多行展开聚合请求。
+ */
+async function handleCateTradeAggregateRequest(req, res) {
+  await sendAggregateResponse(res, async () => {
+    const body = req.body || {};
+    const apiHost = String(body.sourceApiHost || 'https://compass.jinritemai.com').replace(/\/$/, '');
+    const apiPath = body.sourceApiPath || '/api/commop/business_chance_center/user_select/cate_trade';
+    const requestUrlObj = new URL(apiPath, apiHost);
+    
+    const params = body.params || {};
+    const contentType = 'application/json;charset=UTF-8';
+    const cookie = resolveAggregateRequestCookie(req);
+    const fetchOptions = {
+      method: 'POST',
+      headers: {
+        Cookie: cookie,
+        'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+        Accept: 'application/json, text/plain, */*',
+        'Content-Type': contentType,
+        Referer: `${requestUrlObj.origin}/`,
+        Origin: requestUrlObj.origin
+      },
+      body: JSON.stringify(params)
+    };
+
+    console.log('[Doudian Cate Trade Request]', {
+      url: requestUrlObj.toString(),
+      paramsKeys: Object.keys(params)
+    });
+
+    const deadlineAt = Number(req.headers['x-request-deadline'] || 0);
+    const { response, responseText } = await fetchTextWithTimeout(
+      requestUrlObj.toString(),
+      fetchOptions,
+      getRemainingTimeoutMs(deadlineAt, 15000, 500)
+    );
+
+    if (!response.ok) {
+      throw new Error(`Doudian Cate Trade HTTP Error: HTTP ${response.status}`);
+    }
+
+    let resJson;
+    try {
+      resJson = JSON.parse(responseText);
+    } catch (e) {
+      throw new Error(`Doudian Cate Trade Non-JSON Response: ${responseText.substring(0, 200)}`);
+    }
+
+    const errCode = String(resJson.code ?? resJson.errorCode ?? '');
+    const errMsg = resJson.message || resJson.msg || resJson.errorMsg || '';
+    if (errCode && !['0', '0000', '200', '100000'].includes(errCode)) {
+      throw new Error(`Doudian Cate Trade API Error: [code=${errCode}] ${errMsg}`);
+    }
+
+    let rawList = [];
+    if (Array.isArray(resJson.data)) {
+      rawList = resJson.data;
+    } else if (resJson.data && Array.isArray(resJson.data.list)) {
+      rawList = resJson.data.list;
+    } else if (resJson.data && Array.isArray(resJson.data.records)) {
+      rawList = resJson.data.records;
+    } else if (Array.isArray(resJson.list)) {
+      rawList = resJson.list;
+    }
+
+    const expandedList = [];
+    rawList.forEach((item) => {
+      const cateName = item.cate_name || item.category_name || '';
+      
+      // 1. 本店
+      if (item.shop_category_indicator) {
+        const ind = item.shop_category_indicator;
+        expandedList.push({
+          category_name: cateName,
+          range_type: '本店',
+          pay_amt: ind.trading_amount_range,
+          pay_amt_ratio: ind.trading_amount_rate,
+          pay_uv: ind.traded_user_cnt_range,
+          pay_uv_ratio: ind.traded_user_cnt_rate,
+          field_3: ind.ord_price_avg_range,
+          field_4: ind.item_unit_price_range,
+          pay_cnt: ind.pay_ord_cnt_range
+        });
+      }
+
+      // 2. 友商均值
+      if (item.competing_shop_category_avg_indicator) {
+        const ind = item.competing_shop_category_avg_indicator;
+        expandedList.push({
+          category_name: cateName,
+          range_type: '友商均值',
+          pay_amt: ind.trading_amount_range,
+          pay_amt_ratio: ind.trading_amount_rate,
+          pay_uv: ind.traded_user_cnt_range,
+          pay_uv_ratio: ind.traded_user_cnt_rate,
+          field_3: ind.ord_price_avg_range,
+          field_4: ind.item_unit_price_range,
+          pay_cnt: ind.pay_ord_cnt_range
+        });
+      }
+
+      // 3. 大盘
+      if (item.platform_category_indicator) {
+        const ind = item.platform_category_indicator;
+        expandedList.push({
+          category_name: cateName,
+          range_type: '大盘',
+          pay_amt: ind.trading_amount_range,
+          pay_amt_ratio: ind.trading_amount_rate,
+          pay_uv: ind.traded_user_cnt_range,
+          pay_uv_ratio: ind.traded_user_cnt_rate,
+          field_3: ind.ord_price_avg_range,
+          field_4: ind.item_unit_price_range,
+          pay_cnt: ind.pay_ord_cnt_range
+        });
+      }
+    });
+
+    const originalPageSize = params.page_size || params.pageSize || 10;
+    const hasMore = rawList.length >= originalPageSize;
+    const pageNum = params.page || params.page_no || 1;
+    const loadedCount = (pageNum - 1) * originalPageSize * 3 + expandedList.length;
+
+    return {
+      list: expandedList,
+      hasMore,
+      loadedCount,
+      nextPageToken: hasMore ? `page_${pageNum + 1}_${loadedCount}` : '',
+      pageSize: originalPageSize * 3,
+      total: hasMore ? loadedCount + 30 : loadedCount
+    };
+  });
 }
 
 module.exports = {

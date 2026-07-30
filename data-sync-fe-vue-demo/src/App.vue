@@ -131,7 +131,7 @@
                 </div>
 
                 <a-form-item v-if="hasDateRangeMapping" label="同步时间范围" required>
-                  <a-select v-model:value="dateRange" :options="dateRangeOptions" />
+                  <a-select v-model:value="dateRange" :options="computedDateRangeOptions" />
                 </a-form-item>
 
                 <template v-if="customQueryFields.length > 0">
@@ -167,15 +167,16 @@
                       :disabled-date="getCustomQueryDateRangeDisabledDate(field)"
                       @update:value="handleCustomQueryValueChange(field.name, $event)"
                     />
-                    <a-select
-                      v-else-if="hasCustomQueryOptions(field)"
-                      style="width: 100%"
-                      :placeholder="field.placeholder || `请选择 ${field.label || field.name}`"
-                      :options="field.options"
-                      :value="getCustomQueryFieldValue(field.name)"
-                      allow-clear
-                      @update:value="handleCustomQueryValueChange(field.name, $event)"
-                    />
+                     <a-select
+                       v-else-if="hasCustomQueryOptions(field)"
+                       style="width: 100%"
+                       :placeholder="field.placeholder || `请选择 ${field.label || field.name}`"
+                       :options="field.options"
+                       :mode="field.mode"
+                       :value="getCustomQueryFieldValue(field.name)"
+                       allow-clear
+                       @update:value="handleCustomQueryValueChange(field.name, $event)"
+                     />
                     <a-input
                       v-else
                       :value="getStringCustomQueryFieldValue(field.name)"
@@ -715,10 +716,19 @@ const timeTypeOptions = [
 // 普通模块的相对同步时间范围选项。
 const dateRangeOptions = [
   { value: 'all', label: '全量数据' },
-  { value: '3', label: '回溯近 3 天数据（高频增量，推荐）' },
+  { value: '1', label: '回溯近 1 天数据（高频增量，推荐）' },
   { value: '7', label: '回溯近 7 天数据' },
   { value: '30', label: '回溯近 30 天数据（多页拉取）' }
 ];
+
+const computedDateRangeOptions = computed(() => {
+  const currentId = selectedDoudianInterface.value?.id;
+  const currentKey = selectedDoudianInterfaceKey.value || '';
+  if (currentId === 1691 || currentKey.includes('competition_shop_contrast')) {
+    return dateRangeOptions.filter(opt => opt.value === '1' || opt.value === '7');
+  }
+  return dateRangeOptions;
+});
 
 const booleanCustomQueryOptions = [
   { value: 'true', label: '是' },
@@ -816,8 +826,8 @@ const shopIdParam = ref('');
 const doudianExtraQueryText = ref('');
 // 最近一次测试连接结果，用于在配置页给出轻量反馈。
 const testConnectionResult = ref('');
-// 相对同步时间范围，单位为天。
 const dateRange = ref('30');
+
 // 字段映射下拉框的目标列选项。
 const bitableFields = ref<BitableOption[]>([]);
 // 源字段 key 到飞书目标列 fieldId 的映射关系。
@@ -886,6 +896,14 @@ const selectedDoudianInterfaceKey = computed(() => {
 const selectedDoudianInterface = computed(() => (
   doudianInterfaces.value.find((item) => item.interfaceKey === selectedDoudianInterfaceKey.value) || null
 ));
+
+watch(selectedDoudianInterfaceKey, (newVal) => {
+  if (newVal?.includes('competition_shop_contrast') || selectedDoudianInterface.value?.id === 1691) {
+    if (dateRange.value === '30' || dateRange.value === 'all') {
+      dateRange.value = '7';
+    }
+  }
+});
 const customQueryFields = computed<CustomQueryField[]>(() => {
   const fields = selectedDoudianInterface.value?.requestConfig?.customQueryFields;
   return Array.isArray(fields) ? fields.filter((field) => Boolean(field?.name)) : [];
@@ -2619,9 +2637,11 @@ watch(syncModule, async () => {
   captureTokenExpiresAt.value = 0;
   const requestId = ++syncModuleDetailRequestId;
   isLoadingInterfaceFields.value = Boolean(selectedDoudianInterfaceKey.value);
+  console.log('[DEBUG] watch(syncModule) triggered. syncModule:', syncModule.value);
   try {
     const detail = await ensureSelectedDoudianInterfaceDetail();
     if (requestId !== syncModuleDetailRequestId) return;
+    console.log('[DEBUG] get detail for syncModule:', detail);
     if (
       detail?.detailLoaded !== true
       || !Array.isArray(detail.fieldsSchema)
@@ -2632,6 +2652,17 @@ watch(syncModule, async () => {
     }
     resetFieldMappingByModule();
     resetCustomQueryValues();
+
+    console.log('[DEBUG] checking detail.interfaceKey:', detail?.interfaceKey);
+    if (detail?.interfaceKey && detail.interfaceKey.includes('author_cooperate_search_analysis_top_keyword_author_list')) {
+      console.log('[DEBUG] match author list interface key, calling loadDynamicKeywords(detail)...');
+      loadDynamicKeywords(detail);
+    }
+    if (detail?.interfaceKey && detail.interfaceKey.includes('competition_shop_contrast')) {
+      console.log('[DEBUG] match shop contrast interface key, calling loadDynamicCompetitors(detail)...');
+      loadDynamicCompetitors(detail);
+    }
+
     if (
       isAccountModalOpen.value
       && currentStep.value === 2
@@ -2642,6 +2673,164 @@ watch(syncModule, async () => {
   } finally {
     if (requestId === syncModuleDetailRequestId) {
       isLoadingInterfaceFields.value = false;
+    }
+  }
+});
+
+// 动态加载热门词列表的方法
+async function loadDynamicKeywords(detailObj?: any) {
+  const currentDetail = detailObj || selectedDoudianInterface.value;
+  console.log('[DEBUG] loadDynamicKeywords called. currentDetail:', currentDetail);
+  if (!currentDetail || !currentDetail.interfaceKey || !currentDetail.interfaceKey.includes('author_cooperate_search_analysis_top_keyword_author_list')) {
+    console.log('[DEBUG] currentDetail is null or key does not match. Exiting.');
+    return;
+  }
+  console.log('[DEBUG] accounts.value.length:', accounts.value.length);
+  if (accounts.value.length === 0) {
+    console.log('[DEBUG] accounts list is empty. Exiting.');
+    return;
+  }
+  
+  const configFields = currentDetail.requestConfig?.customQueryFields;
+  const queryWordField = configFields?.find((f: any) => f.name === 'query_word');
+  console.log('[DEBUG] queryWordField:', queryWordField);
+  if (!queryWordField) return;
+
+  queryWordField.options = [{ label: '正在加载热门搜索词...', value: '' }];
+
+  try {
+    console.log('[DEBUG] Fetching 1729 keywords from backend...');
+    const response = await fetch(apiUrl('/api/v1/connector/doudian/test-connection'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantKey: tenantKey.value || 'default',
+        userId: userId.value || 'default',
+        syncModule: 'doudian_shop__达人_author_cooperate_search_analysis_top_keyword',
+        doudianInterface: {
+          id: 1729,
+          interface_key: 'doudian_shop__达人_author_cooperate_search_analysis_top_keyword'
+        },
+        shopIdParam: shopIdParam.value,
+        doudianExtraQuery: {},
+        dateRange: hasDateRangeMapping.value ? (dateRange.value || '30') : '30'
+      })
+    });
+
+    if (!response.ok) throw new Error('请求关键词接口失败');
+    const result = await response.json();
+    const records = result?.data?.records || [];
+    console.log('[DEBUG] Fetched records for keywords:', records);
+    
+    const keywords = Array.isArray(records)
+      ? records
+          .map((item: any) => item?.index_display || '')
+          .filter(Boolean)
+      : [];
+
+    if (keywords.length > 0) {
+      queryWordField.options = keywords.map((word) => ({
+        label: word,
+        value: word
+      }));
+      console.log('[DEBUG] Updated options success. keywords:', keywords);
+      
+      const currentValue = getCustomQueryFieldValue('query_word');
+      if (!currentValue || !keywords.includes(currentValue)) {
+        handleCustomQueryValueChange('query_word', keywords[0]);
+      }
+    } else {
+      queryWordField.options = [{ label: '暂无可用热门词，请手动输入', value: '' }];
+    }
+  } catch (err) {
+    console.error('动态拉取热门关键词失败:', err);
+    queryWordField.options = [{ label: '加载失败，请手动输入', value: '' }];
+  }
+}
+
+// 动态加载竞店列表作为下拉框选项的方法
+async function loadDynamicCompetitors(detailObj?: any) {
+  const currentDetail = detailObj || selectedDoudianInterface.value;
+  console.log('[DEBUG] loadDynamicCompetitors called. currentDetail:', currentDetail);
+  if (!currentDetail || !currentDetail.interfaceKey || !currentDetail.interfaceKey.includes('competition_shop_contrast')) {
+    console.log('[DEBUG] currentDetail is null or key does not match shop contrast. Exiting.');
+    return;
+  }
+  if (accounts.value.length === 0) {
+    console.log('[DEBUG] accounts list is empty. Exiting.');
+    return;
+  }
+  
+  const configFields = currentDetail.requestConfig?.customQueryFields;
+  const competitorField = configFields?.find((f: any) => f.name === 'compare_ids');
+  console.log('[DEBUG] competitorField:', competitorField);
+  if (!competitorField) return;
+
+  competitorField.options = [{ label: '正在加载关注的竞店列表...', value: '' }];
+
+  try {
+    console.log('[DEBUG] Fetching 1673 competitor list from backend...');
+    const response = await fetch(apiUrl('/api/v1/connector/doudian/test-connection'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenantKey: tenantKey.value || 'default',
+        userId: userId.value || 'default',
+        syncModule: 'doudian_shop__市场_mall_competitor_management_competitor_list_v2',
+        doudianInterface: {
+          id: 1673,
+          interface_key: 'doudian_shop__市场_mall_competitor_management_competitor_list_v2'
+        },
+        shopIdParam: shopIdParam.value,
+        doudianExtraQuery: {},
+        dateRange: hasDateRangeMapping.value ? (dateRange.value || '30') : '30'
+      })
+    });
+
+    if (!response.ok) throw new Error('请求竞店列表接口失败');
+    const result = await response.json();
+    const records = result?.data?.records || [];
+    console.log('[DEBUG] Fetched records for competitors:', records);
+    
+    const options = Array.isArray(records)
+      ? records
+          .map((item: any) => {
+            const shopInfo = item?.shop_info || {};
+            const name = shopInfo.shop_name || '';
+            const id = shopInfo.shop_id || '';
+            if (name && id) {
+              return { label: `${name} (${id})`, value: id };
+            }
+            return null;
+          })
+          .filter(Boolean)
+      : [];
+
+    if (options.length > 0) {
+      competitorField.options = options;
+      console.log('[DEBUG] Updated competitor options success:', options);
+      
+      const currentValue = getCustomQueryFieldValue('compare_ids');
+      if (!currentValue) {
+        // 默认选中第一个竞店以做防空处理
+        handleCustomQueryValueChange('compare_ids', options[0].value);
+      }
+    } else {
+      competitorField.options = [{ label: '暂无关注的竞店，请先在抖音罗盘添加关注', value: '' }];
+    }
+  } catch (err) {
+    console.error('动态拉取竞店列表失败:', err);
+    competitorField.options = [{ label: '加载失败，请刷新重试', value: '' }];
+  }
+}
+
+// 当时间范围、店铺或账号关联改变时，若为特定接口则刷新加载
+watch([dateRange, shopIdParam, accounts], () => {
+  if (selectedDoudianInterface.value && selectedDoudianInterface.value.interfaceKey) {
+    if (selectedDoudianInterface.value.interfaceKey.includes('author_cooperate_search_analysis_top_keyword_author_list')) {
+      loadDynamicKeywords();
+    } else if (selectedDoudianInterface.value.interfaceKey.includes('competition_shop_contrast')) {
+      loadDynamicCompetitors();
     }
   }
 });

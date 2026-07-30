@@ -1366,6 +1366,7 @@ app.post("/api/v1/connector/doudian/test-connection", async (req, res) => {
     };
     const list = await fetchRealDoudianData(activeAccount.cookie, config.shopIdParam, syncModule, config, null, `TEST_${Date.now()}`, 1);
     const interfaceMeta = list.interfaceMeta || null;
+    console.log('[DEBUG-CONN] test-connection returned list:', Array.isArray(list) ? list.length : typeof list, JSON.stringify(list).substring(0, 1000));
     res.status(200).json({
       code: 0,
       message: "测试连接成功",
@@ -1376,7 +1377,8 @@ app.post("/api/v1/connector/doudian/test-connection", async (req, res) => {
         apiPath: interfaceMeta?.apiPath || "",
         count: Array.isArray(list) ? list.length : 0,
         total: Number(list.total || 0),
-        pageSize: Number(list.pageSize || list.length || 0)
+        pageSize: Number(list.pageSize || list.length || 0),
+        records: list
       }
     });
   } catch (e) {
