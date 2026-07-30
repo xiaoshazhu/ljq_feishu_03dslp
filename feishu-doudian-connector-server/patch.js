@@ -154,6 +154,17 @@ globalThis.fetch = function (url, options) {
               urlObj.searchParams.set('date_type', '21');
               console.log(`[PATCH] 劫持合作视频列表接口: 其他跨度，已将 date_type 修正为 '21'`);
             }
+          } else if (url.includes('customer_analysis/customer_detail_list')) {
+            if (diffDays === 30) {
+              urlObj.searchParams.set('date_type', '23');
+              console.log(`[PATCH] 劫持客服明细列表接口: 30天跨度，已将 date_type 修正为 '23'`);
+            } else if (diffDays === 7) {
+              urlObj.searchParams.set('date_type', '22');
+              console.log(`[PATCH] 劫持客服明细列表接口: 7天跨度，已将 date_type 修正为 '22'`);
+            } else {
+              urlObj.searchParams.set('date_type', '21');
+              console.log(`[PATCH] 劫持客服明细列表接口: 其他跨度，已将 date_type 修正为 '21'`);
+            }
           }
         }
         url = urlObj.toString();
