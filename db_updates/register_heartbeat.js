@@ -31,7 +31,7 @@ async function main() {
     const [existing] = await pool.query("SELECT id FROM dslp_interfaces WHERE interface_key = ?", [interfaceKey]);
     if (!existing.length) {
       await pool.query(
-        "INSERT INTO dslp_interfaces (interface_key, interface_name, api_path, api_host, module_group, request_config, fields_schema) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO dslp_interfaces (interface_key, interface_name, api_path, api_host, module_group, request_config, fields_schema, is_enabled) VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
         [
           interfaceKey,
           '系统-账号中心-子账号列表(心跳探测)',

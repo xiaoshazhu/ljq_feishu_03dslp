@@ -399,7 +399,8 @@ async function probeDoudianInterfaceSuccessCode(cookie, interfaceKey, userAgent,
 
   const { responseText } = await fetchTextWithTimeout(builtRequest.requestUrl, fetchOptions, 8000);
   const resJson = JSON.parse(responseText);
-  return String(resJson?.code) === String(successCode);
+  const code = resJson?.code !== undefined ? resJson.code : resJson?.st;
+  return String(code) === String(successCode);
 }
 
 /**
