@@ -62,12 +62,19 @@ globalThis.fetch = function (url, options) {
     if (url.includes('competition_shop_contrast')) {
       try {
         const urlObj = new URL(url);
-        const compareIds = urlObj.searchParams.get('compare_ids');
+        const compareIds = urlObj.searchParams.get('compare_ids') || urlObj.searchParams.get('target_shop_ids');
         if (compareIds) {
-          urlObj.searchParams.set('target_shop_ids', compareIds);
+          const idList = compareIds.split(',')
+            .map(id => id.trim())
+            .filter(Boolean);
+          const uniqueIds = Array.from(new Set(idList));
+          const limitedIds = uniqueIds.slice(0, 2);
+          const finalIds = limitedIds.join(',');
+
+          urlObj.searchParams.set('target_shop_ids', finalIds);
           urlObj.searchParams.delete('compare_ids');
           url = urlObj.toString();
-          console.log(`[PATCH] 劫持对比接口: 已将 compare_ids (${compareIds}) 转换为 target_shop_ids`);
+          console.log(`[PATCH] 劫持对比接口: 已将 compare_ids (${compareIds}) 去重并限制最多2个 ➔ target_shop_ids (${finalIds})`);
         }
       } catch (e) {
         console.error('[PATCH] 劫持处理对比接口失败:', e);
@@ -255,6 +262,40 @@ globalThis.fetch = function (url, options) {
         }
       } catch (e) {
         console.error('[PATCH] 拦截商品列表响应失败:', e);
+      }
+      return response;
+    });
+  }
+  if (typeof url === 'string' && url.includes('competitor_list_v2')) {
+    return resPromise.then(async (response) => {
+      try {
+        const contentType = response.headers.get('content-type') || '';
+        if (response.ok && contentType.includes('application/json')) {
+          const clonedRes = response.clone();
+          const text = await clonedRes.text();
+          const resJson = JSON.parse(text);
+          const records = resJson?.data?.records;
+          if (Array.isArray(records)) {
+            const seen = new Set();
+            const uniqueRecords = [];
+            for (const record of records) {
+              const shopId = record?.shop_info?.shop_id;
+              if (shopId && !seen.has(shopId)) {
+                seen.add(shopId);
+                uniqueRecords.push(record);
+              }
+            }
+            resJson.data.records = uniqueRecords;
+            console.log(`[PATCH] 拦截到竞店列表接口，成功去重竞店记录，去重后数量: ${uniqueRecords.length}`);
+            return new Response(JSON.stringify(resJson), {
+              status: response.status,
+              statusText: response.statusText,
+              headers: response.headers
+            });
+          }
+        }
+      } catch (e) {
+        console.error('[PATCH] 拦截竞店列表去重失败:', e);
       }
       return response;
     });
