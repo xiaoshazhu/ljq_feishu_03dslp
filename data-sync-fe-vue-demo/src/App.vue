@@ -1316,7 +1316,14 @@ function getStringCustomQueryFieldValue(fieldName: string): string | undefined {
  */
 function getCustomQueryFieldValue(fieldName: string): CustomQueryFieldValue | undefined {
   const value = customQueryValues[fieldName];
-  return value === undefined || value === null || value === '' ? undefined : value;
+  if (value === undefined || value === null || value === '') return undefined;
+  
+  const field = customQueryFields.value.find((item) => item.name === fieldName);
+  if (field && field.mode === 'multiple') {
+    if (Array.isArray(value)) return value;
+    return String(value).split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return value;
 }
 
 function getRangeCustomQueryFieldValue(fieldName: string): string[] | undefined {
@@ -1397,6 +1404,15 @@ function handleCustomQueryValueChange(fieldName: string, value: unknown): void {
     customQueryValues[fieldName] = String(value);
     return;
   }
+  
+  if (field.mode === 'multiple' && Array.isArray(value)) {
+    const unique = Array.from(new Set(value.map(v => String(v).trim()).filter(Boolean)));
+    const limit = fieldName === 'compare_ids' ? 2 : unique.length;
+    const limited = unique.slice(0, limit);
+    customQueryValues[fieldName] = limited.join(',');
+    return;
+  }
+  
   customQueryValues[fieldName] = normalizeCustomQueryFieldValue(field, value);
 }
 
