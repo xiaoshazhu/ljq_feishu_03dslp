@@ -36,8 +36,8 @@ function appendConnectorFields(fields = []) {
   const fieldsWithoutConnectorReserved = safeFields.filter((field) => !isConnectorReservedField(field));
   return [
     CONNECTOR_PRIMARY_FIELD,
-    ...fieldsWithoutConnectorReserved,
-    ACCOUNT_NAME_FIELD
+    ACCOUNT_NAME_FIELD,
+    ...fieldsWithoutConnectorReserved
   ];
 }
 

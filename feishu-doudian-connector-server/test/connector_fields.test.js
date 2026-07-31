@@ -25,8 +25,8 @@ test('连接器字段始终补充第一列主键，并忽略数据库字段 isPr
   assert.equal(fields[0].key, CONNECTOR_PRIMARY_FIELD.key);
   assert.equal(fields[0].isPrimary, true);
   assert.equal(fields[0].isConnectorPrimary, true);
-  assert.equal(fields[1].key, 'order_id');
-  assert.equal(fields[1].isPrimary, false);
-  assert.equal(fields[1].isConnectorPrimary, false);
-  assert.equal(fields.at(-1).key, ACCOUNT_NAME_FIELD.key);
+  assert.equal(fields[1].key, ACCOUNT_NAME_FIELD.key);
+  assert.equal(fields[2].key, 'order_id');
+  assert.equal(fields[2].isPrimary, false);
+  assert.equal(fields[2].isConnectorPrimary, false);
 });
