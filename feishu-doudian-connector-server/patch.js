@@ -118,7 +118,8 @@ globalThis.fetch = function (url, options) {
             || url.includes('chance_market')
             || url.includes('product_rank')
             || url.includes('flow_analysis')
-            || url.includes('flow_loss');
+            || url.includes('flow_loss')
+            || url.includes('live_room_detail');
           if (!isProductInterface && (endDayPart === yesterdayStr || endDayPart === todayStr || endDayPart === '2026/07/29')) {
             beginDate.setDate(beginDate.getDate() - 1);
             endDate.setDate(endDate.getDate() - 1);
