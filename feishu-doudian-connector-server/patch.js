@@ -35,6 +35,30 @@ const originalFetch = globalThis.fetch;
 
 globalThis.fetch = function (url, options) {
   if (typeof url === 'string') {
+    if (url.includes('/compass_api/')) {
+      try {
+        const urlObj = new URL(url);
+        let beginStr = urlObj.searchParams.get('begin_date');
+        let endStr = urlObj.searchParams.get('end_date');
+        if (!beginStr && !endStr) {
+          const pad = (n) => String(n).padStart(2, '0');
+          const formatDatePart = (d) => `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
+          const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          const endStrVal = `${formatDatePart(yesterday)} 23:59:59`;
+          const startDay = new Date(yesterday.getTime() - 6 * 24 * 60 * 60 * 1000);
+          const beginStrVal = `${formatDatePart(startDay)} 00:00:00`;
+          urlObj.searchParams.set('begin_date', beginStrVal);
+          urlObj.searchParams.set('end_date', endStrVal);
+          if (!urlObj.searchParams.has('date_type')) {
+            urlObj.searchParams.set('date_type', '21');
+          }
+          url = urlObj.toString();
+          console.log(`[PATCH] 测试连接防漏补全: 自动填入 7 天安全时间范围: ${beginStrVal} 至 ${endStrVal}`);
+        }
+      } catch (e) {
+        console.error('[PATCH] 补全测试日期失败:', e);
+      }
+    }
     if (url.includes('competition_shop_contrast')) {
       try {
         const urlObj = new URL(url);
@@ -72,7 +96,7 @@ globalThis.fetch = function (url, options) {
       } catch (e) {
         console.error('[PATCH] 劫持看后搜视频接口失败:', e);
       }
-    } else if (url.includes('market/shop_rank') || url.includes('recommend_optimized_product_v2') || url.includes('compass_rank_v3')) {
+    } else if (url.includes('market/shop_rank') || url.includes('recommend_optimized_product_v2') || url.includes('compass_rank_v3') || url.includes('video/overview/video_list') || url.includes('customer_analysis/customer_detail_list') || url.includes('customer_analysis/detail_intent') || url.includes('product/product/product_list')) {
       try {
         const urlObj = new URL(url);
         let beginStr = urlObj.searchParams.get('begin_date');
@@ -90,7 +114,12 @@ globalThis.fetch = function (url, options) {
           const yesterdayStr = formatDatePart(new Date(Date.now() - 24 * 60 * 60 * 1000));
           
           const endDayPart = endStr.split(' ')[0];
-          if (endDayPart === yesterdayStr || endDayPart === todayStr || endDayPart === '2026/07/29') {
+          const isProductInterface = url.includes('product/product/product_list')
+            || url.includes('chance_market')
+            || url.includes('product_rank')
+            || url.includes('flow_analysis')
+            || url.includes('flow_loss');
+          if (!isProductInterface && (endDayPart === yesterdayStr || endDayPart === todayStr || endDayPart === '2026/07/29')) {
             beginDate.setDate(beginDate.getDate() - 1);
             endDate.setDate(endDate.getDate() - 1);
             
@@ -165,6 +194,21 @@ globalThis.fetch = function (url, options) {
               urlObj.searchParams.set('date_type', '21');
               console.log(`[PATCH] 劫持客服明细列表接口: 其他跨度，已将 date_type 修正为 '21'`);
             }
+          } else if (url.includes('customer_analysis/detail_intent')) {
+            if (diffDays === 30) {
+              urlObj.searchParams.set('date_type', '23');
+              console.log(`[PATCH] 劫持意图明细列表接口: 30天跨度，已将 date_type 修正为 '23'`);
+            } else if (diffDays === 7) {
+              urlObj.searchParams.set('date_type', '22');
+              console.log(`[PATCH] 劫持意图明细列表接口: 7天跨度，已将 date_type 修正为 '22'`);
+            } else {
+              urlObj.searchParams.set('date_type', '21');
+              console.log(`[PATCH] 劫持意图明细列表接口: 其他跨度，已将 date_type 修正为 '21'`);
+            }
+          } else if (url.includes('product/product/product_list')) {
+            // 商品明细接口强制只支持日度数据（21），防止被自动修正为 22 或 23 导致日期校验失败
+            urlObj.searchParams.set('date_type', '21');
+            console.log(`[PATCH] 劫持商品明细接口: 强行将 date_type 修正为 '21' 以避免周度/月度日期校验失败`);
           }
         }
         url = urlObj.toString();
@@ -173,5 +217,46 @@ globalThis.fetch = function (url, options) {
       }
     }
   }
-  return originalFetch.call(this, url, options);
+  const resPromise = originalFetch.call(this, url, options);
+  if (typeof url === 'string' && url.includes('product/product/product_list')) {
+    console.log(`[PATCH-REAL-URL] 真正发往抖店的完整 URL: ${url}`);
+    return resPromise.then(async (response) => {
+      try {
+        const contentType = response.headers.get('content-type') || '';
+        if (response.ok && contentType.includes('application/json')) {
+          const clonedRes = response.clone();
+          const text = await clonedRes.text();
+          const resJson = JSON.parse(text);
+          const list = resJson.data;
+          if (!Array.isArray(list) || list.length === 0) {
+            console.log(`[PATCH] 拦截到商品明细列表为空，强行设置 has_more = false 并清空 meta 以终止同步`);
+            resJson.has_more = false;
+            resJson.hasMore = false;
+            if (resJson.page_result) {
+              resJson.page_result.has_more = false;
+            }
+            resJson.data = [];
+            delete resJson.meta; // 彻底阻止后端 extractFirstArray 误抓指标表头数组
+            return new Response(JSON.stringify(resJson), {
+              status: response.status,
+              statusText: response.statusText,
+              headers: response.headers
+            });
+          } else {
+            // 将第一页的响应 JSON 写入临时文件，供我们排查率的数值单位
+            try {
+              require('fs').writeFileSync(
+                'C:/Users/lenovo/.gemini/antigravity-ide/brain/8bc1e4c5-a489-4e01-923b-d4cc831bcd5e/scratch/doudian_raw_response.json',
+                JSON.stringify(resJson, null, 2)
+              );
+            } catch (err) {}
+          }
+        }
+      } catch (e) {
+        console.error('[PATCH] 拦截商品列表响应失败:', e);
+      }
+      return response;
+    });
+  }
+  return resPromise;
 };
